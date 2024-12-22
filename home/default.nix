@@ -1,8 +1,8 @@
 { config, pkgs, ... }:
 
 {
-  include = [
-    ./home/nvim.nix
+  imports = [
+    ./nvim
   ];
 
   home.stateVersion = "24.11";
@@ -45,6 +45,5 @@
       la = "ls -la";
       nvims = "nvim -S";
     };
-  };
   };
 }
