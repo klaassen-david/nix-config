@@ -1,16 +1,70 @@
 { config, pkgs,  ... }:
 
 {
+  imports = [
+    ./plugins/nvim-cmp.nix
+    ./plugins/lsp.nix
+  ];
+
   programs.nixvim = {
     enable = true;
     defaultEditor = true;
-    globals.mapleader = " ";
+
+    globals = {
+      mapleader = " ";
+      have_nerd_font = true;
+    };
     
-    # options = {
-    #   number = true;
-    #   relativenumber = true;
-    #   shiftwidth = 4;
-    # };
+    opts = {
+      number = true;
+      relativenumber = true;
+      shiftwidth = 4;
+
+      clipboard.register = "unnamedplus";
+
+      breakindent = true;
+      signcolumn = "yes";
+      list = true;
+      listchars.__raw = "{ tab = '» ', trail = '·', nbsp = '␣' }";
+      cursorline = true;
+      scrolloff = 10;
+      hlsearch = true;
+
+      undofile = true;
+      ignorecase = true;
+      smartcase = true;
+    };
+
+    keymaps = [
+      { mode = "n";
+        key = "<ESC>";
+        action = "<cmd>nohlsearch<CR>";
+      }
+      { mode = "n";
+        key = "<C-Right>";
+        action = "<cmd>tabnext<CR>";
+      }
+      { mode = "n";
+        key = "<C-Left>";
+        action = "<cmd>tabprevious<CR>";
+      }
+    ];
+
+    autoGroups = {
+      kickstart-highlight-yank.clear = true;
+    };
+
+    autoCmd = [
+      { event = ["TextYankPost"];
+        desc = "Highlight when yanking text";
+        group = "kickstart-highlight-yank";
+        callback.__raw = ''
+          function()
+            vim.highlight.on_yank()
+          end
+        '';
+      }
+    ];
 
     plugins = {
       lualine.enable = true;
@@ -19,46 +73,10 @@
         enable = true;
         servers = { 
           lua_ls.enable = true;
-          rust_analyzer = {
-            enable = true;
-            installCargo = true;
-            installRustc = true;
-          };
-          pyright.enable = true;
         };
       };
 
       luasnip.enable = true;
-      cmp = {
-        enable = true;
-        autoEnableSources = true;
-        settings = {
-          sources = [
-            { name = "nvim_lsp";}
-            { name = "luasnip";}
-            { name = "path";}
-            { name = "buffer";}
-          ];
-
-          # mapping = {
-          #   "<CR>" = "cmp.mapping.confirm({ select = true })";
-          #   "<Tab>" = ''
-          #     function(fallback)
-          #       if cmp.visible() then
-          #         cmp.select_next_item()
-          #       elseif luasnip.exandable() then
-          #         luasnip.expand()
-          #       elseif luasnip.expand_or_jumpable() then
-          #         luasnip.expand_or_jump()
-          #       elseif check_backspace() then
-          #         fallback()
-          #       else 
-          #         fallback()
-          #       end
-          #   '';
-            # };
-        };
-      };
 
       telescope = {
         enable = true;
@@ -76,6 +94,7 @@
       comment.enable = true;
       indent-blankline.enable = true;
       guess-indent.enable = true;
+      sleuth.enable = true;
       web-devicons.enable = true;
     };
   };
