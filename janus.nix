@@ -11,11 +11,6 @@
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   nixpkgs.config.allowUnfree = true;
 
-  programs.neovim = {
-    enable = true;
-    defaultEditor = true;
-  };
-
   users.extraUsers.dk = {
     isNormalUser = true;
     initialPassword = "4TestPW";

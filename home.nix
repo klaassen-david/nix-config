@@ -1,8 +1,9 @@
-{ config, pkgs, ... }:
+{ config, pkgs, inputs, ... }:
 
 {
   imports = [
-    ./nvim
+    inputs.nixvim.homeManagerModules.nixvim
+    ./modules/nvim
   ];
 
   home.stateVersion = "24.11";
@@ -12,6 +13,8 @@
   home.homeDirectory = "/home/dk";
 
   home.packages = with pkgs; [
+    vim
+
     # unpack
     unzip
     unrar

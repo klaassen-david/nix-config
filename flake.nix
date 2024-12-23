@@ -8,6 +8,10 @@
       url = "github:nix-community/home-manager/master";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
+    nixvim = {
+      url = "github:nix-community/nixvim";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
   };
 
   outputs = { self, nixpkgs-unstable, nixos-wsl, home-manager, ...}@inputs: {
@@ -24,9 +28,18 @@
         ./janus.nix
 
         home-manager.nixosModules.home-manager {
+          home-manager.extraSpecialArgs = {
+            inherit inputs;
+          };
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
-          home-manager.users.dk = import ./home;
+          home-manager.users.dk = {
+            imports = [
+              ./home.nix
+    # inputs.nixvim.homeManagerModules.nixvim
+
+            ];
+          };
         }
       ];
     };
