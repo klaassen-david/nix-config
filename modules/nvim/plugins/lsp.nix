@@ -16,6 +16,11 @@
       enable = true;
     };
 
+    # formatting
+    plugins.lsp-format = {
+      enable = true;
+    };
+
     # https://nix-community.github.io/nixvim/NeovimOptions/index.html?highlight=extraplugi#extraplugins
     extraPlugins = with pkgs.vimPlugins; [
       # NOTE: This is where you would add a vim plugin that is not implemented in Nixvim, also see extraConfigLuaPre below
@@ -72,6 +77,11 @@
         pyright = {
          enable = true;
         };
+
+        nixd = {
+          enable = true;
+        };
+
         rust_analyzer = {
          enable = true;
          installRustc = true;
@@ -92,6 +102,10 @@
             #};
           };
         };
+
+        omnisharp = {
+          enable = true;
+        };
       };
 
       keymaps = {
@@ -105,6 +119,20 @@
         };
 
         extra = [
+          # Jump to the next/previous diagnostic
+          {
+            mode = "n";
+            key = "<Right>d";
+            action.__raw = "vim.diagnostic.goto_next";
+            options.desc = "[->] [D]iagnostic";
+          }
+          {
+            mode = "n";
+            key = "<Left>d";
+            action.__raw = "vim.diagnostic.goto_prev";
+            options.desc = "[<-] [D]iagnostic";
+          }
+
           # Jump to the definition of the word under your cusor.
           #  This is where a variable was first declared, or where a function is defined, etc.
           #  To jump back, press <C-t>.

@@ -89,13 +89,25 @@
         };
       };
 
+      treesitter = {
+        enable = true;
+        settings = {
+          ensure_installed = "all";
+          highlight.enable = true;
+          indent.enable = true;
+          incremental_selection.enable = true;
+        };
+      };
+
       oil.enable = true;
-      treesitter.enable = true;
       comment.enable = true;
       indent-blankline.enable = true;
       guess-indent.enable = true;
       sleuth.enable = true;
       web-devicons.enable = true;
+      nvim-autopairs.enable = true;
     };
+
+    colorschemes.nord.enable = true;
   };
 }

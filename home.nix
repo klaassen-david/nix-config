@@ -4,6 +4,8 @@
   imports = [
     inputs.nixvim.homeManagerModules.nixvim
     ./modules/nvim
+    # ./modules/zellij
+    ./modules/tmux
   ];
 
   home.stateVersion = "24.11";
