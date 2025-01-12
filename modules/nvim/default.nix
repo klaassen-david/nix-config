@@ -92,7 +92,31 @@
       treesitter = {
         enable = true;
         settings = {
-          ensure_installed = "all";
+          ensure_installed = [
+            "rust"
+            "python"
+            "nix"
+            "toml"
+            "json"
+            "yaml"
+            "html"
+            "erlang"
+            "elixir"
+            "vim"
+            "vimdoc"
+            "c"
+            "lua"
+            "markdown"
+            "markdown_inline"
+            "query"
+            "agda"
+            "bash"
+            "c_sharp"
+            "cmake"
+            "make"
+            "diff"
+            "latex"
+          ];
           highlight.enable = true;
           indent.enable = true;
           incremental_selection.enable = true;

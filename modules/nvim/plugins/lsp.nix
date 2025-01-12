@@ -106,6 +106,10 @@
         omnisharp = {
           enable = true;
         };
+
+        clangd = {
+          enable = true;
+        };
       };
 
       keymaps = {
