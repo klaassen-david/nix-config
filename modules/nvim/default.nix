@@ -116,6 +116,7 @@
             "make"
             "diff"
             "latex"
+            "ocaml"
           ];
           highlight.enable = true;
           indent.enable = true;
@@ -123,7 +124,12 @@
         };
       };
 
-      oil.enable = true;
+      oil = {
+        enable = true;
+        luaConfig.content = ''
+          vim.api.nvim_set_keymap('n', '-', ':Oil<CR>', { noremap = true })
+        '';
+      };
       comment.enable = true;
       indent-blankline.enable = true;
       guess-indent.enable = true;

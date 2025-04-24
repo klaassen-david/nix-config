@@ -61,6 +61,11 @@
     # and elegantly composed help section, `:help lsp-vs-treesitter`
     #
     # https://nix-community.github.io/nixvim/plugins/lsp/index.html
+    plugins.none-ls = {
+      enable = true;
+      sources.formatting.ocamlformat.enable = true;
+    };
+
     plugins.lsp = {
       enable = true;
 
@@ -83,9 +88,9 @@
         };
 
         rust_analyzer = {
-         enable = true;
-         installRustc = true;
-         installCargo = true;
+          enable = true;
+          package = null;
+          cmd = [ "rust-analyzer" ];
         };
 
         lua_ls = {
@@ -109,6 +114,13 @@
 
         clangd = {
           enable = true;
+        };
+
+        ocamllsp = {
+          enable = true;
+          # package = pkgs.ocamlPackages.ocaml-lsp;
+          package = null;
+          cmd = [ "ocamllsp" ];
         };
       };
 
