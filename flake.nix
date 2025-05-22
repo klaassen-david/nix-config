@@ -43,5 +43,27 @@
         }
       ];
     };
+
+    # main
+    nixosConfigurations.hestia = nixpkgs-unstable.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        ./hestia/configuration.nix
+
+        home-manager.nixosModules.home-manager {
+          home-manager.extraSpecialArgs = {
+            inherit inputs;
+          };
+          home-manager.useGlobalPkgs = true;
+          home-manager.useUserPackages = true;
+          home-manager.backupFileExtension = "home-manager.bak";
+          home-manager.users.dk = {
+            imports = [
+              ./home.nix
+            ];
+          };
+        }
+      ];
+    };
   };
 }

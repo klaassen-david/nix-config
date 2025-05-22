@@ -5,7 +5,10 @@
     inputs.nixvim.homeManagerModules.nixvim
     ./modules/nvim
     # ./modules/zellij
+    ./modules/ghostty
     ./modules/tmux
+    ./modules/sway
+    ./modules/firefox
   ];
 
   home.stateVersion = "24.11";
@@ -13,6 +16,10 @@
 
   home.username = "dk";
   home.homeDirectory = "/home/dk";
+  home.keyboard = {
+    layout = "us";
+    variant = "dvorak";
+  };
 
   home.packages = with pkgs; [
     vim
@@ -30,6 +37,8 @@
     fzf
 
     btop # htop replacement
+    
+    thunderbird
   ];
 
   programs.git = {
