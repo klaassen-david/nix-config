@@ -26,6 +26,9 @@
   home.packages = with pkgs; [
     vim
 
+    # replace cat, ls, etc with rust implementations
+    uutils-coreutils-noprefix
+
     # unpack
     unzip
     unrar
@@ -36,6 +39,7 @@
 
     # search
     ripgrep
+    fd
     fzf
 
     btop # htop replacement
