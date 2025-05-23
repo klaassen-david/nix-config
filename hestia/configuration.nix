@@ -40,6 +40,10 @@
   };
   services.xserver.videoDrivers = [ "nouveau" ];
 
+  networking = {
+    hostName = "hestia";
+  };
+
   # dvorak
   console.useXkbConfig = true;
   services.xserver = {
@@ -68,4 +72,6 @@
     pavucontrol
     pamixer
   ];
+
+  programs.dconf.enable = true;
 }

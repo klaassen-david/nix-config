@@ -4,8 +4,9 @@
   programs.ghostty = {
     enable = true;
     enableBashIntegration = true;
+    enableFishIntegration = true;
     settings = {
-      font-size = 13;
+      font-size = 16;
       # font-family = "Fira Code Nerd Font";
     };
   };

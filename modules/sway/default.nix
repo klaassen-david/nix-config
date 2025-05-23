@@ -12,7 +12,7 @@
           xkb_layout = "us";
         };
       };
-      menu = "dmenu_run";
+      menu = "tofi-run | xargs swaymsg exec --";
       output = {
         DP-3 = {
           pos = "0 0";
@@ -20,11 +20,11 @@
         };
         DP-2 = {
           pos = "2560 0";
-          res = "3840 2160";
-          scale = "1.5";
+          res = "3840x2160";
+          scale = "1.3";
         };
         HDMI-A-1 = {
-          pos = "6400 0";
+          pos = "5513 0";
           res = "1600x1200";
         };
       };
@@ -71,6 +71,15 @@
 
   home.packages = with pkgs; [ 
     slurp
-    dmenu-rs
+    tofi
   ];
+
+  programs.tofi = {
+    enable = true;
+    settings = {
+      font = "${pkgs.nerd-fonts.fira-code.outPath}/share/fonts/truetype/NerdFonts/FiraCode/FiraCodeNerdFontMono-Regular.ttf"; 
+      output = "DP-2";
+      matching-algoritm = "fuzzy";
+    };
+  };
 }
