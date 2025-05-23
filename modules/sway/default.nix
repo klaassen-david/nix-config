@@ -12,6 +12,65 @@
           xkb_layout = "us";
         };
       };
+      menu = "dmenu_run";
+      output = {
+        DP-3 = {
+          pos = "0 0";
+          res = "2560x1440";
+        };
+        DP-2 = {
+          pos = "2560 0";
+          res = "3840 2160";
+          scale = "1.5";
+        };
+        HDMI-A-1 = {
+          pos = "6400 0";
+          res = "1600x1200";
+        };
+      };
+    };
+
+    extraConfig = ''
+      workspace 1 output DP-3
+      workspace 2 output DP-2
+      workspace 3 output HDMI-A-1
+
+      # XDG
+      exec systemctl --user set-environment XDG_CURRENT_DESKTOP=sway
+
+      exec systemctl --user import-environment DISPLAY \
+        SWAYSOCK \
+        WAYLAND_DISPLAY \
+        XDG_CURRENT_DESKTOP
+
+      exec hash dbus-update-activation-environment 2>/dev/null && \
+        dbus-update-activation-environment --systemd DISPLAY \
+          SWAYSOCK \
+          XDG_CURRENT_DESKTOP=sway \
+          WAYLAND_DISPLAY
+    '';
+  };
+
+  xdg = {
+    portal = {
+      enable = true;
+
+      config = {
+        sway = {
+          default = [ "gtk" ];
+          "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
+          "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
+        };
+      };
+      extraPortals = with pkgs; [
+        xdg-desktop-portal-wlr
+        xdg-desktop-portal-gtk
+      ];
     };
   };
+
+  home.packages = with pkgs; [ 
+    slurp
+    dmenu-rs
+  ];
 }

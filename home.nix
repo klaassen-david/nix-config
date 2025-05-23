@@ -3,6 +3,7 @@
 {
   imports = [
     inputs.nixvim.homeManagerModules.nixvim
+    inputs.zen-browser.homeModules.beta
     ./modules/nvim
     # ./modules/zellij
     ./modules/ghostty
@@ -37,9 +38,13 @@
     fzf
 
     btop # htop replacement
-    
-    thunderbird
+
+    # fonts
+    nerd-fonts.fira-code
+    corefonts
   ];
+
+  fonts.fontconfig.enable = true;
 
   programs.git = {
     enable = true;
@@ -58,6 +63,13 @@
       ll = "ls -lA";
       la = "ls -la";
       nvims = "nvim -S";
+    };
+  };
+
+  programs.zen-browser = {
+    enable = true;
+    policies = {
+      DisableAppUpdate = true;
     };
   };
 }

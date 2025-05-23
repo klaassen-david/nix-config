@@ -12,7 +12,7 @@
     isNormalUser = true;
     initialPassword = "4TestPW";
     home = "/home/dk";
-    extraGroups = [ "wheel" "video" "audio" "rtkit" ];
+    extraGroups = [ "wheel" ];
   };
 
   # This value determines the NixOS release from which the default
@@ -55,9 +55,8 @@
     alsa.enable = true;
     alsa.support32Bit = true;
     pulse.enable = true;
-    # systemWide = false;
     # wireplumber.enable = true;
-    jack.enable = true;
+    # jack.enable = true;
   };
 
   security.polkit.enable = true;

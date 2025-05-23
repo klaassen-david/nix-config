@@ -3,6 +3,7 @@
 
   inputs = {
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # nixpks.url = "github:NixOS/nixpkgs/nixos-25.05";
     nixos-wsl.url = "github:nix-community/NixOS-WSL/main";
     home-manager = {
       url = "github:nix-community/home-manager/master";
@@ -12,9 +13,15 @@
       url = "github:nix-community/nixvim";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
+    zen-browser = {
+      url = "github:0xc000022070/zen-browser-flake";
+      # # IMPORTANT: we're using "libgbm" and is only available in unstable so ensure
+      # # to have it up-to-date or simply don't specify the nixpkgs input  
+      # inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs-unstable, nixos-wsl, home-manager, ...}@inputs: {
+  outputs = { self, nixpkgs-unstable, nixos-wsl, home-manager, zen-browser, ...}@inputs: {
     # wsl
     nixosConfigurations.janus = nixpkgs-unstable.lib.nixosSystem {
       system = "x86_64-linux";
