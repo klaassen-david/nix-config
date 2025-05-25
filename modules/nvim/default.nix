@@ -20,7 +20,10 @@
       relativenumber = true;
       shiftwidth = 4;
 
-      clipboard.register = "unnamedplus";
+      clipboard = {
+        register = "unnamedplus";
+        # providers.wl-copy.enable = true;
+      };
 
       breakindent = true;
       signcolumn = "yes";
@@ -136,6 +139,9 @@
       sleuth.enable = true;
       web-devicons.enable = true;
       nvim-autopairs.enable = true;
+      airline = {
+        enable = true;
+      };
     };
 
     colorschemes.nord.enable = true;

@@ -3,16 +3,22 @@
 {
   wayland.windowManager.sway = {
     enable = true;
+    wrapperFeatures.gtk = true;
     config = {
       terminal = "ghostty";
       modifier = "Mod1";
+      menu = "tofi-run | xargs swaymsg exec --";
+      startup = [
+        { command = "zen"; }
+      ];
+
       input = {
         "*" = { 
           xkb_variant = "dvorak";
           xkb_layout = "us";
         };
       };
-      menu = "tofi-run | xargs swaymsg exec --";
+
       output = {
         DP-3 = {
           pos = "0 0";
@@ -71,7 +77,7 @@
 
   home.packages = with pkgs; [ 
     slurp
-    tofi
+    wl-clipboard
   ];
 
   programs.tofi = {
