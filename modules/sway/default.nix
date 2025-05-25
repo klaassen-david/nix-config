@@ -34,6 +34,12 @@
           res = "1600x1200";
         };
       };
+
+      window = {
+        border = 0;
+        hideEdgeBorders = "smart";
+        titlebar = false;
+      };
     };
 
     extraConfig = ''
