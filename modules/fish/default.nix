@@ -11,15 +11,15 @@
 
     functions = {
       nvims = {
-        body = "nvim -S";
+        body = "nvim -S $argv";
       };
 
-      ls = { body = "exa"; };
-      la = { body = "exa -la"; };
-      l = { body = "exa -l"; };
-      ll = { body = "exa -l"; };
+      ls = { body = "exa $argv"; };
+      la = { body = "exa -la $argv"; };
+      l = { body = "exa -l $argv"; };
+      ll = { body = "exa -l $argv"; };
 
-      cat = { body = "bat"; };
+      cat = { body = "bat $argv"; };
 
       # y = { body = ''
       #   function y
