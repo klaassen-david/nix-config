@@ -91,6 +91,8 @@
           enable = true;
           package = null;
           cmd = [ "rust-analyzer" ];
+          installCargo = false;
+          installRustc = false;
         };
 
         lua_ls = {
