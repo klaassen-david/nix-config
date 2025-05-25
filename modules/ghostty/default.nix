@@ -8,6 +8,7 @@
     settings = {
       font-size = 16;
       # font-family = "Fira Code Nerd Font";
+      background-opacity = 0.8;
     };
   };
 }

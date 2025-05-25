@@ -4,6 +4,7 @@
   wayland.windowManager.sway = {
     enable = true;
     wrapperFeatures.gtk = true;
+    swaynag.enable = true;
     config = {
       terminal = "ghostty";
       modifier = "Mod1";
@@ -40,6 +41,8 @@
         hideEdgeBorders = "smart";
         titlebar = false;
       };
+
+      bars = [];
     };
 
     extraConfig = ''
@@ -60,6 +63,8 @@
           SWAYSOCK \
           XDG_CURRENT_DESKTOP=sway \
           WAYLAND_DISPLAY
+
+      exec_always mpvpaper DP-2 /home/dk/wallpaper/current --mpv-options "loop" --fork
     '';
   };
 
@@ -92,6 +97,20 @@
       font = "${pkgs.nerd-fonts.fira-code.outPath}/share/fonts/truetype/NerdFonts/FiraCode/FiraCodeNerdFontMono-Regular.ttf"; 
       output = "DP-2";
       matching-algoritm = "fuzzy";
+      width = "100%";
+      height = "100%";
+      border-width = 0;
+      outline-width = 0;
+      padding-left = "35%";
+      padding-top = "35%";
+      result-spacing = 25;
+      num-results = 5;
+      background-color = "#000A";
     };
   };
+
+  programs.mpv.enable = true;
+  programs.mpvpaper.enable = true;
+  xdg.configFile."mpvpaper/pauselist".text = "";
+  xdg.configFile."mpvpaper/stoplist".text = "";
 }

@@ -142,8 +142,16 @@
       airline = {
         enable = true;
       };
+      transparent = {
+        enable = true;
+        autoLoad = true;
+      };
     };
 
     colorschemes.nord.enable = true;
+
+    extraConfigLuaPost = ''
+      -- vim.cmd "TransparentEnable"
+    '';
   };
 }
