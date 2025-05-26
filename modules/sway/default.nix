@@ -83,6 +83,24 @@
         xdg-desktop-portal-wlr
         xdg-desktop-portal-gtk
       ];
+
+    };
+    desktopEntries = {
+      nvim = {
+        name = "NeoVim";
+        genericName = "Text Editor";
+        exec = "ghostty -e nvim";
+        terminal = false;
+        categories = [ "Application" "Utility" ];
+        mimeType = [ "text/plain" ];
+      };
+    };
+
+    mimeApps = {
+      enable = true;
+      defaultApplications = {
+        "text/plain" = [ "nvim.desktop" ];
+      };
     };
   };
 
