@@ -71,16 +71,20 @@
     kitty
     pavucontrol
     pamixer
+    greetd.gtkgreet
   ];
 
   programs.dconf.enable = true;
 
   services.greetd = {
     enable = true;
-    settings = {
-      default_session = {
-        command = "${pkgs.greetd.greetd}/bin/agreety --cmd sway";
+    settings = rec {
+      initial_session = {
+        command = "dbus-run-session sway";
+        # command = "${pkgs.greetd.gtkgreet}/bin/gtkgreet --command=\"dbus-run-session sway\"";
+        user = "dk";
       };
+      default_session = initial_session;
     };
   };
 }
