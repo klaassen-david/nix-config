@@ -14,6 +14,9 @@
         body = "nvim -S $argv";
       };
 
+      nd = { body = "nix develop $argv"; };
+      ns = { body = "nix-shell $argv"; };
+
       ls = { body = "exa $argv"; };
       la = { body = "exa -la $argv"; };
       l = { body = "exa -l $argv"; };

@@ -4,8 +4,11 @@
   programs.zellij = {
     enable = true;
     enableBashIntegration = true;
+    enableFishIntegration = true;
     settings = {
       theme = "nord";
+      pane_frames = false;
+      default_layout = "compact";
       keybinds = {
         shared = {
           bind = {
@@ -15,7 +18,6 @@
               direction = "Down";
             };
           };
-          # bind "Ctrl Shift Tab" { MoveFocusOrTab "Left"; }
         };
       };
     };

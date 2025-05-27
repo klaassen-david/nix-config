@@ -59,11 +59,14 @@
     alsa.enable = true;
     alsa.support32Bit = true;
     pulse.enable = true;
+    audio.enable = true;
     # wireplumber.enable = true;
-    # jack.enable = true;
+    jack.enable = true;
   };
 
   security.polkit.enable = true;
+
+  security.pam.services.swaylock.text = "auth include login";
 
   environment.systemPackages = with pkgs; [
     git
@@ -80,7 +83,7 @@
     enable = true;
     settings = rec {
       initial_session = {
-        command = "dbus-run-session sway";
+        command = "sway";
         # command = "${pkgs.greetd.gtkgreet}/bin/gtkgreet --command=\"dbus-run-session sway\"";
         user = "dk";
       };
