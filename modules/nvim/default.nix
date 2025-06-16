@@ -6,6 +6,10 @@
     ./plugins/lsp.nix
   ];
 
+  home.packages = with pkgs; [
+    vscode-extensions.vadimcn.vscode-lldb
+  ];
+
   programs.nixvim = {
     enable = true;
     defaultEditor = true;
@@ -139,19 +143,39 @@
       sleuth.enable = true;
       web-devicons.enable = true;
       nvim-autopairs.enable = true;
-      airline = {
-        enable = true;
-      };
       transparent = {
         enable = true;
         autoLoad = true;
       };
+      dap.enable = true;
+      dap-lldb = {
+        enable = true;
+        settings.codelldb_path = "${pkgs.vscode-extensions.vadimcn.vscode-lldb.outPath}/share/vscode/extensions/vadimcn.vscode-lldb/adapter/codelldb";
+      };
+      dap-ui.enable = true;
+      lazydev.enable = true;
+      rustaceanvim.enable = true;
     };
 
     colorschemes.nord.enable = true;
 
     extraConfigLuaPost = ''
       -- vim.cmd "TransparentEnable"
+
+      -- dapui auto setup on dap events
+      local dap, dapui = require("dap"), require("dapui")
+      dap.listeners.before.attach.dapui_config = function()
+        dapui.open()
+      end
+      dap.listeners.before.launch.dapui_config = function()
+        dapui.open()
+      end
+      dap.listeners.before.event_terminated.dapui_config = function()
+        dapui.close()
+      end
+      dap.listeners.before.event_exited.dapui_config = function()
+        dapui.close()
+      end
     '';
   };
 }
