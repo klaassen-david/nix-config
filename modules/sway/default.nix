@@ -46,6 +46,8 @@
     };
 
     extraConfig = ''
+      include /etc/sway/config.d/*
+
       workspace 1 output DP-3
       workspace 2 output DP-2
       workspace 3 output HDMI-A-1
@@ -68,50 +70,42 @@
     '';
   };
 
-  xdg = {
-    portal = {
-      enable = true;
+  # xdg = {
+  #   portal = {
+  #     enable = true;
+  #
+  #     config = {
+  #       sway = {
+  #         default = [ "gtk" ];
+  #         "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
+  #         "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
+  #       };
+  #     };
+  #     extraPortals = with pkgs; [
+  #       xdg-desktop-portal-wlr
+  #       xdg-desktop-portal-gtk
+  #     ];
+  #   };
+  #   desktopEntries = {
+  #     nvim = {
+  #       name = "NeoVim";
+  #       genericName = "Text Editor";
+  #       exec = "ghostty -e nvim";
+  #       terminal = false;
+  #       categories = [ "Application" "Utility" ];
+  #       mimeType = [ "text/plain" ];
+  #     };
+  #   };
+  #
+  #   mimeApps = {
+  #     enable = true;
+  #     defaultApplications = {
+  #       "text/plain" = [ "nvim.desktop" ];
+  #     };
+  #   };
+  # };
 
-      config = {
-        sway = {
-          default = [ "gtk" ];
-          "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
-          "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
-        };
-      };
-      extraPortals = with pkgs; [
-        xdg-desktop-portal-wlr
-        xdg-desktop-portal-gtk
-      ];
-
-      # wlr.enable = true;
-      # wlr.settings = {
-      #   screencast = {
-      #     output_name = "DP-2";
-      #     chooser_type = "simple";
-      #     chooser_cmd = "${pkgs.slurp}/bin/slurp -f %o -or";
-      #   };
-      # };
-
-    };
-    desktopEntries = {
-      nvim = {
-        name = "NeoVim";
-        genericName = "Text Editor";
-        exec = "ghostty -e nvim";
-        terminal = false;
-        categories = [ "Application" "Utility" ];
-        mimeType = [ "text/plain" ];
-      };
-    };
-
-    mimeApps = {
-      enable = true;
-      defaultApplications = {
-        "text/plain" = [ "nvim.desktop" ];
-      };
-    };
-  };
+  services.kanshi.enable = true;
 
   home.packages = with pkgs; [ 
     slurp
@@ -140,4 +134,11 @@
   programs.mpvpaper.enable = true;
   xdg.configFile."mpvpaper/pauselist".text = "";
   xdg.configFile."mpvpaper/stoplist".text = "";
+
+  home.sessionVariables = {
+    XDG_CURRENT_DESKTOP = "sway";
+    XDG_SESSION_TYPE = "wayland";
+    QT_QPA_PLATFORM = "wayland"; # For Qt apps
+    GDK_BACKEND = "wayland";     # For GTK apps
+  };
 }

@@ -51,11 +51,7 @@
 
   fonts.fontconfig.enable = true;
 
-  programs.git = {
-    enable = true;
-    userName = "David Klaaßen";
-    userEmail = "david.klaassen@web.de";
-  };
+  programs.git.enable = true;
 
   programs.bash = {
     enable = true;
