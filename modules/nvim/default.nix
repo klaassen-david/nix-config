@@ -8,6 +8,9 @@
 
   home.packages = with pkgs; [
     vscode-extensions.vadimcn.vscode-lldb
+    gcc
+    tree-sitter
+    nodejs
   ];
 
   programs.nixvim = {

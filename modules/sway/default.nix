@@ -13,13 +13,6 @@
         { command = "zen"; }
       ];
 
-      input = {
-        "*" = { 
-          xkb_variant = "dvorak";
-          xkb_layout = "us";
-        };
-      };
-
       output = {
         DP-3 = {
           pos = "0 0";
@@ -36,13 +29,39 @@
         };
       };
 
+      input = {
+        "*" = {
+          xkb_layout = "gb,de,us";
+          xkb_variant = ",,dvorak";
+          xkb_options = "grp:win_space_toggle,caps:escape_shifted_capslock";
+        };
+        "type:touchpad" = {
+          natural_scroll = "enabled";
+          scroll_factor = "0.5";
+          scroll_method = "two_finger";
+          pointer_accel = "0.4";
+          clickfinger_button_map = "lrm";
+          tap_button_map = "lrm";
+          tap = "enabled";
+          drag = "disabled";
+        };
+      };
+
       window = {
         border = 0;
         hideEdgeBorders = "smart";
         titlebar = false;
       };
 
-      bars = [];
+      # bars = [];
+       keybindings = lib.mkOptionDefault {
+        "XF86AudioRaiseVolume" = "exec 'pactl set-sink-volume @DEFAULT_SINK@ +1%'";
+        "XF86AudioLowerVolume" = "exec 'pactl set-sink-volume @DEFAULT_SINK@ -1%'";
+        "XF86MonBrightnessDown" = "exec brightnessctl set 5%-";
+        "XF86MonBrightnessUp" = "exec brightnessctl set 5%+";
+        "Control+XF86MonBrightnessDown" = "exec busctl --user call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n -100";
+        "Control+XF86MonBrightnessUp" = "exec busctl --user call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n 100";
+      };
     };
 
     extraConfig = ''
@@ -66,7 +85,9 @@
           XDG_CURRENT_DESKTOP=sway \
           WAYLAND_DISPLAY
 
-      exec_always mpvpaper DP-2 /home/dk/wallpaper/current --mpv-options "loop" --fork
+      exec_always mpvpaper DP-2 /home/dk/wallpaper/current --mpv-options "loop" 
+
+      exec_always wl-gammarelay-rs run 2> /home/dk/logs/wl-gammarelay-rs
     '';
   };
 
@@ -110,6 +131,9 @@
   home.packages = with pkgs; [ 
     slurp
     wl-clipboard
+    brightnessctl
+    wl-gammarelay-rs
+    nwg-displays
   ];
 
   programs.tofi = {

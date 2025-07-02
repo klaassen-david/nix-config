@@ -18,10 +18,10 @@
 
   home.username = "dk";
   home.homeDirectory = "/home/dk";
-  home.keyboard = {
-    layout = "us";
-    variant = "dvorak";
-  };
+  # home.keyboard = {
+  #   layout = "us";
+  #   variant = "dvorak";
+  # };
 
   home.packages = with pkgs; [
     vim
@@ -47,6 +47,8 @@
     # fonts
     nerd-fonts.fira-code
     corefonts
+
+    gcc
   ];
 
   fonts.fontconfig.enable = true;
