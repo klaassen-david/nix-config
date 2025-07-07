@@ -14,19 +14,19 @@
       ];
 
       output = {
-        DP-3 = {
+        DP-1 = {
           pos = "0 0";
           res = "2560x1440";
         };
-        DP-2 = {
+        DP-3 = {
           pos = "2560 0";
           res = "3840x2160";
-          scale = "1.3";
+          scale = "1.5";
         };
-        HDMI-A-1 = {
-          pos = "5513 0";
-          res = "1600x1200";
-        };
+        # HDMI-A-1 = {
+        #   pos = "5513 0";
+        #   res = "1600x1200";
+        # };
       };
 
       input = {
@@ -85,7 +85,7 @@
           XDG_CURRENT_DESKTOP=sway \
           WAYLAND_DISPLAY
 
-      exec_always mpvpaper DP-2 /home/dk/wallpaper/current --mpv-options "loop" 
+      exec_always mpvpaper DP-3 /home/dk/wallpaper/current --mpv-options "loop" 
 
       exec_always wl-gammarelay-rs run 2> /home/dk/logs/wl-gammarelay-rs
     '';
