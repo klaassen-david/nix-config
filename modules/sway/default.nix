@@ -30,10 +30,12 @@
       };
 
       input = {
-        "*" = {
+        "type:keyboard" = {
           xkb_layout = "gb,de,us";
           xkb_variant = ",,dvorak";
           xkb_options = "grp:win_space_toggle,caps:escape_shifted_capslock";
+          repeat_rate = "45";
+          repeat_delay = "500";
         };
         "type:touchpad" = {
           natural_scroll = "enabled";
@@ -54,13 +56,13 @@
       };
 
       # bars = [];
-       keybindings = lib.mkOptionDefault {
+      keybindings = lib.mkOptionDefault {
         "XF86AudioRaiseVolume" = "exec 'pactl set-sink-volume @DEFAULT_SINK@ +1%'";
         "XF86AudioLowerVolume" = "exec 'pactl set-sink-volume @DEFAULT_SINK@ -1%'";
         "XF86MonBrightnessDown" = "exec brightnessctl set 5%-";
         "XF86MonBrightnessUp" = "exec brightnessctl set 5%+";
-        "Control+XF86MonBrightnessDown" = "exec busctl --user call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n -100";
-        "Control+XF86MonBrightnessUp" = "exec busctl --user call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n 100";
+        "Ctrl+XF86MonBrightnessDown" = "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n -5000";
+        "Ctrl+XF86MonBrightnessUp" = "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n +5000";
       };
     };
 
