@@ -89,7 +89,7 @@
 
       exec_always mpvpaper DP-3 /home/dk/wallpaper/current --mpv-options "loop" 
 
-      exec_always wl-gammarelay-rs run 2> /home/dk/logs/wl-gammarelay-rs
+      exec_always wl-gammarelay-rs run 2>> /home/dk/logs/wl-gammarelay-rs
     '';
   };
 
