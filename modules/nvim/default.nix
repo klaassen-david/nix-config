@@ -11,6 +11,7 @@
     gcc
     tree-sitter
     nodejs
+    xdotool
   ];
 
   programs.nixvim = {
@@ -26,10 +27,11 @@
       number = true;
       relativenumber = true;
       shiftwidth = 4;
+      tabstop = 2;
 
       clipboard = {
         register = "unnamedplus";
-        # providers.wl-copy.enable = true;
+        providers.wl-copy.enable = true;
       };
 
       breakindent = true;

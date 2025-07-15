@@ -124,6 +124,36 @@
           package = null;
           cmd = [ "ocamllsp" ];
         };
+
+        texlab.enable = true;
+        # texlab.package = null;
+        texlab.settings = {
+          texlab = {
+            rootDirectory = null;
+            build = {
+              executable = "nix";
+              args = [ "build" ];
+              onSave = true;
+              forwardSearchAfter = true;
+            };
+            forwardSearch = {
+              executable = "zathura";
+              args = ["--synctex-forward" "%l:1:%f" "%p"];
+            };
+            chktex = {
+              onOpenAndSave = true;
+              onEdit = false;
+            };
+            diagnosticsDelay = 300;
+            latexFormatter = "latexindent";
+            latexindent = {
+              local = null; 
+              modifyLineBreaks = false;
+            };
+            bibtexFormatter = "texlab";
+            formatterLineLength = 80;
+          };
+        };
       };
 
       keymaps = {

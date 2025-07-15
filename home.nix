@@ -11,6 +11,7 @@
     ./modules/tmux
     ./modules/sway
     ./modules/firefox
+    ./modules/zathura
   ];
 
   home.stateVersion = "24.11";
@@ -49,6 +50,9 @@
     corefonts
 
     gcc
+     
+    pulseaudio
+    zathura
   ];
 
   fonts.fontconfig.enable = true;

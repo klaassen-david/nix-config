@@ -82,6 +82,8 @@
     greetd.gtkgreet
     steamcmd
     steam-run
+    libreoffice-qt6
+    thunderbird
   ];
 
   programs.dconf.enable = true;
