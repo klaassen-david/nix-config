@@ -57,14 +57,15 @@
 
       # bars = [];
       keybindings = lib.mkOptionDefault {
+        "XF86AudioMute" = "pactl set-sink-mute @DEFAULT_SINK@ toggle";
         "XF86AudioRaiseVolume" = "exec 'pactl set-sink-volume @DEFAULT_SINK@ +5%'";
         "XF86AudioLowerVolume" = "exec 'pactl set-sink-volume @DEFAULT_SINK@ -5%'";
         "XF86MonBrightnessDown" = "exec brightnessctl set 5%-";
         "XF86MonBrightnessUp" = "exec brightnessctl set 5%+";
         "Ctrl+XF86MonBrightnessDown" = "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n -5000";
         "Ctrl+XF86MonBrightnessUp" = "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n +5000";
-        "Shift+XF86MonBrightnessDown" = "busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateBrightness d -0.1";
-        "Shift+XF86MonBrightnessUp" = "busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateBrightness d +0.1";
+        "Shift+XF86MonBrightnessDown" = "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateBrightness d -0.1";
+        "Shift+XF86MonBrightnessUp" = "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateBrightness d +0.1";
       };
     };
 

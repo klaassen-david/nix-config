@@ -8,6 +8,19 @@
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   nixpkgs.config.allowUnfree = true;
 
+  powerManagement.enable = true;
+  services.auto-cpufreq.enable = true;
+  services.auto-cpufreq.settings = {
+    battery = {
+       governor = "powersave";
+       turbo = "never";
+    };
+    charger = {
+       governor = "performance";
+       turbo = "auto";
+    };
+  };
+
   users.extraUsers.dk = {
     isNormalUser = true;
     initialPassword = "4TestPW";
