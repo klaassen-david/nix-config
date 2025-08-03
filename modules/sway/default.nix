@@ -57,9 +57,13 @@
 
       # bars = [];
       keybindings = lib.mkOptionDefault {
-        "XF86AudioMute" = "pactl set-sink-mute @DEFAULT_SINK@ toggle";
+        "XF86AudioMute" = "exec 'pactl set-sink-mute @DEFAULT_SINK@ toggle'";
         "XF86AudioRaiseVolume" = "exec 'pactl set-sink-volume @DEFAULT_SINK@ +5%'";
         "XF86AudioLowerVolume" = "exec 'pactl set-sink-volume @DEFAULT_SINK@ -5%'";
+        "XF86AudioPlay" = "exec playerctl play-pause";
+        "XF86AudioPause" = "exec playerctl play-pause";
+        "XF86AudioPrev" = "exec playerctl previous";
+        "XF86AudioNext" = "exec playerctl next";
         "XF86MonBrightnessDown" = "exec brightnessctl set 5%-";
         "XF86MonBrightnessUp" = "exec brightnessctl set 5%+";
         "Ctrl+XF86MonBrightnessDown" = "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n -5000";
@@ -132,6 +136,7 @@
   # };
 
   services.kanshi.enable = true;
+  services.playerctld.enable = true;
 
   home.packages = with pkgs; [ 
     slurp

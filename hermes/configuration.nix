@@ -81,6 +81,15 @@
     # wireplumber.enable = true;
     jack.enable = true;
   };
+  # services.playerctld.enable = true;
+
+  # bluetooth
+  hardware.bluetooth = {
+    enable = true;
+    powerOnBoot = true;
+    settings = { General = {Experimental = true;}; };
+  };
+  services.blueman.enable = true;
 
   # sway auto login
   security.polkit.enable = true;
@@ -97,6 +106,9 @@
     steam-run
     libreoffice-qt6
     thunderbird
+    wpa_supplicant_gui
+    playerctl
+    calibre
   ];
 
   programs.dconf.enable = true;
