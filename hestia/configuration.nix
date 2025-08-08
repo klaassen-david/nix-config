@@ -52,8 +52,8 @@
   # dvorak
   console.useXkbConfig = true;
   services.xserver = {
-    xkb.layout = "us";
-    xkb.variant = "dvorak";
+    xkb.layout = "gb";
+    # xkb.variant = "dvorak";
   };
 
   # audio
