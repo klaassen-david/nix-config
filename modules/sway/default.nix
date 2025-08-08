@@ -5,6 +5,7 @@
     enable = true;
     wrapperFeatures.gtk = true;
     swaynag.enable = true;
+    extraOptions = [ "--unsupported-gpu "];
     config = {
       terminal = "ghostty";
       modifier = "Mod1";

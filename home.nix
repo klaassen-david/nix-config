@@ -52,7 +52,6 @@
     gcc
      
     pulseaudio
-    zathura
   ];
 
   fonts.fontconfig.enable = true;

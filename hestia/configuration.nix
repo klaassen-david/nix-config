@@ -12,7 +12,7 @@
     isNormalUser = true;
     initialPassword = "4TestPW";
     home = "/home/dk";
-    extraGroups = [ "wheel" ];
+    extraGroups = [ "wheel" "gamemode" "video" ];
   };
 
   # This value determines the NixOS release from which the default
@@ -36,12 +36,17 @@
   # nvidia
   hardware = {
     graphics.enable = true;
-    nvidia.open = true;
+    nvidia = {
+      open = true;
+      nvidiaSettings = true;
+      modesetting.enable = true;
+    };
   };
-  services.xserver.videoDrivers = [ "nouveau" ];
+  services.xserver.videoDrivers = [ "nvidia" ];
 
   networking = {
     hostName = "hestia";
+    # defaultGateway = { address = "192.168.178.3"; interface = "enp42s0"; };
   };
 
   # dvorak
@@ -75,7 +80,22 @@
     pavucontrol
     pamixer
     greetd.gtkgreet
+    steamcmd
+    steam-run
+    mangohud
+    piper
   ];
+
+  # services.openssh = {
+  #   enable = true;
+  #   ports = [ 22 ];
+  #   settings = {
+  #     UseDns = true;
+  #     PasswordAuthentication = true;
+  #     AllowUsers = null;
+  #     PermitRootLogin = "yes";
+  #   };
+  # };
 
   programs.dconf.enable = true;
 
@@ -113,4 +133,13 @@
       };
     };
   };
+
+  programs.steam = {
+    enable = true;
+    gamescopeSession.enable = true;
+  };
+  programs.gamemode.enable = true;
+
+  # gaming mouse
+  services.ratbagd.enable = true;
 }
