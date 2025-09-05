@@ -76,12 +76,14 @@
   environment.systemPackages = with pkgs; [
     git
     vim
+    gparted
     kitty
     pavucontrol
     pamixer
     greetd.gtkgreet
     steamcmd
     steam-run
+    lutris
     mangohud
     piper
   ];
@@ -142,4 +144,13 @@
 
   # gaming mouse
   services.ratbagd.enable = true;
+
+  # printing
+  services.printing.enable = true;
+  services.avahi = {
+    enable = true;
+    nssmdns4 = true; 
+    openFirewall = true;
+
+  };
 }
