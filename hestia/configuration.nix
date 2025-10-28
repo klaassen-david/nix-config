@@ -162,4 +162,6 @@
     openFirewall = true;
 
   };
+
+  programs.fish.enable = true;
 }
