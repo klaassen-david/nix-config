@@ -24,10 +24,10 @@
           res = "3840x2160";
           scale = "1.5";
         };
-        # HDMI-A-1 = {
-        #   pos = "5513 0";
-        #   res = "1600x1200";
-        # };
+        HDMI-A-1 = {
+          pos = "5120 240";
+          res = "1600x1200";
+        };
       };
 
       input = {
@@ -56,7 +56,7 @@
         titlebar = false;
       };
 
-      # bars = [];
+      bars = [];
       keybindings = lib.mkOptionDefault {
         "XF86AudioMute" = "exec 'pactl set-sink-mute @DEFAULT_SINK@ toggle'";
         "XF86AudioRaiseVolume" = "exec 'pactl set-sink-volume @DEFAULT_SINK@ +5%'";
@@ -77,8 +77,8 @@
     extraConfig = ''
       include /etc/sway/config.d/*
 
-      workspace 1 output DP-3
-      workspace 2 output DP-2
+      workspace 1 output DP-1
+      workspace 2 output DP-3
       workspace 3 output HDMI-A-1
 
       # XDG
@@ -95,9 +95,34 @@
           XDG_CURRENT_DESKTOP=sway \
           WAYLAND_DISPLAY
 
-      exec_always mpvpaper DP-3 /home/dk/wallpaper/current --mpv-options "loop" 
+      # bar swaybar_command waybar
+      bar {
+        font pango:monospace 8.000000
+        mode dock
+        hidden_state hide
+        position bottom
+        status_command ${pkgs.i3status}/bin/i3status
+        swaybar_command ${pkgs.sway}/bin/swaybar
+        workspace_buttons yes
+        strip_workspace_numbers no
+        tray_output DP-1
+        output DP-1
+        output DP-3
+        colors {
+          background #000000
+          statusline #ffffff
+          separator #666666
+          focused_workspace #4c7899 #285577 #ffffff
+          active_workspace #333333 #5f676a #ffffff
+          inactive_workspace #333333 #222222 #888888
+          urgent_workspace #2f343a #900000 #ffffff
+          binding_mode #2f343a #900000 #ffffff
+        }
+      }
 
-      exec_always wl-gammarelay-rs run 2>> /home/dk/logs/wl-gammarelay-rs
+      exec mpvpaper DP-3 /home/dk/wallpaper/current --mpv-options "loop" 
+
+      exec wl-gammarelay-rs run 2>> /home/dk/logs/wl-gammarelay-rs
     '';
   };
 
@@ -151,7 +176,7 @@
     enable = true;
     settings = {
       font = "${pkgs.nerd-fonts.fira-code.outPath}/share/fonts/truetype/NerdFonts/FiraCode/FiraCodeNerdFontMono-Regular.ttf"; 
-      output = "DP-2";
+      output = "DP-3";
       matching-algoritm = "fuzzy";
       width = "100%";
       height = "100%";
@@ -176,4 +201,23 @@
     QT_QPA_PLATFORM = "wayland"; # For Qt apps
     GDK_BACKEND = "wayland";     # For GTK apps
   };
+
+  # programs.waybar = {
+  #   enable = true;
+  #   settings = {
+  #     mainBar = {
+  #       layer = "top";
+  #       position = "bottom";
+  #       height = 30;
+  #       output = [
+  #         "DP-1"
+  #         "DP-3"
+  #       ];
+  #       modules-left = [ "sway/workspaces" ];
+  #       # modules-center = [ "sway/window" ];
+  #       modules-right = [ "sway/mode" ];
+  #     };
+  #   };
+  # };
+
 }

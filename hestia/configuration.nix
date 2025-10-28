@@ -83,9 +83,18 @@
     greetd.gtkgreet
     steamcmd
     steam-run
+    adwaita-icon-theme
     lutris
+    wine
+    wine64
+    winetricks
+    protontricks
+    vulkan-tools
     mangohud
     piper
+
+    libreoffice
+    thunderbird
   ];
 
   # services.openssh = {
