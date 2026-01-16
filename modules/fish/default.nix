@@ -14,8 +14,8 @@
         body = "nvim -S $argv";
       };
 
-      nd = { body = "nix develop $argv"; };
-      ns = { body = "nix-shell $argv"; };
+      nd = { body = "nix develop --command ${pkgs.fish}/bin/fish $argv"; };
+      ns = { body = "nix-shell --command ${pkgs.fish}/bin/fish $argv"; };
 
       ls = { body = "exa $argv"; };
       la = { body = "exa -la $argv"; };
@@ -41,7 +41,7 @@
     fzf
     bat
     eza
-    du-dust
+    dust
   ];
 
   programs.starship = {

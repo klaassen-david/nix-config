@@ -101,7 +101,7 @@
     kitty
     pavucontrol
     pamixer
-    greetd.gtkgreet
+    gtkgreet
     steamcmd
     steam-run
     libreoffice-qt6
@@ -118,7 +118,7 @@
     settings = rec {
       initial_session = {
         command = "sway";
-        # command = "${pkgs.greetd.gtkgreet}/bin/gtkgreet --command=\"dbus-run-session sway\"";
+        # command = "${pkgs.gtkgreet}/bin/gtkgreet --command=\"dbus-run-session sway\"";
         user = "dk";
       };
       default_session = initial_session;

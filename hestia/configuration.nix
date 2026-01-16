@@ -30,6 +30,10 @@
     efi.efiSysMountPoint = "/boot/efi";
   };
 
+  # droidcam
+  boot.extraModulePackages = [ config.boot.kernelPackages.v4l2loopback ];
+  boot.kernelModules = ["v4l2loopback"];
+
   time.timeZone = "Europe/Berlin";
   i18n.defaultLocale = "en_US.UTF-8";
 
@@ -47,6 +51,18 @@
   networking = {
     hostName = "hestia";
     # defaultGateway = { address = "192.168.178.3"; interface = "enp42s0"; };
+    enableIPv6 = false;
+    firewall = {
+      enable = false;
+      allowedTCPPorts = [ 3450 5000 23756 ];
+      allowedTCPPortRanges = [ 
+        { from = 6112; to = 6119; }
+      ];
+      allowedUDPPorts = [ 2350 23756 ];
+      allowedUDPPortRanges = [ 
+        { from = 6112; to = 6119; }
+      ];
+    };
   };
 
   # dvorak
@@ -80,21 +96,37 @@
     kitty
     pavucontrol
     pamixer
-    greetd.gtkgreet
-    steamcmd
-    steam-run
-    adwaita-icon-theme
-    lutris
-    wine
-    wine64
-    winetricks
-    protontricks
-    vulkan-tools
-    mangohud
+    gtkgreet
     piper
 
     libreoffice
     thunderbird
+
+    # droidcam
+    droidcam
+    v4l-utils
+    android-tools
+
+    (pkgs.buildFHSEnv {
+      name = "winefhs";
+      targetPkgs = pkgs: with pkgs; [
+        wine
+        protontricks
+        freetype
+        fontconfig
+        zlib
+        libpng
+        vulkan-tools
+        cabextract
+      ];
+      profile = ''
+        export STEAM_DIR="$HOME/.steam/steam"
+        export PROTON_DIR="$STEAM_DIR/compatibilitytools.d"
+        export PATH="$STEAM_DIR:$PATH"
+        export LD_LIBRARY_PATH="/usr/lib:$LD_LIBRARY_PATH"
+      '';
+    })
+
   ];
 
   # services.openssh = {
@@ -115,7 +147,7 @@
     settings = rec {
       initial_session = {
         command = "sway";
-        # command = "${pkgs.greetd.gtkgreet}/bin/gtkgreet --command=\"dbus-run-session sway\"";
+        # command = "${pkgs.gtkgreet}/bin/gtkgreet --command=\"dbus-run-session sway\"";gtkgreet
         user = "dk";
       };
       default_session = initial_session;
@@ -147,6 +179,7 @@
 
   programs.steam = {
     enable = true;
+    protontricks.enable = true;
     gamescopeSession.enable = true;
   };
   programs.gamemode.enable = true;

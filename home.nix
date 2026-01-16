@@ -1,8 +1,21 @@
 { config, pkgs, inputs, ... }:
 
 {
+  nixpkgs.overlays = [
+    (final: prev: {
+      lutris = prev.lutris.override {
+        extraLibraries = 
+        pkgs: with pkgs; [
+          libadwaita
+          gtk4
+        ];
+      };
+    })
+  ]
+  ;
+
   imports = [
-    inputs.nixvim.homeManagerModules.nixvim
+    inputs.nixvim.homeModules.nixvim
     inputs.zen-browser.homeModules.beta
     ./modules/nvim
     # ./modules/zellij
@@ -34,6 +47,7 @@
     unzip
     unrar
     p7zip
+    _7zz
 
     # download
     wget
@@ -49,10 +63,23 @@
     # fonts
     nerd-fonts.fira-code
     corefonts
+    freetype
 
     gcc
      
     pulseaudio
+
+    # gaming
+    steamcmd
+    steam-run
+    adwaita-icon-theme
+    lutris
+    wineWowPackages.stable
+    winetricks
+    vulkan-tools
+    mangohud
+    nexusmods-app
+    heroic
   ];
 
   fonts.fontconfig.enable = true;
@@ -72,18 +99,19 @@
       nvims = "nvim -S";
     };
     initExtra = ''
-      if [[ -z ''${BASH_EXECUTION_STRING} ]]
-      then
-        shopt -q login_shell && LOGIN_OPTION='--login' || LOGIN_OPTION=""
-        exec ${pkgs.fish}/bin/fish $LOGIN_OPTION
-      fi
+      # if [[ -z ''${BASH_EXECUTION_STRING} ]]
+      # then
+      #   shopt -q login_shell && LOGIN_OPTION='--login' || LOGIN_OPTION=""
+      #   exec ${pkgs.fish}/bin/fish $LOGIN_OPTION
+      # fi
     '';
   };
 
-  programs.zen-browser = {
-    enable = true;
-    policies = {
-      DisableAppUpdate = true;
-    };
-  };
+  # programs.zen-browser = {
+  #   enable = true;
+  #   policies = {
+  #     DisableAppUpdate = true;
+  #   };
+  # };
+
 }
