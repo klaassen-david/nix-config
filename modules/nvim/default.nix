@@ -112,6 +112,7 @@
             "json"
             "yaml"
             "html"
+            "javascript"
             "erlang"
             "elixir"
             "vim"
@@ -160,6 +161,22 @@
       dap-ui.enable = true;
       lazydev.enable = true;
       rustaceanvim.enable = true;
+      undotree.enable = true;
+    };
+
+    userCommands = {
+      Q = {
+        command = "mks!|wqa";
+      };
+      OpenPdf = {
+        command = ''
+          local filepath = vim.api.nvim_buf_get_name(0)
+          if filepath:match("%.typ$") then
+            local pdf_path = filepath:gsub("%.typ$", ".pdf")
+            vim.system({ "xdg-open", pdf_path })
+          end
+        '';
+      };
     };
 
     colorschemes.nord.enable = true;

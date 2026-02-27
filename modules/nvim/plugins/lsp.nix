@@ -118,6 +118,10 @@
           enable = true;
         };
 
+        elp = {
+          enable = true;
+        };
+
         ocamllsp = {
           enable = true;
           # package = pkgs.ocamlPackages.ocaml-lsp;
@@ -153,6 +157,34 @@
             bibtexFormatter = "texlab";
             formatterLineLength = 80;
           };
+        };
+
+        tinymist.enable = true;
+        tinymist.rootMarkers = ["Session.vim" ".git"];
+        tinymist.settings = {
+          formatterMode = "typstyle";
+          exportPdf = "onType";
+          semanticTokens = "disable";
+          projectResolution = "lockDatabase";
+          onAttach = ''
+            function(client, bufnr)
+              vim.keymap.set("n", "<leader>tp", function()
+                  client:exec_cmd({
+                      title = "pin",
+                      command = "tinymist.pinMain",
+                      arguments = { vim.api.nvim_buf_get_name(0) },
+                  }, { bufnr = bufnr })
+              end, { desc = "[T]inymist [P]in", noremap = true })
+              
+              vim.keymap.set("n", "<leader>tu", function()
+                  client:exec_cmd({
+                      title = "unpin",
+                      command = "tinymist.pinMain",
+                      arguments = { vim.v.null },
+                  }, { bufnr = bufnr })
+              end, { desc = "[T]inymist [U]npin", noremap = true })
+            end,
+          '';
         };
       };
 

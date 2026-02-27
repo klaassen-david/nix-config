@@ -51,19 +51,27 @@
   networking = {
     hostName = "hestia";
     # defaultGateway = { address = "192.168.178.3"; interface = "enp42s0"; };
-    enableIPv6 = false;
+    enableIPv6 = true;
     firewall = {
-      enable = false;
+      enable = true;
+      checkReversePath = false;
       allowedTCPPorts = [ 3450 5000 23756 ];
       allowedTCPPortRanges = [ 
         { from = 6112; to = 6119; }
       ];
-      allowedUDPPorts = [ 2350 23756 ];
+      allowedUDPPorts = [ 
+        2350 # wc3
+        23756 
+        5180 # wireguard
+      ];
       allowedUDPPortRanges = [ 
         { from = 6112; to = 6119; }
       ];
     };
+
+    networkmanager.dns = "systemd-resolvd";
   };
+  services.resolved.enable = true;
 
   # dvorak
   console.useXkbConfig = true;
