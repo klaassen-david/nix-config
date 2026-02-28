@@ -1,5 +1,4 @@
-{ config, lib, pkgs, ... }:
-
+{ lib, pkgs, ... }:
 {
   imports = [
     ./hardware-configuration.nix
@@ -23,8 +22,7 @@
       CPU_MIN_PERF_ON_BAT = 0;
       CPU_MAX_PERF_ON_BAT = 20;
     };
-};
-
+  };
 
   users.extraUsers.dk = {
     isNormalUser = true;
@@ -60,7 +58,7 @@
     hostName = "hermes";
     wireless = {
       enable = true;
-      userControlled.enable = true;
+      userControlled = true;
       networks = {
         "Galactica".pskRaw = "3252ee7b4751e5915d3114b2aebd1b7d5cfe63bc1fb4a881c62cc529e8ffe0c1";
       };
@@ -115,7 +113,6 @@
     playerctl
     calibre
     framework-tool
-    framework-system-tools
   ];
 
   programs.dconf.enable = true;
@@ -157,5 +154,10 @@
 
   programs.steam = {
     enable = true;
+  };
+
+  networking.firewall = rec {
+    allowedTCPPortRanges = [ { from = 1714; to = 1764; } ];
+    allowedUDPPortRanges = allowedTCPPortRanges;
   };
 }

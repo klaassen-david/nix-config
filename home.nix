@@ -1,4 +1,4 @@
-{ config, pkgs, inputs, ... }:
+{ lib, pkgs, inputs, ... }:
 
 {
   nixpkgs.overlays = [
@@ -26,6 +26,11 @@
     ./modules/firefox
     ./modules/zathura
   ];
+
+  services.kdeconnect = {
+    enable = true;
+    indicator = true;
+  };
 
   home.stateVersion = "24.11";
   programs.home-manager.enable = true;

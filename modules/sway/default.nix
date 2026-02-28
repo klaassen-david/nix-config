@@ -1,5 +1,8 @@
-{ pkgs, lib, ... } :
+{ host, pkgs, lib, ... } :
 
+let
+  mainDisplay = if host == "hestia" then "DP-1" else "eDP-1";
+in
 {
   wayland.windowManager.sway = {
     enable = true;
@@ -14,21 +17,24 @@
         { command = "zen"; }
       ];
 
-      output = {
-        DP-1 = {
-          pos = "0 0";
-          res = "2560x1440";
-        };
-        DP-3 = {
-          pos = "2560 0";
-          res = "3840x2160";
-          scale = "1.5";
-        };
-        HDMI-A-1 = {
-          pos = "5120 240";
-          res = "1600x1200";
-        };
-      };
+      output = 
+        if host == "hestia" then
+          {
+            DP-1 = {
+              pos = "0 0";
+              res = "2560x1440";
+            };
+            DP-3 = {
+              pos = "2560 0";
+              res = "3840x2160";
+              scale = "1.5";
+            };
+            HDMI-A-1 = {
+              pos = "5120 240";
+              res = "1600x1200";
+            };
+          }
+        else {};
 
       input = {
         "type:keyboard" = {
@@ -78,7 +84,7 @@
       include /etc/sway/config.d/*
 
       workspace 1 output DP-1
-      workspace 2 output DP-3
+      workspace 2 output ${mainDisplay}
       workspace 3 output HDMI-A-1
 
       # XDG
@@ -105,9 +111,10 @@
         swaybar_command ${pkgs.sway}/bin/swaybar
         workspace_buttons yes
         strip_workspace_numbers no
-        tray_output DP-1
-        output DP-1
+        tray_output ${mainDisplay}
         output DP-3
+        output eDP-1
+        output ${mainDisplay}
         colors {
           background #000000
           statusline #ffffff
@@ -120,7 +127,7 @@
         }
       }
 
-      exec mpvpaper DP-3 /home/dk/wallpaper/current --mpv-options "loop" 
+      exec mpvpaper ${mainDisplay} /home/dk/wallpaper/current --mpv-options "loop" 
 
       exec wl-gammarelay-rs run 2>> /home/dk/logs/wl-gammarelay-rs
     '';

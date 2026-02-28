@@ -21,7 +21,11 @@
     };
   };
 
+  # hermes = lib.mkEnableOption "hermes";
+
   outputs = { self, nixpkgs-unstable, nixos-wsl, home-manager, zen-browser, ...}@inputs: {
+    hermes = nixpkgs-unstable.lib.mkEnableOption "hermes";
+
     # wsl
     nixosConfigurations.janus = nixpkgs-unstable.lib.nixosSystem {
       system = "x86_64-linux";
@@ -60,13 +64,14 @@
         home-manager.nixosModules.home-manager {
           home-manager.extraSpecialArgs = {
             inherit inputs;
+            host = "hermes";
           };
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
           home-manager.backupFileExtension = "home-manager.bak";
           home-manager.users.dk = {
             imports = [
-              ./home.nix
+              ./home.nix 
             ];
           };
         }
