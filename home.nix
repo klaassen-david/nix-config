@@ -1,19 +1,6 @@
 { lib, pkgs, inputs, ... }:
 
 {
-  nixpkgs.overlays = [
-    (final: prev: {
-      lutris = prev.lutris.override {
-        extraLibraries = 
-        pkgs: with pkgs; [
-          libadwaita
-          gtk4
-        ];
-      };
-    })
-  ]
-  ;
-
   imports = [
     inputs.nixvim.homeModules.nixvim
     inputs.zen-browser.homeModules.beta

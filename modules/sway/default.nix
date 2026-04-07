@@ -34,23 +34,28 @@ in
       ];
 
       output = 
-        if host == "hestia" then
+        if host == "hermes" then
           {
             DP-1 = {
               pos = "0 0";
-              res = "2560x1440";
+              res = "3840x2160";
             };
             DP-3 = {
-              pos = "2560 0";
+              pos = "3840 0";
               res = "3840x2160";
               scale = "1.5";
             };
             HDMI-A-1 = {
-              pos = "5120 240";
+              pos = "6400 240";
               res = "1600x1200";
             };
           }
-        else {};
+        else if host == "hestia" then {
+          DP-1 = {
+            pos = "0 0";
+            res = "2560x1440";
+          };
+        } else {};
 
       input = {
         "type:keyboard" = {

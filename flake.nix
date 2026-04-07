@@ -104,6 +104,7 @@
         home-manager.nixosModules.home-manager {
           home-manager.extraSpecialArgs = {
             inherit inputs;
+            host = "hestia";
           };
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
