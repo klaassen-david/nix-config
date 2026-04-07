@@ -25,9 +25,12 @@ in
       # export WLR_NO_HARDWARE_CURSORS=1
       # export NIXOS_OZONE_WL=1
     '';
-    config = {
+
+    config = 
+      let modifier = "Mod1";
+      in {
       terminal = "ghostty";
-      modifier = "Mod1";
+      modifier = modifier;
       menu = "tofi-run | xargs swaymsg exec --";
       startup = [
         { command = "zen"; }
@@ -98,6 +101,7 @@ in
         "Ctrl+XF86MonBrightnessUp" = "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n +5000";
         "Shift+XF86MonBrightnessDown" = "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateBrightness d -0.1";
         "Shift+XF86MonBrightnessUp" = "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateBrightness d +0.1";
+        "${modifier}+n" = "exec swaync-client -t -sw";
       };
     };
 
@@ -151,43 +155,10 @@ in
       exec mpvpaper ${mainDisplay} /home/dk/wallpaper/current --mpv-options "loop" 
 
       exec wl-gammarelay-rs run 2>> /home/dk/logs/wl-gammarelay-rs
+
+      exec swaync
     '';
   };
-
-  # xdg = {
-  #   portal = {
-  #     enable = true;
-  #
-  #     config = {
-  #       sway = {
-  #         default = [ "gtk" ];
-  #         "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
-  #         "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
-  #       };
-  #     };
-  #     extraPortals = with pkgs; [
-  #       xdg-desktop-portal-wlr
-  #       xdg-desktop-portal-gtk
-  #     ];
-  #   };
-  #   desktopEntries = {
-  #     nvim = {
-  #       name = "NeoVim";
-  #       genericName = "Text Editor";
-  #       exec = "ghostty -e nvim";
-  #       terminal = false;
-  #       categories = [ "Application" "Utility" ];
-  #       mimeType = [ "text/plain" ];
-  #     };
-  #   };
-  #
-  #   mimeApps = {
-  #     enable = true;
-  #     defaultApplications = {
-  #       "text/plain" = [ "nvim.desktop" ];
-  #     };
-  #   };
-  # };
 
   services.kanshi.enable = true;
   services.playerctld.enable = true;
@@ -198,6 +169,7 @@ in
     brightnessctl
     wl-gammarelay-rs
     nwg-displays
+    swaynotificationcenter
   ];
 
   programs.tofi = {
@@ -251,5 +223,9 @@ in
       #   enable = false; # This disables the battery module
       # };
     };
+  };
+
+  services.swaync = {
+    enable = true;
   };
 }
