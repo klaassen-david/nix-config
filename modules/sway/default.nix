@@ -6,9 +6,25 @@ in
 {
   wayland.windowManager.sway = {
     enable = true;
+
     wrapperFeatures.gtk = true;
     swaynag.enable = true;
     extraOptions = [ "--unsupported-gpu "];
+    checkConfig = false;
+    extraSessionCommands = ''
+      export XDG_CURRENT_DESKTOP=sway
+      export XDG_SESSION_TYPE=wayland
+      export QT_QPA_PLATFORM=wayland # For Qt apps
+      export GDK_BACKEND=wayland     # For GTK apps
+      # export GBM_BACKEND=nvidia-drm
+      # export __GLX_VENDOR_LIBRARY_NAME=nvidia
+      # export LD_LIBRARY_PATH=/run/opengl-driver/lib
+      # export VK_ICD_FILENAMES=/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.x86_64.json
+      # export WLR_DRM_DEVICES=/dev/dri/by-path/pci-0000:2b:00.0-card
+      # export WLR_RENDERER=vulkan
+      # export WLR_NO_HARDWARE_CURSORS=1
+      # export NIXOS_OZONE_WL=1
+    '';
     config = {
       terminal = "ghostty";
       modifier = "Mod1";
@@ -203,10 +219,6 @@ in
   xdg.configFile."mpvpaper/stoplist".text = "";
 
   home.sessionVariables = {
-    XDG_CURRENT_DESKTOP = "sway";
-    XDG_SESSION_TYPE = "wayland";
-    QT_QPA_PLATFORM = "wayland"; # For Qt apps
-    GDK_BACKEND = "wayland";     # For GTK apps
   };
 
   # programs.waybar = {
@@ -227,4 +239,12 @@ in
   #   };
   # };
 
+  programs.i3status = {
+    enable = true;
+    modules = {
+      # "battery all" = {
+      #   enable = false; # This disables the battery module
+      # };
+    };
+  };
 }

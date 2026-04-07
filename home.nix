@@ -27,11 +27,6 @@
     ./modules/zathura
   ];
 
-  services.kdeconnect = {
-    enable = true;
-    indicator = true;
-  };
-
   home.stateVersion = "24.11";
   programs.home-manager.enable = true;
 
@@ -79,13 +74,15 @@
     steam-run
     adwaita-icon-theme
     lutris
-    wineWowPackages.stable
+    wineWow64Packages.stable
     winetricks
     vulkan-tools
     mangohud
-    nexusmods-app
     heroic
     proton-pass
+
+    # kde-connect
+    kdePackages.kdeconnect-kde
   ];
 
   fonts.fontconfig.enable = true;
@@ -120,4 +117,10 @@
     };
   };
 
+  programs.direnv.nix-direnv.enable = true;
+
+  services.kdeconnect = {
+    enable = true;
+    indicator = true;
+  };
 }
