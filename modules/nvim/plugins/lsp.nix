@@ -160,7 +160,7 @@
         };
 
         tinymist.enable = true;
-        tinymist.rootMarkers = ["Session.vim" ".git"];
+        tinymist.rootMarkers = ["tinymist.lock" "Session.vim" ".git"];
         tinymist.settings = {
           formatterMode = "typstyle";
           exportPdf = "onType";
@@ -171,7 +171,7 @@
               vim.keymap.set("n", "<leader>tp", function()
                   client:exec_cmd({
                       title = "pin",
-                      command = "tinymist.pinMain",
+                      command = "tinymist.pinMainToCurrent",
                       arguments = { vim.api.nvim_buf_get_name(0) },
                   }, { bufnr = bufnr })
               end, { desc = "[T]inymist [P]in", noremap = true })

@@ -19,11 +19,12 @@
       # # to have it up-to-date or simply don't specify the nixpkgs input  
       # inputs.nixpkgs.follows = "nixpkgs";
     };
+    nixos-hardware.url = "github:NixOS/nixos-hardware/master";
   };
 
   # hermes = lib.mkEnableOption "hermes";
 
-  outputs = { self, nixpkgs-unstable, nixos-wsl, home-manager, zen-browser, ...}@inputs: {
+  outputs = { self, nixpkgs-unstable, nixos-wsl, home-manager, zen-browser, nixos-hardware, ...}@inputs: {
     hermes = nixpkgs-unstable.lib.mkEnableOption "hermes";
 
     # wsl
@@ -60,6 +61,7 @@
       system = "x86_64-linux";
       modules = [
         ./hermes/configuration.nix
+        nixos-hardware.nixosModules.framework-16-7040-amd
 
         home-manager.nixosModules.home-manager {
           home-manager.extraSpecialArgs = {

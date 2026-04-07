@@ -85,6 +85,7 @@
     mangohud
     nexusmods-app
     heroic
+    proton-pass
   ];
 
   fonts.fontconfig.enable = true;
@@ -112,11 +113,11 @@
     '';
   };
 
-  # programs.zen-browser = {
-  #   enable = true;
-  #   policies = {
-  #     DisableAppUpdate = true;
-  #   };
-  # };
+  programs.zen-browser = {
+    enable = true;
+    policies = {
+      DisableAppUpdate = true;
+    };
+  };
 
 }
