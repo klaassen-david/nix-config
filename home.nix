@@ -87,7 +87,10 @@
 
   fonts.fontconfig.enable = true;
 
-  programs.git.enable = true;
+  programs.git = {
+    enable = true;
+    signing.format = null;
+  };
 
   programs.bash = {
     enable = true;
