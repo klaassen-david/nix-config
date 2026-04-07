@@ -75,6 +75,7 @@
     nixosConfigurations.hermes = nixpkgs-unstable.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
+        ./common/main.nix
         ./hermes/configuration.nix
         nixos-hardware.nixosModules.framework-16-7040-amd
 
@@ -99,6 +100,7 @@
     nixosConfigurations.hestia = nixpkgs-unstable.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
+        ./common/main.nix
         ./hestia/configuration.nix
 
         home-manager.nixosModules.home-manager {
