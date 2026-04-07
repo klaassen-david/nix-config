@@ -34,7 +34,7 @@ in
       ];
 
       output = 
-        if host == "hermes" then
+        if host == "hestia" then
           {
             DP-1 = {
               pos = "0 0";
