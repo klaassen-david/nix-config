@@ -1,7 +1,7 @@
 { host, pkgs, lib, ... } :
 
 let
-  mainDisplay = if host == "hestia" then "DP-1" else "eDP-1";
+  mainDisplay = if host == "hestia" then "DP-3" else "eDP-1";
 in
 {
   wayland.windowManager.sway = {
@@ -176,7 +176,7 @@ in
     enable = true;
     settings = {
       font = "${pkgs.nerd-fonts.fira-code.outPath}/share/fonts/truetype/NerdFonts/FiraCode/FiraCodeNerdFontMono-Regular.ttf"; 
-      output = "DP-3";
+      output = mainDisplay;
       matching-algoritm = "fuzzy";
       width = "100%";
       height = "100%";
