@@ -11,20 +11,24 @@ in
     swaynag.enable = true;
     extraOptions = [ "--unsupported-gpu "];
     checkConfig = false;
-    extraSessionCommands = ''
-      export XDG_CURRENT_DESKTOP=sway
-      export XDG_SESSION_TYPE=wayland
-      export QT_QPA_PLATFORM=wayland # For Qt apps
-      export GDK_BACKEND=wayland     # For GTK apps
-      # export GBM_BACKEND=nvidia-drm
-      # export __GLX_VENDOR_LIBRARY_NAME=nvidia
-      # export LD_LIBRARY_PATH=/run/opengl-driver/lib
-      # export VK_ICD_FILENAMES=/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.x86_64.json
-      # export WLR_DRM_DEVICES=/dev/dri/by-path/pci-0000:2b:00.0-card
-      # export WLR_RENDERER=vulkan
-      # export WLR_NO_HARDWARE_CURSORS=1
-      # export NIXOS_OZONE_WL=1
-    '';
+    extraSessionCommands = 
+      let 
+        common = ''
+          export XDG_CURRENT_DESKTOP=sway
+          export XDG_SESSION_TYPE=wayland
+          export QT_QPA_PLATFORM=wayland # For Qt apps
+          export GDK_BACKEND=wayland     # For GTK apps
+        '';
+        hostSpecific = if host == "hestia" then ''
+          export __GLX_VENDOR_LIBRARY_NAME=nvidia
+          export WLR_RENDERER=vulkan
+          export WLR_NO_HARDWARE_CURSORS=1
+          export NIXOS_OZONE_WL=1
+          # export LD_LIBRARY_PATH=/run/opengl-driver/lib
+          # export VK_ICD_FILENAMES=/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.x86_64.json
+          # export WLR_DRM_DEVICES=/dev/dri/by-path/pci-0000:2b:00.0-card
+        '' else "";
+      in common + hostSpecific;
 
     config = 
       let modifier = "Mod1";
@@ -137,9 +141,9 @@ in
         workspace_buttons yes
         strip_workspace_numbers no
         tray_output ${mainDisplay}
-        output DP-3
-        output eDP-1
         output ${mainDisplay}
+        tray_output DP-1
+        output DP-1
         colors {
           background #000000
           statusline #ffffff
@@ -219,9 +223,11 @@ in
   programs.i3status = {
     enable = true;
     modules = {
-      # "battery all" = {
-      #   enable = false; # This disables the battery module
-      # };
+      "battery all" = if host == "hermes" then {
+        enable = true; # This disables the battery module
+      } else {
+        enable = false;
+      };
     };
   };
 
