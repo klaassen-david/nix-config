@@ -82,4 +82,9 @@
   security.pam.services.login.fprintAuth = true;
   security.pam.services.swaylock.fprintAuth = true;
 
+  # clamshell
+  services.logind.settings.Login = {
+    HandleLidSwitch = "ignore";
+    HandleLidSwitchExternalPower = "ignore";
+  };
 }

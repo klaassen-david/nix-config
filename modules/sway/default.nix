@@ -168,6 +168,8 @@ in
         output DP-1
       ''
       else if host == "hermes" then ''
+        bindswitch --reload --locked lid:on output ${mainDisplay} disable
+        bindswitch --reload --locked lid:off output ${mainDisplay} enable
       '' else '''';
     in common + hostSpecific;
     
