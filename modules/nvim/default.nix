@@ -52,13 +52,29 @@
         key = "<ESC>";
         action = "<cmd>nohlsearch<CR>";
       }
+      # { mode = "n";
+      #   key = "<C-Right>";
+      #   action = "<cmd>tabnext<CR>";
+      # }
+      # { mode = "n";
+      #   key = "<C-Left>";
+      #   action = "<cmd>tabprevious<CR>";
+      # }
       { mode = "n";
         key = "<C-Right>";
-        action = "<cmd>tabnext<CR>";
+        action = "<cmd>BufferNext<CR>";
       }
       { mode = "n";
         key = "<C-Left>";
-        action = "<cmd>tabprevious<CR>";
+        action = "<cmd>BufferPrevious<CR>";
+      }
+      { mode = "n";
+        key = "<C-c>";
+        action = "<cmd>BufferClose<CR>";
+      }
+      { mode = "n";
+        key = "<C-s-c>";
+        action = "<cmd>BufferRestore<CR>";
       }
     ];
 
@@ -162,6 +178,8 @@
       lazydev.enable = true;
       rustaceanvim.enable = true;
       undotree.enable = true;
+      mini-ai.enable = true;
+      barbar.enable = true;
     };
 
     userCommands = {
