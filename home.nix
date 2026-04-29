@@ -77,6 +77,9 @@
   programs.git = {
     enable = true;
     signing.format = null;
+    settings = {
+      init.defaultBranchName = "main";
+    };
   };
 
   programs.bash = {

@@ -29,6 +29,7 @@
   networking = {
     hostName = "hermes";
     wireless.enable = false;
+    wireless.iwd.settings.General.EnableNetworkConfiguration = false;
     networkmanager = {
       enable = true;
       wifi = {
@@ -44,9 +45,25 @@
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = true;
-    settings = { General = {Experimental = true;}; };
+    settings = { 
+      General = {
+        Experimental = true;
+        Enable = "Source,Sink,Media,Socket";
+      }; 
+    };
   };
   services.blueman.enable = true;
+  services.pipewire = {
+    wireplumber.enable = true;
+    wireplumber.extraConfig = {
+      "monitor.bluez.properties" = {
+      "bluez5.enable-sbc-xq" = true;
+      "bluez5.enable-msbc" = true;
+      "bluez5.enable-hw-volume" = true;
+      "bluez5.codecs" = [ "sbc_xq" "aac" "aptx" "aptx_hd" "ldac" "lc3plus_h3" "opus_05" ];
+      };
+    };
+  };
 
   environment.systemPackages = with pkgs; [
     playerctl

@@ -62,6 +62,10 @@ in
             pos = "0 0";
             res = "2560x1440";
           };
+          DP-4 = {
+            pos = "2560 0";
+            res = "2560x1440";
+          };
         } else {};
 
       input = {
@@ -109,12 +113,8 @@ in
       };
     };
 
-    extraConfig = ''
+    extraConfig = let common = ''
       include /etc/sway/config.d/*
-
-      workspace 1 output DP-1
-      workspace 2 output ${mainDisplay}
-      workspace 3 output HDMI-A-1
 
       # XDG
       exec systemctl --user set-environment XDG_CURRENT_DESKTOP=sway
@@ -140,10 +140,6 @@ in
         swaybar_command ${pkgs.sway}/bin/swaybar
         workspace_buttons yes
         strip_workspace_numbers no
-        tray_output ${mainDisplay}
-        output ${mainDisplay}
-        tray_output DP-1
-        output DP-1
         colors {
           background #000000
           statusline #ffffff
@@ -161,7 +157,20 @@ in
       exec wl-gammarelay-rs run 2>> /home/dk/logs/wl-gammarelay-rs
 
       exec swaync
-    '';
+    ''; 
+      hostSpecific = if host == "hestia" then ''
+        workspace 1 output DP-1
+        workspace 2 output ${mainDisplay}
+        workspace 3 output HDMI-A-1
+        tray_output ${mainDisplay}
+        output ${mainDisplay}
+        tray_output DP-1
+        output DP-1
+      ''
+      else if host == "hermes" then ''
+      '' else '''';
+    in common + hostSpecific;
+    
   };
 
   services.kanshi.enable = true;

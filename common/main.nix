@@ -60,7 +60,6 @@
     alsa.support32Bit = true;
     pulse.enable = true;
     audio.enable = true;
-    # wireplumber.enable = true;
     jack.enable = true;
   };
 
