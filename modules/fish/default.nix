@@ -5,14 +5,15 @@
     enable = true;
     interactiveShellInit = ''
       set fish_greeting # disable greeting
+      fish_vi_key_bindings
     '';
     plugins = [
+      { name = "autopair"; src = pkgs.fishPlugins.autopair; }
+      { name = "fzf-fish"; src = pkgs.fishPlugins.fzf-fish; }
     ];
 
     functions = {
-      nvims = {
-        body = "nvim -S $argv";
-      };
+      nvims = { body = "nvim -S $argv"; };
 
       nd = { body = "nix develop --command ${pkgs.fish}/bin/fish $argv"; };
       ns = { body = "nix-shell --command ${pkgs.fish}/bin/fish $argv"; };
@@ -23,6 +24,8 @@
       ll = { body = "exa -l $argv"; };
 
       cat = { body = "bat $argv"; };
+
+      mkcd = { body = "mk $argv && cd $argv"; };
 
       # y = { body = ''
       #   function y
@@ -38,7 +41,6 @@
   };
 
   home.packages = with pkgs; [
-    fzf
     bat
     eza
     dust
@@ -50,6 +52,11 @@
   };
 
   programs.zoxide = {
+    enable = true;
+    enableFishIntegration = true;
+  };
+
+  programs.fzf = {
     enable = true;
     enableFishIntegration = true;
   };

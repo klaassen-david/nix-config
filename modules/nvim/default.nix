@@ -76,6 +76,14 @@
         key = "<C-s-c>";
         action = "<cmd>BufferRestore<CR>";
       }
+      { mode = "n";
+        key = "<C-s-Left>";
+        action = "<cmd>BufferMovePrevious<CR>";
+      }
+      { mode = "n";
+        key = "<C-s-Right>";
+        action = "<cmd>BufferMoveNext<CR>";
+      }
     ];
 
     autoGroups = {
