@@ -20,6 +20,7 @@
     efi.canTouchEfiVariables = true;
   };
 
+  boot.kernelModules = [ "ryzen_smu" ];
   boot.initrd.kernelModules = [ "amdgpu" ];
   hardware = {
     graphics.enable = true;
@@ -82,9 +83,14 @@
   security.pam.services.login.fprintAuth = true;
   security.pam.services.swaylock.fprintAuth = true;
 
-  # clamshell
-  services.logind.settings.Login = {
-    HandleLidSwitch = "ignore";
-    HandleLidSwitchExternalPower = "ignore";
+  security.wrappers.framework_tool = {
+    source = "${pkgs.framework-tool}/bin/framework_tool";
+    owner = "root";
+    group = "root";
+    setuid = true;
+  };
+
+  services.upower = {
+    enable = true;
   };
 }

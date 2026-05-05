@@ -1,5 +1,5 @@
 {
-  description = "wsl system configuration";
+  description = "system configuration";
 
   nixConfig = {
     extra-substituters = [
@@ -37,40 +37,7 @@
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
   };
 
-  # hermes = lib.mkEnableOption "hermes";
-
   outputs = { self, nixpkgs-unstable, nixos-wsl, home-manager, zen-browser, nixos-hardware, ...}@inputs: {
-    hermes = nixpkgs-unstable.lib.mkEnableOption "hermes";
-
-    # wsl
-    nixosConfigurations.janus = nixpkgs-unstable.lib.nixosSystem {
-      system = "x86_64-linux";
-      modules = [
-        nixos-wsl.nixosModules.default {
-          system.stateVersion = "24.11";
-          wsl.enable = true;
-          wsl.defaultUser = "dk";
-        }
-
-        ./janus.nix
-
-        home-manager.nixosModules.home-manager {
-          home-manager.extraSpecialArgs = {
-            inherit inputs;
-          };
-          home-manager.useGlobalPkgs = true;
-          home-manager.useUserPackages = true;
-          home-manager.users.dk = {
-            imports = [
-              ./home.nix
-    # inputs.nixvim.homeManagerModules.nixvim
-
-            ];
-          };
-        }
-      ];
-    };
-
     # laptop
     nixosConfigurations.hermes = nixpkgs-unstable.lib.nixosSystem {
       system = "x86_64-linux";

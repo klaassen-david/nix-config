@@ -1,6 +1,15 @@
 { config, lib, pkgs, ... }:
 
 {
+
+  # nixpkgs.overlays = [
+  #   (final: prev: {
+  #     openldap = prev.openldap.overrideAttrs (_: {
+  #       doCheck = false;
+  #     });
+  #   })
+  # ];
+
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   nixpkgs.config.allowUnfree = true;
 
@@ -24,23 +33,24 @@
   networking = {
     # defaultGateway = { address = "192.168.178.3"; interface = "enp42s0"; };
     enableIPv6 = true;
-    firewall = {
-      enable = true;
-      checkReversePath = false;
-      allowedTCPPorts = [ 3450 5000 23756 ];
-      allowedTCPPortRanges = [ 
+    firewall = 
+      let ranges = [
         { from = 6112; to = 6119; }
+        { from = 8000; to = 8100; } # testing
         { from = 1714; to = 1764; } # kdeconnect
       ];
-      allowedUDPPorts = [ 
-        2350 # wc3
-        23756 
-        5180 # wireguard
-      ];
-      allowedUDPPortRanges = [ 
-        { from = 6112; to = 6119; }
-        { from = 1714; to = 1764; } # kdeconnect
-      ];
+        ports = [ 
+          2350 # wc3
+          23756 
+          5180 # wireguard
+        ];
+      in {
+        enable = true;
+        checkReversePath = false;
+        allowedTCPPorts = ports;
+        allowedTCPPortRanges = ranges;
+        allowedUDPPorts = ports;
+        allowedUDPPortRanges = ranges;
     };
   };
 
@@ -106,7 +116,7 @@
     enable = true;
     settings = rec {
       initial_session = {
-        command = "sway";
+        command = "bash -l -c 'dbus-run-session sway'";
         # command = "${pkgs.gtkgreet}/bin/gtkgreet --command=\"dbus-run-session sway\"";gtkgreet
         user = "dk";
       };
