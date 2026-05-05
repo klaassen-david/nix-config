@@ -17,8 +17,11 @@
     };
 
     # formatting
-    plugins.lsp-format = {
+    plugins.conform-nvim = {
       enable = true;
+      setting.format_on_save = {
+        lsp_fallback = true;
+      };
     };
 
     # https://nix-community.github.io/nixvim/NeovimOptions/index.html?highlight=extraplugi#extraplugins

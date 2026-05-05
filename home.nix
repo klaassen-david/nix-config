@@ -60,7 +60,7 @@
     steamcmd
     steam-run
     adwaita-icon-theme
-    lutris
+    # lutris
     wineWow64Packages.stable
     winetricks
     vulkan-tools

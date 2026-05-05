@@ -17,6 +17,7 @@
   programs.nixvim = {
     enable = true;
     defaultEditor = true;
+    nixpkgs.config.allowUnfree = true;
 
     globals = {
       mapleader = " ";
