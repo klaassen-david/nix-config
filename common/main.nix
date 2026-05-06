@@ -220,4 +220,9 @@
   };
 
   programs.fish.enable = true;
+
+  programs.ydotool = {
+    enable = true;
+    group = "input";
+  };
 }

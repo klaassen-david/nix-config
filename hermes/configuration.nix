@@ -49,7 +49,8 @@
     settings = { 
       General = {
         Experimental = true;
-        Enable = "Source,Sink,Media,Socket";
+        MultiProfile = "multiple";
+        AutoConnect = true;
       }; 
     };
   };
@@ -57,11 +58,14 @@
   services.pipewire = {
     wireplumber.enable = true;
     wireplumber.extraConfig = {
-      "monitor.bluez.properties" = {
-      "bluez5.enable-sbc-xq" = true;
-      "bluez5.enable-msbc" = true;
-      "bluez5.enable-hw-volume" = true;
-      "bluez5.codecs" = [ "sbc_xq" "aac" "aptx" "aptx_hd" "ldac" "lc3plus_h3" "opus_05" ];
+      "10-bluetooth" = {
+        "monitor.bluez.properties" = {
+          "bluez5.enable-sbc-xq" = true;
+          "bluez5.enable-msbc" = true;
+          "bluez5.enable-hw-volume" = true;
+          "bluez5.roles" = [ "a2dp_sink" "a2dp_source" "bap_sink" "bap_source" "hsp_hs" "hsp_ag" "hfp_hf" "hfp_ag" ];
+          "bluez5.codecs" = [ "sbc" "sbc_xq" "aac" "aptx" "aptx_hd" "ldac" ];
+        };
       };
     };
   };

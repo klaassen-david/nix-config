@@ -80,6 +80,10 @@
     settings = {
       init.defaultBranchName = "main";
     };
+    ignores = [
+      "Session.vim"
+      "*.swp"
+    ];
   };
 
   programs.bash = {

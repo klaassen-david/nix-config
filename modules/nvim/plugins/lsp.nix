@@ -19,7 +19,7 @@
     # formatting
     plugins.conform-nvim = {
       enable = true;
-      setting.format_on_save = {
+      settings.format_on_save = {
         lsp_fallback = true;
       };
     };
