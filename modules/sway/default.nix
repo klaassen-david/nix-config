@@ -113,6 +113,9 @@ in
         "Shift+XF86MonBrightnessDown" = "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateBrightness d -0.1";
         "Shift+XF86MonBrightnessUp" = "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateBrightness d +0.1";
         "${modifier}+n" = "exec swaync-client -t -sw";
+        "${modifier}+p" = "exec grimshot copy area";
+        "${modifier}+shift+p" = "exec grimshot copy screen";
+        "${modifier}+ctrl+p" = "exec grimshot copy window";
       };
     };
 
@@ -183,6 +186,7 @@ in
 
   home.packages = with pkgs; [ 
     slurp
+    sway-contrib.grimshot
     wl-clipboard
     brightnessctl
     wl-gammarelay-rs
