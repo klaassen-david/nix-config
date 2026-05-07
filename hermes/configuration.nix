@@ -51,6 +51,7 @@
         Experimental = true;
         MultiProfile = "multiple";
         AutoConnect = true;
+        Enable = "Source,Sink,Media,Socket";
       }; 
     };
   };
