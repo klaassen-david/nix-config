@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
 
@@ -10,7 +15,10 @@
   #   })
   # ];
 
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
   nixpkgs.config.allowUnfree = true;
 
   programs.ccache.enable = true;
@@ -20,12 +28,22 @@
     isNormalUser = true;
     initialPassword = "4TestPW";
     home = "/home/dk";
-    extraGroups = [ "wheel" "networkmanager" "gamemode" "video" "render" "seat" ];
+    extraGroups = [
+      "wheel"
+      "networkmanager"
+      "gamemode"
+      "video"
+      "render"
+      "seat"
+    ];
   };
 
   # droidcam
   boot.extraModulePackages = [ config.boot.kernelPackages.v4l2loopback ];
-  boot.kernelModules = ["v4l2loopback" "uinput"];
+  boot.kernelModules = [
+    "v4l2loopback"
+    "uinput"
+  ];
 
   time.timeZone = "Europe/Berlin";
   i18n.defaultLocale = "en_US.UTF-8";
@@ -33,25 +51,36 @@
   networking = {
     # defaultGateway = { address = "192.168.178.3"; interface = "enp42s0"; };
     enableIPv6 = true;
-    firewall = 
-      let ranges = [
-        { from = 6112; to = 6119; }
-        { from = 8000; to = 8100; } # testing
-        { from = 1714; to = 1764; } # kdeconnect
-      ];
-        ports = [ 
+    firewall =
+      let
+        ranges = [
+          {
+            from = 6112;
+            to = 6119;
+          }
+          {
+            from = 8000;
+            to = 8100;
+          } # testing
+          {
+            from = 1714;
+            to = 1764;
+          } # kdeconnect
+        ];
+        ports = [
           2350 # wc3
-          23756 
+          23756
           5180 # wireguard
         ];
-      in {
+      in
+      {
         enable = true;
         checkReversePath = false;
         allowedTCPPorts = ports;
         allowedTCPPortRanges = ranges;
         allowedUDPPorts = ports;
         allowedUDPPortRanges = ranges;
-    };
+      };
   };
 
   # gb keyboard layout
@@ -108,7 +137,10 @@
   # };
 
   programs.kdeconnect.enable = true;
-  users.users.dk.extraGroups = ["input" "uinput"];
+  users.users.dk.extraGroups = [
+    "input"
+    "uinput"
+  ];
 
   programs.dconf.enable = true;
 
@@ -155,7 +187,8 @@
       args = [
         "--hdr-enabled"
         "--hdr-itm-enabled"
-        "--hdr-sdr-content-nits" "400"
+        "--hdr-sdr-content-nits"
+        "400"
         "-W 3840"
         "-H 2160"
         "-w 3840"
@@ -168,7 +201,8 @@
         # "--scaler stretch"
         "--rt"
         "--mangoapp"
-        "--backend" "drm"
+        "--backend"
+        "drm"
       ];
       env = {
         # WLR_NO_HARDWARE_CURSORS="1";
@@ -195,7 +229,7 @@
         # NVIDIA Specific Fixes
         __GL_GSYNC_ALLOWED = "1";
         __GL_VRR_ALLOWED = "1";
-        
+
         # Tell Xwayland/Gamescope to use the NVIDIA backend correctly
         XWAYLAND_NO_GLAMOR = "0";
       };
@@ -214,7 +248,7 @@
   services.printing.enable = true;
   services.avahi = {
     enable = true;
-    nssmdns4 = true; 
+    nssmdns4 = true;
     openFirewall = true;
 
   };

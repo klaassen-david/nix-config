@@ -31,60 +31,72 @@
     zen-browser = {
       url = "github:0xc000022070/zen-browser-flake";
       # # IMPORTANT: we're using "libgbm" and is only available in unstable so ensure
-      # # to have it up-to-date or simply don't specify the nixpkgs input  
+      # # to have it up-to-date or simply don't specify the nixpkgs input
       # inputs.nixpkgs.follows = "nixpkgs";
     };
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
   };
 
-  outputs = { self, nixpkgs-unstable, nixos-wsl, home-manager, zen-browser, nixos-hardware, ...}@inputs: {
-    # laptop
-    nixosConfigurations.hermes = nixpkgs-unstable.lib.nixosSystem {
-      system = "x86_64-linux";
-      modules = [
-        ./common/main.nix
-        ./hermes/configuration.nix
-        nixos-hardware.nixosModules.framework-16-7040-amd
+  outputs =
+    {
+      self,
+      nixpkgs-unstable,
+      nixos-wsl,
+      home-manager,
+      zen-browser,
+      nixos-hardware,
+      ...
+    }@inputs:
+    {
+      # laptop
+      nixosConfigurations.hermes = nixpkgs-unstable.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [
+          ./common/main.nix
+          ./hermes/configuration.nix
+          nixos-hardware.nixosModules.framework-16-7040-amd
 
-        home-manager.nixosModules.home-manager {
-          home-manager.extraSpecialArgs = {
-            inherit inputs;
-            host = "hermes";
-          };
-          home-manager.useGlobalPkgs = true;
-          home-manager.useUserPackages = true;
-          home-manager.backupFileExtension = "home-manager.bak";
-          home-manager.users.dk = {
-            imports = [
-              ./home.nix 
-            ];
-          };
-        }
-      ];
+          home-manager.nixosModules.home-manager
+          {
+            home-manager.extraSpecialArgs = {
+              inherit inputs;
+              host = "hermes";
+            };
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.backupFileExtension = "home-manager.bak";
+            home-manager.users.dk = {
+              imports = [
+                ./home.nix
+              ];
+            };
+          }
+        ];
+      };
+
+      # main
+      nixosConfigurations.hestia = nixpkgs-unstable.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [
+          ./common/main.nix
+          ./hestia/configuration.nix
+
+          home-manager.nixosModules.home-manager
+          {
+            home-manager.extraSpecialArgs = {
+              inherit inputs;
+              host = "hestia";
+            };
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.backupFileExtension = "home-manager.bak";
+            home-manager.users.dk = {
+              imports = [
+                ./home.nix
+              ];
+            };
+          }
+        ];
+      };
     };
-
-    # main
-    nixosConfigurations.hestia = nixpkgs-unstable.lib.nixosSystem {
-      system = "x86_64-linux";
-      modules = [
-        ./common/main.nix
-        ./hestia/configuration.nix
-
-        home-manager.nixosModules.home-manager {
-          home-manager.extraSpecialArgs = {
-            inherit inputs;
-            host = "hestia";
-          };
-          home-manager.useGlobalPkgs = true;
-          home-manager.useUserPackages = true;
-          home-manager.backupFileExtension = "home-manager.bak";
-          home-manager.users.dk = {
-            imports = [
-              ./home.nix
-            ];
-          };
-        }
-      ];
-    };
-  };
 }

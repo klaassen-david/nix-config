@@ -1,4 +1,4 @@
-{ pkgs, lib, ... } :
+{ pkgs, lib, ... }:
 
 {
   programs.fish = {
@@ -8,24 +8,48 @@
       fish_vi_key_bindings
     '';
     plugins = [
-      { name = "autopair"; src = pkgs.fishPlugins.autopair; }
-      { name = "fzf-fish"; src = pkgs.fishPlugins.fzf-fish; }
+      {
+        name = "autopair";
+        src = pkgs.fishPlugins.autopair;
+      }
+      {
+        name = "fzf-fish";
+        src = pkgs.fishPlugins.fzf-fish;
+      }
     ];
 
     functions = {
-      nvims = { body = "nvim -S $argv"; };
+      nvims = {
+        body = "nvim -S $argv";
+      };
 
-      nd = { body = "nix develop --command ${pkgs.fish}/bin/fish $argv"; };
-      ns = { body = "nix-shell --command ${pkgs.fish}/bin/fish $argv"; };
+      nd = {
+        body = "nix develop --command ${pkgs.fish}/bin/fish $argv";
+      };
+      ns = {
+        body = "nix-shell --command ${pkgs.fish}/bin/fish $argv";
+      };
 
-      ls = { body = "exa $argv"; };
-      la = { body = "exa -la $argv"; };
-      l = { body = "exa -l $argv"; };
-      ll = { body = "exa -l $argv"; };
+      ls = {
+        body = "exa $argv";
+      };
+      la = {
+        body = "exa -la $argv";
+      };
+      l = {
+        body = "exa -l $argv";
+      };
+      ll = {
+        body = "exa -l $argv";
+      };
 
-      cat = { body = "bat $argv"; };
+      cat = {
+        body = "bat $argv";
+      };
 
-      mkcd = { body = "mk $argv && cd $argv"; };
+      mkcd = {
+        body = "mk $argv && cd $argv";
+      };
 
       # y = { body = ''
       #   function y

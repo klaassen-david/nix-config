@@ -1,4 +1,9 @@
-{pkgs, ...}: {
+{ pkgs, ... }:
+{
+  home.packages = with pkgs; [
+    nixfmt
+  ];
+
   programs.nixvim = {
     # Dependencies
     # { 'Bilal2453/luvit-meta', lazy = true },
@@ -38,32 +43,6 @@
       };
     };
 
-    # Brief aside: **What is LSP?**
-    #
-    # LSP is an initialism you've probably heard, but might not understand what it is.
-    #
-    # LSP stands for Language Server Protocol. It's a protocol that helps editors
-    # and language tooling communicate in a standardized fashion.
-    #
-    # In general, you have a "server" which is some tool built to understand a particular
-    # language (such as `gopls`, `lua_ls`, `rust_analyzer`, etc.). These Language Servers
-    # (sometimes called LSP servers, but that's kind of like ATM Machine) are standalone
-    # processes that communicate with some "client" - in this case, Neovim!
-    #
-    # LSP provides Neovim with features like:
-    #  - Go to definition
-    #  - Find references
-    #  - Autocompletion
-    #  - Symbol Search
-    #  - and more!
-    #
-    # Thus, Language Servers are external tools that must be installed separately from
-    # Neovim which are configured below in the `server` section.
-    #
-    # If you're wondering about lsp vs treesitter, you can check out the wonderfully
-    # and elegantly composed help section, `:help lsp-vs-treesitter`
-    #
-    # https://nix-community.github.io/nixvim/plugins/lsp/index.html
     plugins.none-ls = {
       enable = true;
       sources.formatting.ocamlformat.enable = true;
@@ -71,19 +50,11 @@
 
     plugins.lsp = {
       enable = true;
+      autoLoad = true;
 
-      # Enable the following language servers
-      #  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
-      #
-      #  Add any additional override configuration in the following tables. Available keys are:
-      #  - cmd: Override the default command used to start the server
-      #  - filetypes: Override the default list of associated filetypes for the server
-      #  - capabilities: Override fields in capabilities. Can be used to disable certain LSP features.
-      #  - settings: Override the default settings passed when initializing the server.
-      #        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
       servers = {
         pyright = {
-         enable = true;
+          enable = true;
         };
 
         nixd = {
@@ -145,7 +116,11 @@
             };
             forwardSearch = {
               executable = "zathura";
-              args = ["--synctex-forward" "%l:1:%f" "%p"];
+              args = [
+                "--synctex-forward"
+                "%l:1:%f"
+                "%p"
+              ];
             };
             chktex = {
               onOpenAndSave = true;
@@ -154,7 +129,7 @@
             diagnosticsDelay = 300;
             latexFormatter = "latexindent";
             latexindent = {
-              local = null; 
+              local = null;
               modifyLineBreaks = false;
             };
             bibtexFormatter = "texlab";
@@ -163,7 +138,11 @@
         };
 
         tinymist.enable = true;
-        tinymist.rootMarkers = ["tinymist.lock" "Session.vim" ".git"];
+        tinymist.rootMarkers = [
+          "tinymist.lock"
+          "Session.vim"
+          ".git"
+        ];
         tinymist.settings = {
           formatterMode = "typstyle";
           exportPdf = "onType";

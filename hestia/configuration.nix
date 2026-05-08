@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   imports = [
@@ -21,13 +26,18 @@
   };
 
   # nvidia
-  boot.kernelParams = [ 
+  boot.kernelParams = [
     "nvidia-drm.modeset=1"
     "nvidia-drm.fbdev=1"
     "nvidia.NVreg_EnableSigndedColor=1" # Essential for 580.x drivers
-    "nvidia.NVreg_EnableGpuFirmware=1"   # Improves stability for newer NVIDIA cards
+    "nvidia.NVreg_EnableGpuFirmware=1" # Improves stability for newer NVIDIA cards
   ];
-  boot.initrd.kernelModules = [ "nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm" ];
+  boot.initrd.kernelModules = [
+    "nvidia"
+    "nvidia_modeset"
+    "nvidia_uvm"
+    "nvidia_drm"
+  ];
   services.seatd.enable = true;
   hardware = {
     graphics = {
@@ -53,7 +63,10 @@
   networking = {
     hostName = "hestia";
     # defaultGateway = { address = "192.168.178.3"; interface = "enp42s0"; };
-    nameservers = [ "1.1.1.1" "8.8.8.8" ];
+    nameservers = [
+      "1.1.1.1"
+      "8.8.8.8"
+    ];
     useDHCP = false;
     dhcpcd.enable = false;
     networkmanager = {
@@ -89,7 +102,8 @@
       args = [
         "--hdr-enabled"
         "--hdr-itm-enabled"
-        "--hdr-sdr-content-nits" "400"
+        "--hdr-sdr-content-nits"
+        "400"
         "-W 3840"
         "-H 2160"
         "-w 3840"
@@ -102,7 +116,8 @@
         # "--scaler stretch"
         "--rt"
         "--mangoapp"
-        "--backend" "drm"
+        "--backend"
+        "drm"
       ];
       env = {
         # WLR_NO_HARDWARE_CURSORS="1";
@@ -129,7 +144,7 @@
         # NVIDIA Specific Fixes
         __GL_GSYNC_ALLOWED = "1";
         __GL_VRR_ALLOWED = "1";
-        
+
         # Tell Xwayland/Gamescope to use the NVIDIA backend correctly
         XWAYLAND_NO_GLAMOR = "0";
       };

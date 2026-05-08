@@ -1,4 +1,4 @@
-{ pkgs, lib, ... } :
+{ pkgs, lib, ... }:
 
 {
   programs.zellij = {
@@ -12,9 +12,12 @@
       keybinds = {
         shared = {
           bind = {
-            _args = ["Ctrl a"];
+            _args = [ "Ctrl a" ];
             Run = {
-              _args = ["cat" "~/.config/zellij/config.kdl"];
+              _args = [
+                "cat"
+                "~/.config/zellij/config.kdl"
+              ];
               direction = "Down";
             };
           };

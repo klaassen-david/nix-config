@@ -1,4 +1,4 @@
-{ config, pkgs,  ... }:
+{ config, pkgs, ... }:
 
 {
   imports = [
@@ -23,7 +23,7 @@
       mapleader = " ";
       have_nerd_font = true;
     };
-    
+
     opts = {
       number = true;
       relativenumber = true;
@@ -49,7 +49,8 @@
     };
 
     keymaps = [
-      { mode = "n";
+      {
+        mode = "n";
         key = "<ESC>";
         action = "<cmd>nohlsearch<CR>";
       }
@@ -61,27 +62,33 @@
       #   key = "<C-Left>";
       #   action = "<cmd>tabprevious<CR>";
       # }
-      { mode = "n";
+      {
+        mode = "n";
         key = "<C-Right>";
         action = "<cmd>BufferNext<CR>";
       }
-      { mode = "n";
+      {
+        mode = "n";
         key = "<C-Left>";
         action = "<cmd>BufferPrevious<CR>";
       }
-      { mode = "n";
+      {
+        mode = "n";
         key = "<C-c>";
         action = "<cmd>BufferClose<CR>";
       }
-      { mode = "n";
+      {
+        mode = "n";
         key = "<C-s-c>";
         action = "<cmd>BufferRestore<CR>";
       }
-      { mode = "n";
+      {
+        mode = "n";
         key = "<C-s-Left>";
         action = "<cmd>BufferMovePrevious<CR>";
       }
-      { mode = "n";
+      {
+        mode = "n";
         key = "<C-s-Right>";
         action = "<cmd>BufferMoveNext<CR>";
       }
@@ -92,7 +99,8 @@
     };
 
     autoCmd = [
-      { event = ["TextYankPost"];
+      {
+        event = [ "TextYankPost" ];
         desc = "Highlight when yanking text";
         group = "kickstart-highlight-yank";
         callback.__raw = ''
@@ -108,7 +116,7 @@
 
       lsp = {
         enable = true;
-        servers = { 
+        servers = {
           lua_ls.enable = true;
         };
       };

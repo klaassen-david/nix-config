@@ -1,4 +1,9 @@
-{ lib, pkgs, inputs, ... }:
+{
+  lib,
+  pkgs,
+  inputs,
+  ...
+}:
 
 {
   imports = [
@@ -53,7 +58,7 @@
     freetype
 
     gcc
-     
+
     pulseaudio
 
     # gaming
