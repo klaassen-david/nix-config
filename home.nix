@@ -86,8 +86,9 @@
       init.defaultBranchName = "main";
     };
     ignores = [
-      "Session.vim"
-      "*.swp"
+      "**/Session.vim"
+      "**/*.swp"
+      "**/.claude/"
     ];
   };
 

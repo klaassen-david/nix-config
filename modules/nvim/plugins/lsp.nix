@@ -2,6 +2,7 @@
 {
   home.packages = with pkgs; [
     nixfmt
+    claude-code
   ];
 
   programs.nixvim = {
@@ -30,11 +31,23 @@
     };
 
     # https://nix-community.github.io/nixvim/NeovimOptions/index.html?highlight=extraplugi#extraplugins
-    extraPlugins = with pkgs.vimPlugins; [
-      # NOTE: This is where you would add a vim plugin that is not implemented in Nixvim, also see extraConfigLuaPre below
-      #
-      # TODO: Add luvit-meta when Nixos package is added
-    ];
+    extraPlugins =
+      let
+        claudecode-nvim = pkgs.vimUtils.buildVimPlugin {
+          name = "claudecode-nvim";
+          src = pkgs.fetchFromGitHub {
+            owner = "coder";
+            repo = "claudecode.nvim";
+            rev = "main";
+            sha256 = "h8wYaWBKjKrb7hYYKYs5yUS5RI0JVFo8Emcy99YK6Qw=";
+          };
+        };
+      in
+      [
+        claudecode-nvim
+      ];
+
+    plugins.snacks.enable = true;
 
     # https://nix-community.github.io/nixvim/NeovimOptions/autoGroups/index.html
     autoGroups = {
@@ -344,5 +357,22 @@
         end
       '';
     };
+
+    extraConfigLua = ''
+      require("claudecode").setup({
+        terminal = {
+          split_side = "right",
+          split_width_percentage = 0.35,
+          provider = "external",
+          provider_opts = {
+            external_terminal_cmd = "ghostty -e %s",
+          },
+          auto_close = true,
+        },
+        auto_start = true,
+        track_selection = true,
+        focus_after_send = false,
+      })
+    '';
   };
 }
