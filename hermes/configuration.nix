@@ -2,6 +2,7 @@
 {
   imports = [
     ./hardware-configuration.nix
+    ../common/desktop.nix
   ];
 
   powerManagement.enable = true;

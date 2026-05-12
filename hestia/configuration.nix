@@ -8,6 +8,7 @@
 {
   imports = [
     ./hardware-configuration.nix
+    ../common/desktop.nix
   ];
 
   # This value determines the NixOS release from which the default

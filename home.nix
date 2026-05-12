@@ -1,5 +1,4 @@
 {
-  lib,
   pkgs,
   inputs,
   ...
@@ -8,15 +7,15 @@
 {
   imports = [
     inputs.nixvim.homeModules.nixvim
-    inputs.zen-browser.homeModules.beta
     ./modules/nvim
-    # ./modules/zellij
     ./modules/fish
     ./modules/ghostty
-    ./modules/tmux
+    # ./modules/tmux
     ./modules/sway
-    ./modules/firefox
-    ./modules/zathura
+    ./modules/yazi
+    # ./modules/zellij
+    ./modules/git
+    ./modules/bash
   ];
 
   home.stateVersion = "24.11";
@@ -24,10 +23,7 @@
 
   home.username = "dk";
   home.homeDirectory = "/home/dk";
-  # home.keyboard = {
-  #   layout = "us";
-  #   variant = "dvorak";
-  # };
+  home.keyboard.layout = "gb";
 
   home.packages = with pkgs; [
     vim
@@ -50,80 +46,7 @@
     fd
     fzf
 
-    btop # htop replacement
-
-    # fonts
-    nerd-fonts.fira-code
-    corefonts
-    freetype
-
+    btop
     gcc
-
-    pulseaudio
-
-    # gaming
-    steamcmd
-    steam-run
-    adwaita-icon-theme
-    # lutris
-    wineWow64Packages.stable
-    winetricks
-    vulkan-tools
-    mangohud
-    heroic
-    proton-pass
-
-    # kde-connect
-    kdePackages.kdeconnect-kde
   ];
-
-  fonts.fontconfig.enable = true;
-
-  programs.git = {
-    enable = true;
-    signing.format = null;
-    settings = {
-      init.defaultBranchName = "main";
-    };
-    ignores = [
-      "**/Session.vim"
-      "**/*.swp"
-      "**/.claude/"
-    ];
-  };
-
-  programs.bash = {
-    enable = true;
-    enableCompletion = true;
-    bashrcExtra = "";
-    shellAliases = {
-      ns = "nix-shell";
-      nd = "nix develop";
-      l = "ls -l";
-      ll = "ls -lA";
-      la = "ls -la";
-      nvims = "nvim -S";
-    };
-    initExtra = ''
-      # if [[ -z ''${BASH_EXECUTION_STRING} ]]
-      # then
-      #   shopt -q login_shell && LOGIN_OPTION='--login' || LOGIN_OPTION=""
-      #   exec ${pkgs.fish}/bin/fish $LOGIN_OPTION
-      # fi
-    '';
-  };
-
-  programs.zen-browser = {
-    enable = true;
-    policies = {
-      DisableAppUpdate = true;
-    };
-  };
-
-  programs.direnv.nix-direnv.enable = true;
-
-  services.kdeconnect = {
-    enable = true;
-    indicator = true;
-  };
 }

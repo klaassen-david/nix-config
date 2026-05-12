@@ -19,7 +19,6 @@
   inputs = {
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     # nixpks.url = "github:NixOS/nixpkgs/nixos-25.05";
-    nixos-wsl.url = "github:nix-community/NixOS-WSL/main";
     home-manager = {
       url = "github:nix-community/home-manager/master";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
@@ -35,24 +34,52 @@
       # inputs.nixpkgs.follows = "nixpkgs";
     };
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
   };
 
   outputs =
     {
       self,
       nixpkgs-unstable,
-      nixos-wsl,
       home-manager,
       zen-browser,
       nixos-hardware,
+      disko,
       ...
     }@inputs:
     {
+      # vps
+      nixosConfigurations.olympus = nixpkgs-unstable.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [
+          ./olympus/configuration.nix
+          disko.nixosModules.disko
+
+          home-manager.nixosModules.home-manager
+          {
+            home-manager.extraSpecialArgs = {
+              inherit inputs;
+              host = "olympus";
+            };
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.backupFileExtension = "home-manager.bak";
+            home-manager.users.dk = {
+              imports = [
+                ./home.nix
+              ];
+            };
+          }
+        ];
+      };
+
       # laptop
       nixosConfigurations.hermes = nixpkgs-unstable.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
-          ./common/main.nix
           ./hermes/configuration.nix
           nixos-hardware.nixosModules.framework-16-7040-amd
 
@@ -68,6 +95,7 @@
             home-manager.users.dk = {
               imports = [
                 ./home.nix
+                ./modules/desktop
               ];
             };
           }
@@ -78,7 +106,6 @@
       nixosConfigurations.hestia = nixpkgs-unstable.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
-          ./common/main.nix
           ./hestia/configuration.nix
 
           home-manager.nixosModules.home-manager
@@ -93,6 +120,7 @@
             home-manager.users.dk = {
               imports = [
                 ./home.nix
+                ./modules/desktop
               ];
             };
           }
