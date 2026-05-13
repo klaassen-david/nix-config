@@ -15,7 +15,7 @@
 
   users.extraUsers.dk = {
     isNormalUser = true;
-    initialPassword = "4TestPW";
+    initialHashedPassword = "$y$j9T$cnJaTuoqcS9wMqEV..0Ie0$/jU6CWhP4O4PUqKD.YprPkcbDVnfkc90XjarzlO6kh9";
     home = "/home/dk";
     extraGroups = [
       "wheel"
