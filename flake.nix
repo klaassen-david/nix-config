@@ -38,16 +38,20 @@
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
+    agenix = {
+      url = "github:ryantm/agenix";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
   };
 
   outputs =
     {
-      self,
       nixpkgs-unstable,
       home-manager,
       zen-browser,
       nixos-hardware,
       disko,
+      agenix,
       ...
     }@inputs:
     {
@@ -57,6 +61,7 @@
         modules = [
           ./olympus/configuration.nix
           disko.nixosModules.disko
+          agenix.nixosModules.default
 
           home-manager.nixosModules.home-manager
           {
@@ -125,6 +130,10 @@
             };
           }
         ];
+      };
+
+      devShells.x86_64-linux.default = nixpkgs-unstable.legacyPackages.x86_64-linux.mkShell {
+        packages = [ agenix.packages.x86_64-linux.agenix ];
       };
     };
 }

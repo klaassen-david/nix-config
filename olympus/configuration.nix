@@ -9,6 +9,7 @@
     ./hardware-configuration.nix
     ./disko.nix
     ../common/headless.nix
+    ../common/modules/nextcloud
   ];
 
   system.stateVersion = "25.05";

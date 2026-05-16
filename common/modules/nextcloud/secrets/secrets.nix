@@ -1,11 +1,6 @@
 let
-  # Your personal SSH key — used to decrypt secrets locally.
-  # Replace with the output of: cat ~/.ssh/id_ed25519.pub
-  dk = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithYourActualPublicKeydk@workstation";
-
-  # Server host key — copy from the server with:
-  #   ssh root@olympus cat /etc/ssh/ssh_host_ed25519_key.pub
-  olympus = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithOlympusHostPublicKeyroot@olympus";
+  dk = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFezQKjTnD8MFIlnHubglFUJ1ePb9pLdzTCoIQoXn3F3 dk@hestia";
+  olympus = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICC2ITqo7NHmJIn8Cgd3O5ezGJAmLSE/Srlq9l8Ix9io root@olympus";
 
   users = [ dk ];
   systems = [ olympus ];

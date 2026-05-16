@@ -53,37 +53,16 @@
   };
 
   # ---------------------------------------------------------------------------
-  # Redis (caching + file locking)
-  # ---------------------------------------------------------------------------
-  # A Unix-socket Redis instance avoids opening a network port and is
-  # measurably faster than TCP for local IPC.
-
-  services.redis.servers.nextcloud = {
-    enable = true;
-    port = 0; # disable TCP; socket only
-    unixSocket = "/run/redis-nextcloud/redis.sock";
-    unixSocketPerm = 770;
-  };
-
-  # Redis socket must be readable by the nextcloud user
-  users.users.nextcloud.extraGroups = [ "redis-nextcloud" ];
-
-  # ---------------------------------------------------------------------------
   # Nextcloud
   # ---------------------------------------------------------------------------
 
   services.nextcloud = {
     enable = true;
-    package = pkgs.nextcloud30; # pin to a major version; update deliberately
+    package = pkgs.nextcloud33; # pin to a major version; update deliberately
 
     hostName = "nextcloud.dklaassen.de";
     https = true;
 
-    # Let Nextcloud manage nginx — the module creates a suitable vhost for you
-    # and this avoids subtle mismatches with headers / PHP socket paths.
-    nginx.enable = true;
-
-    # Database
     config.dbtype = "pgsql";
     database.createLocally = true;
 
@@ -93,11 +72,7 @@
       adminpassFile = config.age.secrets.nextcloud-admin-pass.path;
     };
 
-    # Redis caching
-    redis = {
-      enable = true;
-      unixSocket = config.services.redis.servers.nextcloud.unixSocket;
-    };
+    configureRedis = true;
 
     # Extra PHP / Nextcloud settings
     settings = {
@@ -113,9 +88,7 @@
       # mail_smtpport    = 587;
       # mail_smtpauthtype = "LOGIN";
 
-      # Recommended: restrict access to local subnet during setup,
-      # then expand or remove once you're happy.
-      # trusted_domains = [ "nextcloud.dklaassen.de" ];
+      trusted_domains = [ "nextcloud.dklaassen.de" ];
 
       # Default phone region (used for contact validation)
       default_phone_region = "DE";
@@ -158,27 +131,29 @@
       "ECDHE-RSA-CHACHA20-POLY1305"
     ];
 
-    # Security headers applied to all vhosts
-    appendHttpConfig = ''
-      add_header X-Content-Type-Options  "nosniff"            always;
-      add_header X-Frame-Options         "SAMEORIGIN"         always;
-      add_header X-XSS-Protection        "1; mode=block"      always;
-      add_header Referrer-Policy         "strict-origin-when-cross-origin" always;
-    '';
+    virtualHosts =
+      let
+        sslConfig = {
+          forceSSL = true;
 
-    virtualHosts."nextcloud.dklaassen.de" = {
-      forceSSL = true;
-
-      # certs — paths resolve to /run/agenix/... at runtime
-      sslCertificate = config.age.secrets.ssl-fullchain.path;
-      sslCertificateKey = config.age.secrets.ssl-key.path;
-
-      # HSTS — only enable once you're confident TLS is working correctly.
-      # Start with a short max-age (300 s) during testing, then ramp up.
-      extraConfig = ''
-        add_header Strict-Transport-Security "max-age=300; includeSubDomains" always;
-      '';
-    };
+          sslCertificate = config.age.secrets.ssl-fullchain.path;
+          sslCertificateKey = config.age.secrets.ssl-key.path;
+        };
+      in
+      {
+        "nextcloud.dklaassen.de" = sslConfig;
+        "dklaassen.de" = sslConfig // {
+          extraConfig = ''
+            return 404;
+          '';
+        };
+        "_" = {
+          default = true;
+          extraConfig = ''
+            return 444;
+          '';
+        };
+      };
   };
 
   # ---------------------------------------------------------------------------
@@ -188,8 +163,7 @@
 
   networking.firewall = {
     enable = true;
-    allowedTCPPorts = [
-      22
+    allowedTCPPorts = lib.mkOrder 1200 [
       80
       443
     ];
@@ -208,7 +182,6 @@
     # Global ban settings
     maxretry = 5; # attempts before ban
     bantime = "1h"; # duration of ban
-    findtime = "10m"; # window in which maxretry must occur
 
     jails = {
       # Nextcloud-specific jail — catches login failures logged by Nextcloud
@@ -257,4 +230,3 @@
     SystemMaxUse=500M
   '';
 }
-
