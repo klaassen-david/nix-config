@@ -1,7 +1,7 @@
 { config, pkgs, ... }:
 
 {
-  imports = [ ./main.nix ];
+  imports = [ ./common.nix ];
 
   environment.systemPackages = with pkgs; [
     gparted

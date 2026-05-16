@@ -1,7 +1,7 @@
-{ ... }:
+{ lib, ... }:
 
 {
-  imports = [ ./main.nix ];
+  imports = [ ./common.nix ];
 
   networking = {
     enableIPv6 = true;
@@ -13,10 +13,10 @@
       {
         enable = true;
         checkReversePath = false;
-        allowedTCPPorts = ports;
-        allowedTCPPortRanges = ranges;
-        allowedUDPPorts = ports;
-        allowedUDPPortRanges = ranges;
+        allowedTCPPorts = lib.mkOrder 1000 ports;
+        allowedTCPPortRanges = lib.mkOrder 1000 ranges;
+        allowedUDPPorts = lib.mkOrder 1000 ports;
+        allowedUDPPortRanges = lib.mkOrder 1000 ranges;
       };
   };
 

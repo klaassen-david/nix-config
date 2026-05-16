@@ -69,7 +69,7 @@
             home-manager.backupFileExtension = "home-manager.bak";
             home-manager.users.dk = {
               imports = [
-                ./home.nix
+                ./home-manager/home.nix
               ];
             };
           }
@@ -94,15 +94,15 @@
             home-manager.backupFileExtension = "home-manager.bak";
             home-manager.users.dk = {
               imports = [
-                ./home.nix
-                ./modules/desktop
+                ./home-manager/home.nix
+                ./home-manager/modules/desktop
               ];
             };
           }
         ];
       };
 
-      # main
+      # tower
       nixosConfigurations.hestia = nixpkgs-unstable.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
@@ -119,8 +119,8 @@
             home-manager.backupFileExtension = "home-manager.bak";
             home-manager.users.dk = {
               imports = [
-                ./home.nix
-                ./modules/desktop
+                ./home-manager/home.nix
+                ./home-manager/modules/desktop
               ];
             };
           }
