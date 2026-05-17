@@ -32,4 +32,12 @@
   ];
 
   fonts.fontconfig.enable = true;
+
+  # Home Manager
+  services.udiskie = {
+    enable = true;
+    automount = true;
+    notify = true;
+    tray = "auto"; # shows in swaybar tray
+  };
 }

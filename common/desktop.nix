@@ -193,4 +193,6 @@
     enable = true;
     group = "input";
   };
+
+  services.udisks2.enable = true;
 }
