@@ -1,54 +1,30 @@
-# nextcloud.nix
-# Drop this file into your flake-based NixOS configuration and add it to your
-# imports list. It assumes agenix is already wired into your flake inputs and
-# that the encrypted secret files listed under age.secrets exist in your repo.
-#
-# Minimal flake.nix wiring reminder:
-#
-#   inputs.agenix.url = "github:ryantm/agenix";
-#
-#   nixosConfigurations.yourhost = nixpkgs.lib.nixosSystem {
-#     modules = [
-#       inputs.agenix.nixosModules.default
-#       ./nextcloud.nix
-#       # ... rest of your modules
-#     ];
-#   };
-
 {
   config,
   pkgs,
   lib,
+  secretsPath,
   ...
 }:
 
 {
-  # ---------------------------------------------------------------------------
-  # Secrets (agenix)
-  # ---------------------------------------------------------------------------
-  # Encrypt these files with:
-  #   agenix -e secrets/nextcloud-admin-pass.age
-  #   agenix -e secrets/ssl-fullchain.age
-  #   agenix -e secrets/ssl-key.age
-  #
-  # Your secrets/secrets.nix should include your SSH public key and the
-  # server's /etc/ssh/ssh_host_ed25519_key.pub as recipients for each secret.
+  users.groups.ssl-cert = { };
+  users.users.nginx.extraGroups = [ "ssl-cert" ];
 
   age.secrets = {
     nextcloud-admin-pass = {
-      file = ./secrets/nextcloud-admin-pass.age;
+      file = "${secretsPath}/nextcloud-admin-pass.age";
       owner = "nextcloud";
       mode = "0400";
     };
     ssl-fullchain = {
-      file = ./secrets/ssl-fullchain.age;
-      owner = "nginx";
-      mode = "0444";
+      file = "${secretsPath}/ssl-fullchain.age";
+      group = "ssl-cert";
+      mode = "0440";
     };
     ssl-key = {
-      file = ./secrets/ssl-key.age;
-      owner = "nginx";
-      mode = "0400";
+      file = "${secretsPath}/ssl-key.age";
+      group = "ssl-cert";
+      mode = "0440";
     };
   };
 

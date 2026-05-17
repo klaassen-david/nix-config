@@ -54,84 +54,66 @@
       agenix,
       ...
     }@inputs:
+    let
+      # ---------------------------------------------------------------------------
+      # Helper — builds a NixOS configuration with home-manager wired in
+      # ---------------------------------------------------------------------------
+      mkHost =
+        {
+          host, # hostname string e.g. "olympus"
+          hostModules ? [ ], # extra NixOS modules for this host
+          hmModules ? [ ], # extra home-manager modules for this host
+        }:
+        let
+          sharedArgs = {
+            inherit inputs host;
+            secretsPath = ./secrets;
+          };
+        in
+        nixpkgs-unstable.lib.nixosSystem {
+          system = "x86_64-linux";
+          specialArgs = sharedArgs;
+          modules = [
+            ./${host}/configuration.nix
+            home-manager.nixosModules.home-manager
+            {
+              home-manager = {
+                extraSpecialArgs = sharedArgs;
+                useGlobalPkgs = true;
+                useUserPackages = true;
+                backupFileExtension = "home-manager.bak";
+                users.dk.imports = [ ./home-manager/home.nix ] ++ hmModules;
+              };
+            }
+          ]
+          ++ hostModules;
+        };
+    in
     {
-      # vps
-      nixosConfigurations.olympus = nixpkgs-unstable.lib.nixosSystem {
-        system = "x86_64-linux";
-        modules = [
-          ./olympus/configuration.nix
-          disko.nixosModules.disko
-          agenix.nixosModules.default
+      nixosConfigurations = {
+        # VPS
+        olympus = mkHost {
+          host = "olympus";
+          hostModules = [
+            disko.nixosModules.disko
+            agenix.nixosModules.default
+          ];
+          hmModules = [ ];
+        };
 
-          home-manager.nixosModules.home-manager
-          {
-            home-manager.extraSpecialArgs = {
-              inherit inputs;
-              host = "olympus";
-            };
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.backupFileExtension = "home-manager.bak";
-            home-manager.users.dk = {
-              imports = [
-                ./home-manager/home.nix
-              ];
-            };
-          }
-        ];
+        # laptop
+        hermes = mkHost {
+          host = "hermes";
+          hostModules = [ nixos-hardware.nixosModules.framework-16-7040-amd ];
+          hmModules = [ ./home-manager/modules/desktop ];
+        };
+
+        # tower
+        hestia = mkHost {
+          host = "hestia";
+          hmModules = [ ./home-manager/modules/desktop ];
+        };
       };
-
-      # laptop
-      nixosConfigurations.hermes = nixpkgs-unstable.lib.nixosSystem {
-        system = "x86_64-linux";
-        modules = [
-          ./hermes/configuration.nix
-          nixos-hardware.nixosModules.framework-16-7040-amd
-
-          home-manager.nixosModules.home-manager
-          {
-            home-manager.extraSpecialArgs = {
-              inherit inputs;
-              host = "hermes";
-            };
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.backupFileExtension = "home-manager.bak";
-            home-manager.users.dk = {
-              imports = [
-                ./home-manager/home.nix
-                ./home-manager/modules/desktop
-              ];
-            };
-          }
-        ];
-      };
-
-      # tower
-      nixosConfigurations.hestia = nixpkgs-unstable.lib.nixosSystem {
-        system = "x86_64-linux";
-        modules = [
-          ./hestia/configuration.nix
-
-          home-manager.nixosModules.home-manager
-          {
-            home-manager.extraSpecialArgs = {
-              inherit inputs;
-              host = "hestia";
-            };
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.backupFileExtension = "home-manager.bak";
-            home-manager.users.dk = {
-              imports = [
-                ./home-manager/home.nix
-                ./home-manager/modules/desktop
-              ];
-            };
-          }
-        ];
-      };
-
       devShells.x86_64-linux.default = nixpkgs-unstable.legacyPackages.x86_64-linux.mkShell {
         packages = [ agenix.packages.x86_64-linux.agenix ];
       };
