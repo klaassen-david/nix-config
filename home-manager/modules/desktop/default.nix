@@ -40,4 +40,9 @@
     notify = true;
     tray = "auto"; # shows in swaybar tray
   };
+
+  services.nextcloud-client = {
+    enable = true;
+    startInBackground = true;
+  };
 }
