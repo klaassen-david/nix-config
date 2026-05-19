@@ -30,11 +30,6 @@
       shiftwidth = 4;
       tabstop = 2;
 
-      clipboard = {
-        register = "unnamedplus";
-        providers.wl-copy.enable = true;
-      };
-
       breakindent = true;
       signcolumn = "yes";
       list = true;
@@ -74,12 +69,12 @@
       }
       {
         mode = "n";
-        key = "<C-c>";
+        key = "<C-w>";
         action = "<cmd>BufferClose<CR>";
       }
       {
         mode = "n";
-        key = "<C-s-c>";
+        key = "<C-s-w>";
         action = "<cmd>BufferRestore<CR>";
       }
       {
@@ -91,6 +86,18 @@
         mode = "n";
         key = "<C-s-Right>";
         action = "<cmd>BufferMoveNext<CR>";
+      }
+      {
+        mode = "n";
+        key = "<C-s-c>";
+        action = ''"+yy'';
+        options.desc = "Yank line to system clipboard";
+      }
+      {
+        mode = "v";
+        key = "<C-s-c>";
+        action = ''"+y'';
+        options.desc = "Yank selection to system clipboard";
       }
       {
         key = "<leader>ac";
