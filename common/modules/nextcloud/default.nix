@@ -119,9 +119,23 @@
       {
         "nextcloud.dklaassen.de" = sslConfig;
         "dklaassen.de" = sslConfig // {
-          extraConfig = ''
-            return 404;
-          '';
+          locations."/" = {
+            extraConfig = "return 404; ";
+          };
+        };
+        "control.dklaassen.de" = sslConfig // {
+          locations."/" = {
+            proxyPass = "http://127.0.0.1:8080/";
+            proxyWebsockets = true;
+            extraConfig = ''
+              proxy_set_header Host              $host;
+              proxy_set_header X-Real-IP         $remote_addr;
+              proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+              proxy_read_timeout                 3600s;
+              proxy_send_timeout                 3600s;
+            '';
+          };
         };
         "_" = {
           default = true;
