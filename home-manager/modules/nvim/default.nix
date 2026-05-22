@@ -69,12 +69,12 @@
       }
       {
         mode = "n";
-        key = "<C-w>";
+        key = "<leader>w";
         action = "<cmd>BufferClose<CR>";
       }
       {
         mode = "n";
-        key = "<C-s-w>";
+        key = "<leader>W";
         action = "<cmd>BufferRestore<CR>";
       }
       {
