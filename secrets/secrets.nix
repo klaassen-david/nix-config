@@ -13,4 +13,5 @@ in
   "stalwart-admin-pass.age".publicKeys = all;
   "stalwart-dk-pass.age".publicKeys = all;
   "stalwart-nextcloud-pass.age".publicKeys = all;
+  "nextcloud-general.age".publicKeys = [ olympus ];
 }

@@ -16,6 +16,11 @@
       owner = "nextcloud";
       mode = "0400";
     };
+    nextcloud-general = {
+      file = "${secretsPath}/nextcloud-general.age";
+      owner = "nextcloud";
+      mode = "0400";
+    };
     ssl-fullchain = {
       file = "${secretsPath}/ssl-fullchain.age";
       group = "ssl-cert";
@@ -35,6 +40,7 @@
   services.nextcloud = {
     enable = true;
     package = pkgs.nextcloud33; # pin to a major version; update deliberately
+    secretFile = config.age.secrets.nextcloud-general.path;
 
     hostName = "nextcloud.dklaassen.de";
     https = true;
@@ -58,11 +64,14 @@
         "::1"
       ];
 
-      # Mail — fill in your SMTP details or remove this block
-      # mail_smtpmode    = "smtp";
-      # mail_smtphost    = "smtp.dklaassen.de";
-      # mail_smtpport    = 587;
-      # mail_smtpauthtype = "LOGIN";
+      mail_smtpmode = "smtp";
+      mail_smtphost = "127.0.0.1";
+      mail_smtpport = 465;
+      mail_smtpsecure = "ssl";
+      mail_smtpauth = true;
+      mail_smtpname = "nextcloud@dklaassen.de";
+      mail_from_address = "nextcloud";
+      mail_domain = "dklaassen.de";
 
       trusted_domains = [ "nextcloud.dklaassen.de" ];
 
@@ -82,6 +91,7 @@
       inherit (config.services.nextcloud.package.packages.apps)
         calendar
         contacts
+        mail
         ; # contacts pairs naturally with calendar (CardDAV)
     };
     extraAppsEnable = true;
