@@ -25,9 +25,9 @@
     ports = [ 22 ];
     settings = {
       UseDns = true;
-      PasswordAuthentication = true;
-      AllowUsers = null;
-      PermitRootLogin = "yes";
+      PasswordAuthentication = false;
+      AllowUsers = [ "dk" ];
+      PermitRootLogin = "no";
     };
   };
 }

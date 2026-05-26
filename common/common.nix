@@ -32,6 +32,7 @@
     isNormalUser = true;
     initialHashedPassword = "$y$j9T$cnJaTuoqcS9wMqEV..0Ie0$/jU6CWhP4O4PUqKD.YprPkcbDVnfkc90XjarzlO6kh9";
     home = "/home/dk";
+    openssh.authorizedKeys.keyFiles = [ ./keys/id_priv.pub ];
     extraGroups = [
       "wheel"
       "networkmanager"
