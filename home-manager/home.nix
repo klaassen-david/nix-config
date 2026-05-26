@@ -28,7 +28,7 @@
   home.packages = with pkgs; [
     vim
 
-    # replace cat, ls, etc with rust implementations
+    # rust implementations
     uutils-coreutils-noprefix
 
     # unpack

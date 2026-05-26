@@ -13,7 +13,6 @@
       keybind = [
         # "ctrl+e=write_scrollback_file:open"
       ];
-      command = "${pkgs.fish}/bin/fish";
     };
   };
 }

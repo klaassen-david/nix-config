@@ -85,11 +85,12 @@
         };
         chargeLimit = {
           block = "custom";
+          shell = "sh";
           interval = 1;
           json = true;
           command = ''
             LIMIT=$(framework_tool --charge-limit 2>/dev/null | grep -oP '\d+' | tail -1)
-            printf '{"text": "%s"}' "${wrapIcon "󱞜"} $LIMIT"
+            printf '{"text": "%s %s"}' "${wrapIcon "󱞜"}" "$LIMIT"
           '';
           click = [
             {
@@ -108,6 +109,7 @@
         powerProfiles = {
           block = "custom";
           interval = 1;
+          shell = "sh";
           json = true;
           command = ''
             case $(powerprofilesctl get) in 

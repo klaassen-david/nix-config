@@ -24,23 +24,23 @@
       };
 
       nd = {
-        body = "nix develop --command ${pkgs.fish}/bin/fish $argv";
+        body = "nix develop $argv";
       };
       ns = {
-        body = "nix-shell --command ${pkgs.fish}/bin/fish $argv";
+        body = "nix-shell $argv";
       };
 
       ls = {
-        body = "exa $argv";
+        body = "eza $argv";
       };
       la = {
-        body = "exa -la $argv";
+        body = "eza -la $argv";
       };
       l = {
-        body = "exa -l $argv";
+        body = "eza -l $argv";
       };
       ll = {
-        body = "exa -l $argv";
+        body = "eza -l $argv";
       };
 
       cat = {
@@ -48,19 +48,8 @@
       };
 
       mkcd = {
-        body = "mk $argv && cd $argv";
+        body = "mkdir -p $argv && cd $argv";
       };
-
-      # y = { body = ''
-      #   function y
-      #     set tmp (mktemp -t "yazi-cwd.XXXXXX")
-      #     yazi $argv --cwd-file="$tmp"
-      #     if read -z cwd < "$tmp"; and [ -n "$cwd" ]; and [ "$cwd" != "$PWD" ]
-      #       builtin cd -- "$cwd"
-      #     end
-      #     rm -f -- "$tmp"
-      #   end
-      # ''; };
     };
   };
 
