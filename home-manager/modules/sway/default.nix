@@ -60,37 +60,6 @@ in
           { command = "zen"; }
         ];
 
-        output =
-          if host == "hestia" then
-            {
-              DP-1 = {
-                pos = "0 0";
-                res = "3840x2160";
-              };
-              DP-3 = {
-                pos = "3840 0";
-                res = "3840x2160";
-                scale = "1.5";
-              };
-              HDMI-A-1 = {
-                pos = "6400 240";
-                res = "1600x1200";
-              };
-            }
-          else if host == "hestia" then
-            {
-              DP-1 = {
-                pos = "0 0";
-                res = "2560x1440";
-              };
-              DP-4 = {
-                pos = "2560 0";
-                res = "2560x1440";
-              };
-            }
-          else
-            { };
-
         input = {
           "type:keyboard" = {
             xkb_layout = "gb,de,us";
