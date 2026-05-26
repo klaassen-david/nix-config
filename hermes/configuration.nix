@@ -60,10 +60,16 @@
   services.pipewire = {
     wireplumber.enable = true;
     wireplumber.extraConfig = {
+      "10-bluetooth-policy" = {
+        "wireplumber.settings" = {
+          # Keep A2DP profile when in-ears connect; don't auto-switch to HFP/HSP
+          "bluetooth.autoswitch-to-headset-profile" = false;
+        };
+      };
       "10-bluetooth" = {
         "monitor.bluez.properties" = {
           "bluez5.enable-sbc-xq" = true;
-          "bluez5.enable-msbc" = false;
+          "bluez5.enable-msbc" = true;
           "bluez5.enable-hw-volume" = true;
           "bluez5.roles" = [
             "a2dp_sink"
