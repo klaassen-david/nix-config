@@ -100,10 +100,6 @@
     framework-tool
   ];
 
-  programs.steam = {
-    enable = true;
-  };
-
   # fingerprint auth
   services.fprintd.enable = true;
   security.pam.services.sudo.fprintAuth = true;
