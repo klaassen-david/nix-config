@@ -178,7 +178,7 @@ in
     settings = {
       font = "${pkgs.nerd-fonts.fira-code.outPath}/share/fonts/truetype/NerdFonts/FiraCode/FiraCodeNerdFontMono-Regular.ttf";
       output = mainDisplay;
-      matching-algoritm = "fuzzy";
+      matching-algorithm = "fuzzy";
       width = "100%";
       height = "100%";
       border-width = 0;

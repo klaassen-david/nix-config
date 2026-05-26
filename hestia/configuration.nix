@@ -30,7 +30,7 @@
   boot.kernelParams = [
     "nvidia-drm.modeset=1"
     "nvidia-drm.fbdev=1"
-    "nvidia.NVreg_EnableSigndedColor=1" # Essential for 580.x drivers
+    "nvidia.NVreg_EnableSignedColor=1" # Essential for 580.x drivers
     "nvidia.NVreg_EnableGpuFirmware=1" # Improves stability for newer NVIDIA cards
   ];
   boot.initrd.kernelModules = [
