@@ -90,7 +90,8 @@
           json = true;
           command = ''
             LIMIT=$(framework_tool --charge-limit 2>/dev/null | grep -oP '\d+' | tail -1)
-            printf '{"text": "%s %s"}' "${wrapIcon "󱞜"}" "$LIMIT"
+            STATE=$([ "$LIMIT" -le 60 ] && echo "Good" || echo "Warning")
+            printf '{"text": "%s %s", "state": "%s"}' "${wrapIcon "󱞜"}" "$LIMIT" "$STATE"
           '';
           click = [
             {
@@ -112,13 +113,13 @@
           shell = "sh";
           json = true;
           command = ''
-            case $(powerprofilesctl get) in 
-              performance) icon="<span color='#44ff44'>󰑮</span>" ;;
-              balanced)    icon="<span color='#ffaa00'>󰜎</span>" ;;
-              power-saver) icon="<span color='#ff4444'></span>" ;;
+            case $(powerprofilesctl get) in
+              performance) icon="󰑮"; state="Warning" ;;
+              balanced)    icon="󰜎"; state="Info" ;;
+              power-saver) icon=""; state="Good" ;;
             esac
 
-            printf '{"text": "%s"}' "${wrapIcon "$icon"}"
+            printf '{"text": "%s", "state": "%s"}' "${wrapIcon "$icon"}" "$state"
           '';
           click = [
             {
