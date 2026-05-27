@@ -12,6 +12,7 @@
       gtk-tabs-location = "hidden";
       keybind = [
         # "ctrl+e=write_scrollback_file:open"
+        "ctrl+shift+w=unbind"
       ];
     };
   };

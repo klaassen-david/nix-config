@@ -8,8 +8,6 @@
 
   home.packages = with pkgs; [
     vscode-extensions.vadimcn.vscode-lldb
-    gcc
-    tree-sitter
     nodejs
     xdotool
   ];
@@ -49,14 +47,6 @@
         key = "<ESC>";
         action = "<cmd>nohlsearch<CR>";
       }
-      # { mode = "n";
-      #   key = "<C-Right>";
-      #   action = "<cmd>tabnext<CR>";
-      # }
-      # { mode = "n";
-      #   key = "<C-Left>";
-      #   action = "<cmd>tabprevious<CR>";
-      # }
       {
         mode = "n";
         key = "<C-Right>";
@@ -69,12 +59,12 @@
       }
       {
         mode = "n";
-        key = "<leader>w";
+        key = "<C-c>";
         action = "<cmd>BufferClose<CR>";
       }
       {
         mode = "n";
-        key = "<leader>W";
+        key = "<C-s-w>";
         action = "<cmd>BufferRestore<CR>";
       }
       {
@@ -184,34 +174,34 @@
 
       treesitter = {
         enable = true;
+        grammarPackages = with pkgs.vimPlugins.nvim-treesitter.builtGrammars; [
+          rust
+          python
+          nix
+          toml
+          json
+          yaml
+          html
+          javascript
+          erlang
+          elixir
+          vim
+          vimdoc
+          c
+          lua
+          markdown
+          markdown_inline
+          query
+          agda
+          bash
+          c_sharp
+          cmake
+          make
+          diff
+          latex
+          ocaml
+        ];
         settings = {
-          ensure_installed = [
-            "rust"
-            "python"
-            "nix"
-            "toml"
-            "json"
-            "yaml"
-            "html"
-            "javascript"
-            "erlang"
-            "elixir"
-            "vim"
-            "vimdoc"
-            "c"
-            "lua"
-            "markdown"
-            "markdown_inline"
-            "query"
-            "agda"
-            "bash"
-            "c_sharp"
-            "cmake"
-            "make"
-            "diff"
-            "latex"
-            "ocaml"
-          ];
           highlight.enable = true;
           indent.enable = true;
           incremental_selection.enable = true;
