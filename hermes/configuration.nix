@@ -44,6 +44,7 @@
   };
 
   # bluetooth
+  hardware.enableAllFirmware = true;
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = true;
@@ -51,12 +52,11 @@
       General = {
         Experimental = true;
         MultiProfile = "multiple";
-        AutoConnect = true;
-        Enable = "Source,Sink,Media,Socket";
       };
     };
   };
   services.blueman.enable = true;
+  users.users.dk.extraGroups = [ "bluetooth" ];
   services.pipewire = {
     wireplumber.enable = true;
     wireplumber.extraConfig = {
