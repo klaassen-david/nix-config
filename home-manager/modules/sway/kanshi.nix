@@ -56,6 +56,7 @@
         profile.outputs = [
           {
             criteria = "Philips Consumer Electronics Company 32M2N8900 AU42435000091";
+            mode = "3840x2160@240Hz";
             position = "0,0";
           }
           {
