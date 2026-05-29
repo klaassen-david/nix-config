@@ -12,7 +12,7 @@
       in
       {
         enable = true;
-        checkReversePath = false;
+        checkReversePath = true;
         allowedTCPPorts = lib.mkOrder 1000 ports;
         allowedTCPPortRanges = lib.mkOrder 1000 ranges;
         allowedUDPPorts = lib.mkOrder 1000 ports;
@@ -28,6 +28,18 @@
       PasswordAuthentication = false;
       AllowUsers = [ "dk" ];
       PermitRootLogin = "no";
+    };
+  };
+
+  services.fail2ban = {
+    enable = true;
+    jails.sshd = {
+      settings = {
+        enabled = true;
+        filter = "sshd";
+        maxretry = 5;
+        bantime = "1h";
+      };
     };
   };
 }

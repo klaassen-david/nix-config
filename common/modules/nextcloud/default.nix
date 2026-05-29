@@ -75,6 +75,8 @@
 
       trusted_domains = [ "nextcloud.dklaassen.de" ];
 
+      logfile = "/var/log/nextcloud.log";
+
       # Default phone region (used for contact validation)
       default_phone_region = "DE";
 
@@ -184,19 +186,31 @@
     bantime = "1h"; # duration of ban
 
     jails = {
-      # Nextcloud-specific jail — catches login failures logged by Nextcloud
+      # Reads Nextcloud's own app log — catches confirmed login failures
       nextcloud = {
         settings = {
           enabled = true;
           port = "80,443";
           filter = "nextcloud";
-          logpath = "/var/log/nginx/access.log";
+          logpath = "/var/log/nextcloud.log";
+          maxretry = 3;
+          bantime = "1h";
+        };
+      };
+
+      # Catches repeated HTTP Basic Auth failures in nginx error log
+      nginx-http-auth = {
+        settings = {
+          enabled = true;
+          port = "80,443";
+          filter = "nginx-http-auth";
+          logpath = "/var/log/nginx/error.log";
           maxretry = 5;
           bantime = "1h";
         };
       };
 
-      # Also ban on repeated nginx 4xx errors (catches scanners/bots)
+      # Bans on repeated nginx 4xx errors (catches scanners/bots)
       nginx-botsearch = {
         settings = {
           enabled = true;
@@ -214,10 +228,14 @@
   # This teaches fail2ban what a failed Nextcloud login looks like in the log.
   environment.etc."fail2ban/filter.d/nextcloud.conf".text = ''
     [Definition]
-    failregex = ^<HOST>.*"(GET|POST).*\/login.*" (401|403) .*$
-                ^.*Login failed: '.*' \(Remote IP: '<HOST>'\).*$
+    failregex = ^.*Login failed: '.*' \(Remote IP: '<HOST>'\).*$
     ignoreregex =
   '';
+
+  # Create the Nextcloud log file with correct ownership before Nextcloud starts
+  systemd.tmpfiles.rules = [
+    "f /var/log/nextcloud.log 0640 nextcloud nextcloud -"
+  ];
 
   # ---------------------------------------------------------------------------
   # Logging

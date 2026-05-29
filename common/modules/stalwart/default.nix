@@ -183,4 +183,29 @@ in
     465
     993
   ];
+
+  # ---------------------------------------------------------------------------
+  # Fail2ban — brute-force protection for mail ports
+  # ---------------------------------------------------------------------------
+  # Reads Stalwart's systemd journal entries for authentication failures.
+  # Verify the regex against `journalctl -u stalwart` after first deploy and
+  # adjust if Stalwart's log format differs from the pattern below.
+
+  services.fail2ban.jails.stalwart = {
+    settings = {
+      enabled = true;
+      filter = "stalwart";
+      backend = "systemd";
+      journalmatch = "_SYSTEMD_UNIT=stalwart.service";
+      port = "25,465,993";
+      maxretry = 5;
+      bantime = "1h";
+    };
+  };
+
+  environment.etc."fail2ban/filter.d/stalwart.conf".text = ''
+    [Definition]
+    failregex = Authentication failed .* from <HOST>
+    ignoreregex =
+  '';
 }
