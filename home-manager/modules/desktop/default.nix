@@ -7,6 +7,7 @@
     ../zathura
     ../kdeconnect
     ../zen-browser
+    ../nextcloud-sync
   ];
 
   home.packages = with pkgs; [
@@ -40,10 +41,5 @@
     automount = true;
     notify = true;
     tray = "auto"; # FIXME does not show
-  };
-
-  services.nextcloud-client = {
-    enable = true;
-    startInBackground = true;
   };
 }

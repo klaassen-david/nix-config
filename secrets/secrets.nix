@@ -8,6 +8,7 @@ let
     "stalwart-nextcloud-pass.age"
     "nextcloud-admin-pass.age"
     "nextcloud-general.age"
+    "nextcloud-cmd.age"
     "oauth2-client-secret.age"
     "oauth2-cookie-secret.age"
   ];
