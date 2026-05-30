@@ -54,11 +54,7 @@ in
   # local-side pushes: react quickly to local edits. the sync journal db is
   # rewritten on every sync, so it must be ignored or each sync retriggers itself.
   systemd.user.services.nextcloud-cmd-watch = {
-    Unit = {
-      Description = "Watch ~/sync and trigger nextcloudcmd on change";
-      After = [ "sway-session.target" ];
-      PartOf = [ "sway-session.target" ];
-    };
+    Unit.Description = "Watch ~/sync and trigger nextcloudcmd on change";
     Service = {
       ExecStartPre = "${pkgs.coreutils}/bin/mkdir -p ${localDir}";
       ExecStart = ''
@@ -71,6 +67,6 @@ in
       '';
       Restart = "on-failure";
     };
-    Install.WantedBy = [ "sway-session.target" ];
+    Install.WantedBy = [ "default.target" ];
   };
 }
