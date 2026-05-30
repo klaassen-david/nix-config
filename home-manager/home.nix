@@ -11,7 +11,6 @@
     ./modules/fish
     ./modules/ghostty
     # ./modules/tmux
-    ./modules/sway
     ./modules/yazi
     # ./modules/zellij
     ./modules/git

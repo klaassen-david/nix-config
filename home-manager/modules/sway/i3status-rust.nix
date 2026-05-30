@@ -1,4 +1,9 @@
-{ pkgs, host, ... }:
+{
+  pkgs,
+  host,
+  lib,
+  ...
+}:
 {
   home.packages = with pkgs; [
     iwgtk
@@ -151,16 +156,13 @@
         };
         icons = "material-nf";
         blocks =
-          if host == "hermes" then
-            common
-            ++ [
-              bluetooth
-              battery
-              chargeLimit
-              powerProfiles
-            ]
-          else
-            common ++ [ ];
+          common
+          ++ lib.optionals host.capabilities.bluetooth [ bluetooth ]
+          ++ lib.optionals host.capabilities.battery [
+            battery
+            chargeLimit
+            powerProfiles
+          ];
       };
   };
 }

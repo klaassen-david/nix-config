@@ -4,6 +4,8 @@
 }:
 
 {
+  imports = [ ./host.nix ];
+
   nix.settings.experimental-features = [
     "nix-command"
     "flakes"

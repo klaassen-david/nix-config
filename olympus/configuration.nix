@@ -5,8 +5,6 @@
 }:
 
 {
-  system.stateVersion = "25.05";
-
   imports = [
     ./hardware-configuration.nix
     ./disko.nix
@@ -15,9 +13,11 @@
     ../common/modules/stalwart
   ];
 
-  boot.loader.grub.enable = true;
-
-  networking = {
+  host = {
     hostName = "olympus";
+    role = "vps";
+    stateVersion = "25.05";
   };
+
+  boot.loader.grub.enable = true;
 }

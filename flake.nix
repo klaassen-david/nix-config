@@ -51,8 +51,11 @@
           hmModules ? [ ], # extra home-manager modules for this host
         }:
         let
+          # `host` (the hostname string) only selects the per-host config path below;
+          # the evaluated `config.host` struct is forwarded to home-manager from
+          # common/host.nix, so it is intentionally not passed as a specialArg here.
           sharedArgs = {
-            inherit inputs host;
+            inherit inputs;
             secretsPath = ./secrets;
           };
         in

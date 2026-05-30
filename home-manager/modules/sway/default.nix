@@ -5,16 +5,11 @@
   ...
 }:
 
-let
-  mainDisplay = if host == "hestia" then "DP-3" else "eDP-1";
-in
 {
   imports = [
     ./kanshi.nix
     ./i3status-rust.nix
   ];
-
-  _module.args.mainDisplay = mainDisplay;
 
   wayland.windowManager.sway = {
     enable = true;
@@ -33,7 +28,7 @@ in
           export GDK_BACKEND=wayland     # For GTK apps
         '';
         hostSpecific =
-          if host == "hestia" then
+          if host.gpu == "nvidia" then
             ''
               export __GLX_VENDOR_LIBRARY_NAME=nvidia
               export WLR_RENDERER=vulkan
@@ -134,23 +129,19 @@ in
               XDG_CURRENT_DESKTOP=sway \
               WAYLAND_DISPLAY
 
-          exec mpvpaper ${mainDisplay} /home/dk/wallpaper/current --mpv-options "loop" 
+          exec mpvpaper ${host.display.primary} /home/dk/wallpaper/current --mpv-options "loop" 
 
           exec wl-gammarelay-rs run 2>> /home/dk/logs/wl-gammarelay-rs
 
           exec swaync
         '';
+        # workspace->output pinning moved to kanshi profile exec (topology-dependent);
+        # lid handling stays here (laptop input behavior, not display topology)
         hostSpecific =
-          if host == "hestia" then
+          if host.role == "laptop" then
             ''
-              workspace 1 output DP-1
-              workspace 2 output ${mainDisplay}
-              workspace 3 output HDMI-A-1
-            ''
-          else if host == "hermes" then
-            ''
-              bindswitch --reload --locked lid:on output ${mainDisplay} disable
-              bindswitch --reload --locked lid:off output ${mainDisplay} enable
+              bindswitch --reload --locked lid:on output ${host.display.primary} disable
+              bindswitch --reload --locked lid:off output ${host.display.primary} enable
             ''
           else
             "";
@@ -177,7 +168,7 @@ in
     enable = true;
     settings = {
       font = "${pkgs.nerd-fonts.fira-code.outPath}/share/fonts/truetype/NerdFonts/FiraCode/FiraCodeNerdFontMono-Regular.ttf";
-      output = mainDisplay;
+      output = host.display.primary;
       matching-algorithm = "fuzzy";
       width = "100%";
       height = "100%";

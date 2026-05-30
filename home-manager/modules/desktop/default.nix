@@ -2,6 +2,7 @@
 
 {
   imports = [
+    ../sway
     ../firefox
     ../zathura
     ../kdeconnect
@@ -38,7 +39,7 @@
     enable = true;
     automount = true;
     notify = true;
-    tray = "auto"; # shows in swaybar tray
+    tray = "auto"; # FIXME does not show
   };
 
   services.nextcloud-client = {
