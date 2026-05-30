@@ -185,27 +185,13 @@ in
   ];
 
   # ---------------------------------------------------------------------------
-  # Fail2ban — brute-force protection for mail ports
+  # Brute-force protection
   # ---------------------------------------------------------------------------
-  # Reads Stalwart's systemd journal entries for authentication failures.
-  # Verify the regex against `journalctl -u stalwart` after first deploy and
-  # adjust if Stalwart's log format differs from the pattern below.
-
-  services.fail2ban.jails.stalwart = {
-    settings = {
-      enabled = true;
-      filter = "stalwart";
-      backend = "systemd";
-      journalmatch = "_SYSTEMD_UNIT=stalwart.service";
-      port = "25,465,993";
-      maxretry = 5;
-      bantime = "1h";
-    };
-  };
-
-  environment.etc."fail2ban/filter.d/stalwart.conf".text = ''
-    [Definition]
-    failregex = Authentication failed .* from <HOST>
-    ignoreregex =
-  '';
+  # No external fail2ban jail here: Stalwart has its own built-in auto-ban that
+  # tracks auth failures across SMTP/IMAP/JMAP and drops connections at the
+  # application layer (it does not touch the firewall). It also bans by account
+  # name, not just IP. Configure thresholds under Settings -> Server -> Security
+  # in the web admin (authBanRate / authBanPeriod); default is 100 failures/day.
+  # External log-based fail2ban is unreliable here anyway — Stalwart logs auth
+  # failures below the journal's default level, so there is nothing to match.
 }
