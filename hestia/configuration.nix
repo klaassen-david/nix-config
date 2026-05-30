@@ -19,6 +19,17 @@
     display.primary = "DP-3";
   };
 
+  # games library on the second NVMe — mount by UUID so it survives the
+  # nvme0/nvme1 enumeration swap; nofail keeps boot going if the disk is absent.
+  fileSystems."/mnt/games" = {
+    device = "/dev/disk/by-uuid/458b8b57-edd0-4426-bf5e-6d06543c46b0";
+    fsType = "ext4";
+    options = [
+      "nofail"
+      "x-systemd.device-timeout=5s"
+    ];
+  };
+
   # Bootloader
   boot.loader = {
     systemd-boot.enable = true;

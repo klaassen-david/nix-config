@@ -17,7 +17,9 @@ for all 3 configs, maybe via nextcloud.dklaassen.de
   - the "unlock for the plugin" worry: the extension can only talk to KeePassXC while the db is **unlocked**. options: unlock manually per session, keep the db keyfile inside the gnome-keyring that PAM already unlocked at login, or KeePassXC Quick-Unlock. on hermes the `fprintd` fingerprint could gate that unlock.
 ## automount on hestia
 - `if sudo mount -o rw /dev/nvme1n1p3 /mnt/games/; ; else; sudo mount -o rw /dev/nvme0n1p3 /mnt/games/; end`
-## nextcloud mail: show preview of attachments?
+## nextcloud mail
+- show preview of attachments
+- stop marking every mail as important
 
 # Quality of Life
 ## self-hosted binary cache (attic on olympus)
