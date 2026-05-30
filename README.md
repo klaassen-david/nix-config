@@ -7,9 +7,18 @@ for all 3 configs, maybe via nextcloud.dklaassen.de
 - currently the pc does is recognized by nextcloud after startup
 -- the webui shows >20 sessions, although only 2 pcs and 1 phone ever connected to the nextcloud instance successfully
 ## keyring
-- some keyring
-- password manager syncs passwords via nextcloud
-- browser integration, but with keyring unlock for the plugin?
+- two layers usually conflated: (1) the OS **Secret Service** (`org.freedesktop.secrets` over D-Bus) that apps read/write tokens from, and (2) the **password manager** you interact with. decide each separately.
+- Secret Service layer — pick a provider and auto-unlock it at login:
+  - `gnome-keyring` is the path of least resistance on sway: `services.gnome.gnome-keyring.enable`, run as a session daemon (`--components=secrets,ssh`), unlocked by the login password via `pam_gnome_keyring` in the **greetd** PAM service (`security.pam.services.greetd.enableGnomeKeyring = true`). stays open for the rest of the session.
+  - alternative: let **KeePassXC** be the Secret Service provider (its "Secret Service Integration" setting), collapsing layers (1) and (2) into one app — at the cost of KeePassXC having to be unlocked before *anything* can fetch a secret.
+- likely fixes the separate "nextcloud-desktop asks for auth on every startup" item: nextcloud-client stores its token in the Secret Service, so with no running/unlocked keyring it can't persist it, re-prompts, and spawns a fresh session each time (→ the >20 phantom sessions). NetworkManager wifi secrets and Thunderbird have the same dependency.
+- password-manager layer — three coherent options:
+  - **KeePassXC + nextcloud-client**: the `.kdbx` lives in the synced nextcloud folder, opened locally. matches the original "syncs via nextcloud" note. risk: editing on two hosts at once → sync-conflict copies of the db.
+  - **Vaultwarden on olympus**: self-host (olympus already runs nextcloud + stalwart behind nginx), use Bitwarden clients. real multi-device sync, no file-conflict risk; costs one more service + an agenix-managed admin token.
+  - the desktop module currently ships **Proton Pass**, which syncs via Proton's servers (not nextcloud) — so it doesn't fit the "via nextcloud" goal; keep it or replace it.
+- browser integration:
+  - KeePassXC → `keepassxc-browser` over native messaging (enable the native-messaging host + the zen/firefox extension); Vaultwarden → the Bitwarden extension pointed at olympus.
+  - the "unlock for the plugin" worry: the extension can only talk to KeePassXC while the db is **unlocked**. options: unlock manually per session, keep the db keyfile inside the gnome-keyring that PAM already unlocked at login, or KeePassXC Quick-Unlock. on hermes the `fprintd` fingerprint could gate that unlock.
 ## automount on hestia
 - `if sudo mount -o rw /dev/nvme1n1p3 /mnt/games/; ; else; sudo mount -o rw /dev/nvme0n1p3 /mnt/games/; end`
 

@@ -27,6 +27,10 @@
 
   nixpkgs.config.allowUnfree = true;
 
+  # decrypt agenix secrets with the shared user key (present on every host),
+  # so a single recipient (id_priv) in secrets.nix covers all machines.
+  age.identityPaths = [ "/home/dk/.ssh/id_priv" ];
+
   programs.ccache.enable = true;
   nix.settings.extra-sandbox-paths = [ "/var/cache/ccache" ];
 

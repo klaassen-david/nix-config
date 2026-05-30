@@ -64,6 +64,7 @@
           specialArgs = sharedArgs;
           modules = [
             ./${host}/configuration.nix
+            agenix.nixosModules.default
             home-manager.nixosModules.home-manager
             {
               home-manager = {
@@ -85,7 +86,6 @@
           host = "olympus";
           hostModules = [
             disko.nixosModules.disko
-            agenix.nixosModules.default
           ];
           hmModules = [ ];
         };
