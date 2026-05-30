@@ -73,4 +73,12 @@
     enable = true;
     enableFishIntegration = true;
   };
+
+  # Re-exec into fish inside nix-shell / nix shell / nix develop (which all
+  # otherwise drop you into bash). Runs after the env is set up, so PATH and
+  # dev tools are intact. Unlike any-nix-shell, this also covers `nix develop`.
+  programs.nix-your-shell = {
+    enable = true;
+    enableFishIntegration = true;
+  };
 }

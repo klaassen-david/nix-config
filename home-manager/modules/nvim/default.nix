@@ -147,6 +147,15 @@
           end
         '';
       }
+      {
+        event = [
+          "BufRead"
+          "BufNewFile"
+        ];
+        pattern = [ "*.age" ];
+        desc = "Don't append a trailing newline to agenix secrets";
+        command = "setlocal noeol nofixeol";
+      }
     ];
 
     plugins = {
