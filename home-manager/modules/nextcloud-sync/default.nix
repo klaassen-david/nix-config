@@ -1,15 +1,18 @@
 {
   pkgs,
   config,
-  osConfig,
+  inputs,
+  secretsPath,
   ...
 }:
 let
   serverUrl = "https://nextcloud.dklaassen.de";
   localDir = "${config.home.homeDirectory}/sync";
   ncUser = "dk";
-  # decrypted app password (tmpfs, mode 0400, owner dk) — declared in common/desktop.nix
-  credPath = osConfig.age.secrets.nextcloud-cmd.path;
+  # decrypted app password — agenix-home decrypts it into $XDG_RUNTIME_DIR/agenix
+  # (user tmpfs, mode 0400) via the per-user agenix.service. the path string still
+  # contains the literal $XDG_RUNTIME_DIR, expanded at runtime in the script below.
+  credPath = config.age.secrets.nextcloud-cmd.path;
 
   # flock so the timer and the file-watcher can never run two sync engines at
   # once (concurrent nextcloudcmd on one folder corrupts the sync journal).
@@ -30,8 +33,22 @@ let
   '';
 in
 {
+  imports = [ inputs.agenix.homeManagerModules.default ];
+
+  # default identityPaths are id_ed25519/id_rsa; the shared user key is id_priv.
+  age.identityPaths = [ "${config.home.homeDirectory}/.ssh/id_priv" ];
+  age.secrets.nextcloud-cmd = {
+    file = "${secretsPath}/nextcloud-cmd.age";
+    mode = "0400";
+  };
+
   systemd.user.services.nextcloud-cmd = {
-    Unit.Description = "Headless Nextcloud sync of ~/sync via nextcloudcmd";
+    Unit = {
+      Description = "Headless Nextcloud sync of ~/sync via nextcloudcmd";
+      # agenix.service decrypts the app password into $XDG_RUNTIME_DIR at session
+      # start; order after it so a boot-time sync never races the decryption.
+      After = [ "agenix.service" ];
+    };
     Service = {
       Type = "oneshot";
       ExecStartPre = "${pkgs.coreutils}/bin/mkdir -p ${localDir}";

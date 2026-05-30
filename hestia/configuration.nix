@@ -33,6 +33,7 @@
   # Bootloader
   boot.loader = {
     systemd-boot.enable = true;
+    systemd-boot.configurationLimit = config.host.keepGenerations;
     efi.canTouchEfiVariables = true;
     efi.efiSysMountPoint = "/boot/efi";
   };

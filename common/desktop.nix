@@ -1,20 +1,11 @@
 {
   config,
   pkgs,
-  secretsPath,
   ...
 }:
 
 {
   imports = [ ./common.nix ];
-
-  # app password for headless nextcloudcmd sync (~/sync). owned by dk so the
-  # user-session sync service can read it; lives on tmpfs under /run/agenix.
-  age.secrets.nextcloud-cmd = {
-    file = "${secretsPath}/nextcloud-cmd.age";
-    owner = "dk";
-    mode = "0400";
-  };
 
   environment.systemPackages = with pkgs; [
     gparted

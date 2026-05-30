@@ -1,4 +1,5 @@
 {
+  config,
   pkgs,
   ...
 }:
@@ -23,6 +24,21 @@
       "devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw="
       "klaassen-david.cachix.org-1:JSXHnsFehuyyhJ+JZSRhJNlx1gCudEBCTMXLd4y1Tn8="
     ];
+  };
+
+  # hardlink identical store paths to reclaim disk (esp. olympus VPS).
+  nix.settings.auto-optimise-store = true;
+
+  # nh: rebuild front-end (auto closure diff via nvd on `nh os switch`) plus its
+  # own GC timer. nh.clean replaces nix.gc.automatic — running both is rejected.
+  # keep host.keepGenerations generations and anything newer than 30 days.
+  programs.nh = {
+    enable = true;
+    flake = "/home/dk/nix-config";
+    clean = {
+      enable = true;
+      extraArgs = "--keep ${toString config.host.keepGenerations} --keep-since 30d";
+    };
   };
 
   nixpkgs.config.allowUnfree = true;

@@ -15,8 +15,6 @@ for all 3 configs, maybe via nextcloud.dklaassen.de
 - browser integration:
   - KeePassXC → `keepassxc-browser` over native messaging (enable the native-messaging host + the zen/firefox extension); Vaultwarden → the Bitwarden extension pointed at olympus.
   - the "unlock for the plugin" worry: the extension can only talk to KeePassXC while the db is **unlocked**. options: unlock manually per session, keep the db keyfile inside the gnome-keyring that PAM already unlocked at login, or KeePassXC Quick-Unlock. on hermes the `fprintd` fingerprint could gate that unlock.
-## automount on hestia
-- `if sudo mount -o rw /dev/nvme1n1p3 /mnt/games/; ; else; sudo mount -o rw /dev/nvme0n1p3 /mnt/games/; end`
 ## nextcloud mail
 - show preview of attachments
 - stop marking every mail as important
@@ -73,25 +71,14 @@ for all 3 configs, maybe via nextcloud.dklaassen.de
 - olympus (mail + nextcloud) tracks nixpkgs-unstable like the desktops; consider pinning it to nixos-25.05 for fewer surprise breakages (the commented-out `nixpks.url` is a start — note the typo)
 
 # Code quality & maintainability
-## remove tracked cruft
-- `hermes/configuration.nix.bak` is committed to git — delete it
-- `home-manager.bak` backup files from `backupFileExtension` can accumulate; ignore or clean -> ignoring this
-## de-duplicate boilerplate
-- the multi-line `system.stateVersion` "Did you read the comment?" block is duplicated verbatim in hermes + hestia — drop it
+## de-duplicate 
 - `vim` is listed in both common systemPackages and home.packages
-## formatting & linting in the devShell + CI
-- devShell only ships agenix; add `nixfmt-rfc-style`, `statix` (anti-pattern lint), `deadnix` (dead-code) — wire via treefmt
-- add a GitHub Action (no `.github/` today) running `nix flake check` + treefmt on push
 ## tidy commented-out code
 - home.nix has commented imports (tmux, zellij); desktop.nix/hestia have commented network lines — decide keep vs. delete
-## pre-commit hook
-- run nixfmt/statix/deadnix before commit so the tree stays clean
 
 # Reliability & reproducibility
 ## generations diff before switch
 - print a closure diff (`nvd diff` / `nh os switch`) as part of the rebuild workflow to see what actually changes
-## boot rollback safety
-- ensure all hosts cap `boot.loader.*.configurationLimit` so the ESP doesn't fill (esp. hestia's small `/boot/efi`)
 ## backup story for olympus state
 - nextcloud data + stalwart mail are the irreplaceable bits — declarative restic/borg backup with off-site target
 ## health checks / alerting

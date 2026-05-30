@@ -24,6 +24,12 @@ in
       description = "NixOS state version; defaults to system.stateVersion";
     };
 
+    keepGenerations = mkOption {
+      type = types.ints.positive;
+      default = 10;
+      description = "system generations to retain; caps bootloader entries and the nh clean keep-policy";
+    };
+
     capabilities = {
       wifi = mkOption {
         type = types.bool;
