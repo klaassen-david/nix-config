@@ -31,6 +31,7 @@
 
   outputs =
     {
+      self,
       nixpkgs-unstable,
       home-manager,
       zen-browser,
@@ -102,5 +103,10 @@
       devShells.x86_64-linux.default = nixpkgs-unstable.legacyPackages.x86_64-linux.mkShell {
         packages = [ agenix.packages.x86_64-linux.agenix ];
       };
+
+      # `nix flake check` builds every host's toplevel — catches eval/build breakage before deploy
+      checks.x86_64-linux = nixpkgs-unstable.lib.mapAttrs (
+        _: cfg: cfg.config.system.build.toplevel
+      ) self.nixosConfigurations;
     };
 }
