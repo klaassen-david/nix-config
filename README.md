@@ -18,6 +18,9 @@ for all 3 configs, maybe via nextcloud.dklaassen.de
 ## nextcloud mail
 - show preview of attachments
 - stop marking every mail as important
+## switching terminal CTRL+SHIFT+F2 makes sway bar disappear
+## switching configurations takes very long
+- I think since adding agenix to hm, but unsure
 
 # Quality of Life
 ## self-hosted binary cache (attic on olympus)

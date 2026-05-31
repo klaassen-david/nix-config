@@ -9,19 +9,43 @@ let
   # bar/tray/workspace placement is topology-dependent, so it's driven per kanshi
   # profile via `exec` (see below) rather than statically in the bar block.
   # each profile resets with `output *` / `tray_output *` first so state from a
-  # previously-applied profile can't leak in; commands are chained in a single
-  # swaymsg call to guarantee ordering (kanshi may run separate execs concurrently).
+  # previously-applied profile can't leak in.
   swaymsg = "${pkgs.sway}/bin/swaymsg";
+  jq = "${pkgs.jq}/bin/jq";
   # explicit, stable bar id so the exec `swaymsg bar <id> …` calls have a known handle
   barId = "bar-default";
-  # chain sway commands into one ordered swaymsg call. kanshi tokenizes the `exec`
-  # line and re-escapes spaces but NOT `;`, so handing it `swaymsg 'a; b'` directly
-  # gets split by /bin/sh into separate (bogus) commands. Wrapping in a script means
-  # kanshi only sees one space-free store-path token; the single-quoting that stops
-  # `*` globbing and `;` splitting lives inside the script where sh actually honors it.
-  barTray =
-    cmds:
-    "${pkgs.writeShellScript "kanshi-bar-tray" "${swaymsg} '${lib.concatStringsSep "; " cmds}'"}";
+
+  # build a kanshi `exec` script from a bar/tray command list and a list of workspace
+  # pins ({ ws; out; }). kanshi tokenizes the exec line and re-escapes spaces but NOT
+  # `;`, so each swaymsg call wraps its `;`-chained commands in single quotes inside a
+  # script — kanshi then only sees one space-free store-path token, and the quoting
+  # that stops `*` globbing / `;` splitting lives where sh actually honors it.
+  #
+  # bar/tray and workspace commands MUST be separate swaymsg calls: a single call that
+  # begins with `bar <id> …` leaves the parser in bar context, so trailing
+  # `workspace …` commands get mis-parsed and silently dropped.
+  #
+  # each pin both sets the assignment (honoured when the workspace is next created)
+  # AND moves the workspace now — `workspace N output X` alone is inert for an
+  # already-existing workspace, which is the common case once a session is up. moving
+  # focuses the workspace, so capture the focused workspace up front and restore it
+  # after all pins so session start doesn't yank focus to the last pin.
+  mkExec =
+    {
+      bar,
+      pins ? [ ],
+    }:
+    let
+      barLine = "${swaymsg} '${lib.concatStringsSep "; " bar}'";
+      captureFocus = "focused=$(${swaymsg} -t get_workspaces | ${jq} -r '.[] | select(.focused) | .name')";
+      pinLines = lib.concatMap (p: [
+        "${swaymsg} 'workspace ${toString p.ws} output ${p.out}'"
+        "${swaymsg} 'workspace number ${toString p.ws}; move workspace to output ${p.out}'"
+      ]) pins;
+      restoreFocus = ''[ -n "$focused" ] && ${swaymsg} "workspace \"$focused\""'';
+      lines = [ barLine ] ++ lib.optionals (pins != [ ]) ([ captureFocus ] ++ pinLines ++ [ restoreFocus ]);
+    in
+    "${pkgs.writeShellScript "kanshi-exec" (lib.concatStringsSep "\n" lines + "\n")}";
 in
 {
   wayland.windowManager.sway.extraConfig = lib.mkOrder 1500 (
@@ -73,19 +97,22 @@ in
             position = "6400,240";
           }
         ];
-        profile.exec = barTray [
+        profile.exec = mkExec {
           # bar + tray on the primary and DP-1 only
-          "bar ${barId} output *"
-          "bar ${barId} output ${host.display.primary}"
-          "bar ${barId} output DP-1"
-          "bar ${barId} tray_output *"
-          "bar ${barId} tray_output ${host.display.primary}"
-          "bar ${barId} tray_output DP-1"
-          # workspace->output pinning
-          "workspace 1 output DP-1"
-          "workspace 2 output ${host.display.primary}"
-          "workspace 3 output HDMI-A-1"
-        ];
+          bar = [
+            "bar ${barId} output *"
+            "bar ${barId} output ${host.display.primary}"
+            "bar ${barId} output DP-1"
+            "bar ${barId} tray_output *"
+            "bar ${barId} tray_output ${host.display.primary}"
+            "bar ${barId} tray_output DP-1"
+          ];
+          pins = [
+            { ws = 1; out = "DP-1"; }
+            { ws = 2; out = host.display.primary; }
+            { ws = 3; out = "HDMI-A-1"; }
+          ];
+        };
       }
 
       {
@@ -110,10 +137,12 @@ in
           }
         ];
         # bar + tray on all outputs; adjust if you want them pinned to one screen
-        profile.exec = barTray [
-          "bar ${barId} output *"
-          "bar ${barId} tray_output *"
-        ];
+        profile.exec = mkExec {
+          bar = [
+            "bar ${barId} output *"
+            "bar ${barId} tray_output *"
+          ];
+        };
       }
 
       # catch-all so switching to a laptop-only layout resets bar/tray state
@@ -126,10 +155,12 @@ in
             status = "enable";
           }
         ];
-        profile.exec = barTray [
-          "bar ${barId} output *"
-          "bar ${barId} tray_output *"
-        ];
+        profile.exec = mkExec {
+          bar = [
+            "bar ${barId} output *"
+            "bar ${barId} tray_output *"
+          ];
+        };
       }
 
     ];
