@@ -52,7 +52,7 @@
         modifier = modifier;
         menu = "tofi-run | xargs swaymsg exec --";
         startup = [
-          { command = "zen"; }
+          { command = "zen-beta"; }
         ];
 
         input = {
