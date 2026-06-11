@@ -78,11 +78,6 @@ nixos-rebuild switch --flake .#<host>  # explicit per-host
 
 ## Deploying — known gotcha
 
-`switch-to-configuration-ng` (the Rust activation tool on current unstable) can **busy-loop at 100% CPU in `block_on_jobs`** (D-Bus job-wait race) during a live `switch`/`test`, hanging the deploy with no systemd jobs pending. Workarounds:
-
-- `nixos-rebuild boot --flake .#<host>` + `reboot` — `boot` only sets the new generation as default and skips live unit reconciliation, so it never spins. Preferred for the headless VPS.
-- or set `system.switch.enableNg = false;` to fall back to the Perl implementation (if still packaged).
-
 Verify decryptability and a console/recovery path before rebooting a remote host; nothing in the base touches sshd or the WAN interface, but the SSO/oauth2-proxy units may be degraded until the Nextcloud client is wired up.
 
 ## Style

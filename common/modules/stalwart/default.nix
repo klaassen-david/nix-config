@@ -1,4 +1,11 @@
-{ config, secretsPath, sslVhost, ... }:
+{
+  config,
+  lib,
+  secretsPath,
+  sslVhost,
+  nextcloudSSO,
+  ...
+}:
 
 let
   domain = "dklaassen.de";
@@ -159,8 +166,13 @@ in
   # ---------------------------------------------------------------------------
   # nginx — proxy web admin UI
   # ---------------------------------------------------------------------------
+  # Gated by Nextcloud SSO (../nginx) like control/vpn: the admin UI can read
+  # all mail and rewrite server config, so a password alone (with only
+  # Stalwart's internal auto-ban behind it) must not be the only barrier.
+  # Stalwart's own login still applies *after* the SSO gate. Mail protocols
+  # (25/465/993) don't pass through nginx and are unaffected.
 
-  services.nginx.virtualHosts."${mailHostname}" = sslVhost // {
+  services.nginx.virtualHosts."${mailHostname}" = lib.recursiveUpdate (sslVhost // nextcloudSSO) {
     locations."/" = {
       proxyPass = "http://${adminBind}";
       extraConfig = ''
