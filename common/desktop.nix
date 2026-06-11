@@ -54,7 +54,6 @@
         ports = [
           2350 # wc3
           23756
-          5180 # wireguard
         ];
       in
       {

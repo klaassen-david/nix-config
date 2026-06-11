@@ -1,4 +1,4 @@
-{ config, secretsPath, ... }:
+{ config, secretsPath, sslVhost, ... }:
 
 let
   domain = "dklaassen.de";
@@ -11,6 +11,8 @@ let
   cred = name: "%{file:/run/credentials/stalwart.service/${name}}%";
 in
 {
+  imports = [ ../nginx ];
+
   # ---------------------------------------------------------------------------
   # Secrets
   # ---------------------------------------------------------------------------
@@ -158,11 +160,7 @@ in
   # nginx — proxy web admin UI
   # ---------------------------------------------------------------------------
 
-  services.nginx.virtualHosts."${mailHostname}" = {
-    forceSSL = true;
-    sslCertificate = config.age.secrets.ssl-fullchain.path;
-    sslCertificateKey = config.age.secrets.ssl-key.path;
-
+  services.nginx.virtualHosts."${mailHostname}" = sslVhost // {
     locations."/" = {
       proxyPass = "http://${adminBind}";
       extraConfig = ''

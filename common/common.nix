@@ -5,7 +5,11 @@
 }:
 
 {
-  imports = [ ./host.nix ];
+  imports = [
+    ./host.nix
+    # self-selects server (vps) vs on-demand client by host.role
+    ./modules/wireguard
+  ];
 
   nix.settings.experimental-features = [
     "nix-command"

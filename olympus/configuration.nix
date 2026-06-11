@@ -10,8 +10,10 @@
     ./hardware-configuration.nix
     ./disko.nix
     ../common/headless.nix
+    ../common/modules/nginx
     ../common/modules/nextcloud
     ../common/modules/stalwart
+    ../common/modules/wg-easy
   ];
 
   host = {

@@ -11,6 +11,10 @@ let
     "nextcloud-cmd.age"
     "oauth2-client-secret.age"
     "oauth2-cookie-secret.age"
+    "wg-olympus.age"
+    "wg-hermes.age"
+    "wg-hestia.age"
+    "wg-tukl.age"
   ];
 in
 builtins.listToAttrs (
