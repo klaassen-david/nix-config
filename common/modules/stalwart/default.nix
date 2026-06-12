@@ -59,7 +59,7 @@ in
     };
 
     settings = {
-      global.tracing.level = "debug";
+      global.tracing.level = "info";
 
       webadmin = {
         resource = "file://${config.services.stalwart.package.webadmin}/webadmin.zip";
@@ -172,7 +172,7 @@ in
   # Stalwart's own login still applies *after* the SSO gate. Mail protocols
   # (25/465/993) don't pass through nginx and are unaffected.
 
-  services.nginx.virtualHosts."${mailHostname}" = lib.recursiveUpdate (sslVhost // nextcloudSSO) {
+  services.nginx.virtualHosts."${mailHostname}" = lib.recursiveUpdate (sslVhost { } // nextcloudSSO) {
     locations."/" = {
       proxyPass = "http://${adminBind}";
       extraConfig = ''

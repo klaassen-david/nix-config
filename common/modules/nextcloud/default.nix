@@ -33,6 +33,8 @@
 
     hostName = "nextcloud.dklaassen.de";
     https = true;
+    # match sslVhost's HSTS max-age (1y); the module emits the header itself
+    nginx.hstsMaxAge = 31536000;
 
     config.dbtype = "pgsql";
     database.createLocally = true;
@@ -95,7 +97,10 @@
   # services.nextcloud.nginx.enable = true (above) creates the vhost skeleton;
   # we extend it here with our certificate paths.
 
-  services.nginx.virtualHosts."nextcloud.dklaassen.de" = sslVhost;
+  # hsts = false: the nixpkgs Nextcloud module already add_header's
+  # Strict-Transport-Security on this vhost (https = true), and a second copy
+  # from sslVhost would send two conflicting STS headers.
+  services.nginx.virtualHosts."nextcloud.dklaassen.de" = sslVhost { hsts = false; };
 
   # ---------------------------------------------------------------------------
   # Fail2ban — Nextcloud-specific jail

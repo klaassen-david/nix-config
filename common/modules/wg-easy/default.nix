@@ -91,7 +91,7 @@ in
 
   # Public UI behind Nextcloud SSO. nginx terminates TLS and oauth2-proxy gates
   # access before proxying to the container's localhost-bound UI.
-  services.nginx.virtualHosts."vpn.dklaassen.de" = lib.recursiveUpdate (sslVhost // nextcloudSSO) {
+  services.nginx.virtualHosts."vpn.dklaassen.de" = lib.recursiveUpdate (sslVhost { } // nextcloudSSO) {
     locations."/" = {
       proxyPass = "http://127.0.0.1:51821/";
       proxyWebsockets = true; # wg-easy UI uses websockets

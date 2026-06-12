@@ -31,10 +31,10 @@ Single source of truth per host. `hostName` drives `networking.hostName`; `role`
 
 Beyond `inputs`/`secretsPath` (specialArgs) and `host` (forwarded to HM), the **nginx module exports two `_module.args`** that service vhosts consume:
 
-- `sslVhost` — forceSSL + shared wildcard cert. TLS-only vhost: `"host" = sslVhost // { locations."/" = {...}; };`
+- `sslVhost` — a *function* `{ hsts ? true }: {...}` returning forceSSL + shared wildcard cert (+ HSTS header by default). TLS-only vhost: `"host" = sslVhost { } // { locations."/" = {...}; };`. Pass `hsts = false` when the vhost already emits Strict-Transport-Security itself (e.g. nixpkgs' Nextcloud module).
 - `nextcloudSSO` — the oauth2-proxy `auth_request` gate. SSO-gated vhost **must** use `lib.recursiveUpdate`, not `//`, because both define `locations` and a shallow merge would drop one:
   ```nix
-  "host" = lib.recursiveUpdate (sslVhost // nextcloudSSO) { locations."/" = {...}; };
+  "host" = lib.recursiveUpdate (sslVhost { } // nextcloudSSO) { locations."/" = {...}; };
   ```
 
 Any module needing these args (`nginx`, `nextcloud`, `stalwart`, `wg-easy`, `headless.nix`) **imports `../nginx`** (or `./modules/nginx`). NixOS dedups identical import paths, so multiple importers evaluate the module once — olympus importing it explicitly *and* via `headless.nix` is fine.

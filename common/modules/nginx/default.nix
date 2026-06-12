@@ -6,12 +6,25 @@
 }:
 
 let
-  # reusable forceSSL + shared-cert vhost base; exported below as a module arg
-  sslVhost = {
-    forceSSL = true;
-    sslCertificate = config.age.secrets.ssl-fullchain.path;
-    sslCertificateKey = config.age.secrets.ssl-key.path;
-  };
+  # HSTS — pin browsers to HTTPS for a year, all subdomains (everything under
+  # dklaassen.de is TLS-only). `always` so the header is also sent on 4xx/5xx.
+  hstsHeader = ''
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+  '';
+
+  # reusable forceSSL + shared-cert vhost base; exported below as a module arg.
+  # A function so callers can opt out of defaults: `sslVhost { }` is the
+  # standard TLS vhost; `sslVhost { hsts = false; }` when something else already
+  # emits Strict-Transport-Security on that vhost (e.g. nixpkgs' Nextcloud
+  # module) and a second copy would conflict.
+  sslVhost =
+    { hsts ? true }:
+    {
+      forceSSL = true;
+      sslCertificate = config.age.secrets.ssl-fullchain.path;
+      sslCertificateKey = config.age.secrets.ssl-key.path;
+    }
+    // lib.optionalAttrs hsts { extraConfig = hstsHeader; };
 
   # Per-vhost Nextcloud-SSO gate; exported below as a module arg. Spreading this
   # into a vhost makes every request pass through oauth2-proxy first: an
@@ -21,11 +34,15 @@ let
   #
   # `locations` here collides with the consumer's own `locations."/"` under a
   # shallow `//`, so combine with lib.recursiveUpdate, NOT //:
-  #   "host" = lib.recursiveUpdate (sslVhost // nextcloudSSO) {
+  #   "host" = lib.recursiveUpdate (sslVhost { } // nextcloudSSO) {
   #     locations."/" = { proxyPass = "..."; };
   #   };
   nextcloudSSO = {
+    # re-includes hstsHeader: `sslVhost { } // nextcloudSSO` is a shallow merge,
+    # so this extraConfig REPLACES sslVhost's — without the repeat, SSO-gated
+    # vhosts would silently lose HSTS.
     extraConfig = ''
+      ${hstsHeader}
       auth_request /oauth2/auth;
       error_page 401 = @redirectToAuth2ProxyLogin;
     '';
@@ -73,8 +90,8 @@ in
 
   # Consumers (nextcloud, stalwart, ...) take `sslVhost` / `nextcloudSSO` as
   # module args and spread them into their own vhost attrset:
-  #   "host" = sslVhost // { ... };                                 (TLS only)
-  #   "host" = lib.recursiveUpdate (sslVhost // nextcloudSSO) {...}; (TLS + SSO)
+  #   "host" = sslVhost { } // { ... };                                  (TLS only)
+  #   "host" = lib.recursiveUpdate (sslVhost { } // nextcloudSSO) {...}; (TLS + SSO)
   _module.args.sslVhost = sslVhost;
   _module.args.nextcloudSSO = nextcloudSSO;
 
@@ -97,17 +114,22 @@ in
 
     virtualHosts = {
       # apex serves nothing
-      "dklaassen.de" = sslVhost // {
+      "dklaassen.de" = sslVhost { } // {
         locations."/".extraConfig = "return 404;";
       };
-      # drop connections to unknown host names
+      # drop connections to unknown host names. `return 444` only covers :80;
+      # rejectSSL adds a default :443 listener that aborts the TLS handshake
+      # (ssl_reject_handshake) — without it, unknown-SNI/direct-IP HTTPS would
+      # fall through to the alphabetically first ssl vhost (auth.dklaassen.de)
+      # and expose the cert to scanners.
       "_" = {
         default = true;
+        rejectSSL = true;
         extraConfig = "return 444;";
       };
       # dedicated SSO login/callback host fronting oauth2-proxy. Every protected
       # vhost (control, vpn, ...) bounces unauthenticated requests here.
-      "auth.dklaassen.de" = sslVhost // {
+      "auth.dklaassen.de" = sslVhost { } // {
         locations."/oauth2/" = {
           proxyPass = "http://127.0.0.1:4180";
           extraConfig = ''
