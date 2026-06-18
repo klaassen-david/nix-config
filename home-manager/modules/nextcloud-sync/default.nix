@@ -14,6 +14,16 @@ let
   # contains the literal $XDG_RUNTIME_DIR, expanded at runtime in the script below.
   credPath = config.age.secrets.nextcloud-cmd.path;
 
+  # nextcloudcmd ships no default exclude list, so we supply one. .git dirs must
+  # never round-trip through the server: huge object churn and a partially-synced
+  # .git is a corrupt repo. In this format a bare name matches at any depth, and
+  # when it matches a *directory* the sync never descends — so `.git` drops the
+  # whole subtree (same mechanism the client's own defaults use for .Trashes,
+  # .stversions, .Spotlight-V100, …). It also catches a submodule's `.git` file.
+  excludeFile = pkgs.writeText "nextcloud-cmd-exclude.lst" ''
+    .git
+  '';
+
   # flock so the timer and the file-watcher can never run two sync engines at
   # once (concurrent nextcloudcmd on one folder corrupts the sync journal).
   # fd 9 has no close-on-exec, so the lock is held for nextcloudcmd's lifetime.
@@ -28,6 +38,7 @@ let
     fi
     exec ${pkgs.nextcloud-client}/bin/nextcloudcmd \
       --non-interactive --silent \
+      --exclude ${excludeFile} \
       -u ${ncUser} -p "$(cat ${credPath})" \
       ${localDir} ${serverUrl}
   '';
@@ -80,6 +91,7 @@ in
           --ignore '**/.sync_*.db*' \
           --ignore '**/._sync_*.db*' \
           --ignore '**/.owncloudsync.log*' \
+          --ignore '**/.git/**' \
           -- systemctl --user start nextcloud-cmd.service
       '';
       Restart = "on-failure";

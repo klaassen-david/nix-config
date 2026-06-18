@@ -55,6 +55,16 @@ One oauth2-proxy + one Nextcloud OAuth2 client gates all `*.dklaassen.de` vhosts
 
 `modules/wireguard` self-selects by `host.role`: `vps` runs the `olympus` server interface (`networking.wireguard.interfaces`) + NAT; clients run on-demand `wg-quick` interfaces (`autostart = false`, full-tunnel). `tukl` is the university VPN on desktops, modeled declaratively with only its private key from agenix. Per-interface keys are `wg-<host>.age`; peer public keys are inlined in the `nodes` registry.
 
+## Calendar & contacts (desktop)
+
+`home-manager/modules/calendar` is a CalDAV/CardDAV pipeline (in the desktop HM bundle only): **pimsync** syncs every Nextcloud calendar/addressbook into a local vdir, **khal** reads the calendars (the i3status next-appointment block + `ikhal`), **khard** the contacts. Built on home-manager's `accounts.{calendar,contact}` registry — one account definition feeds both the sync engine and the CLI clients.
+
+- **Calendar/contacts ≠ files.** This module is calendars/contacts only; arbitrary file sync stays in `../nextcloud-sync` (`nextcloudcmd`, Nextcloud Files/WebDAV). Same server (`nextcloud.dklaassen.de`), different protocols — complementary, both run.
+- **Secret reuse.** Auth reuses the `nextcloud-cmd` app password (declared in `../nextcloud-sync` via the **home-manager** agenix module — `inputs.agenix.homeManagerModules.default`, decrypted to `$XDG_RUNTIME_DIR/agenix`, *not* the system `/run/agenix`). No new `.age`. `passwordCommand` wraps `cat` in `sh -c` because that path string contains a literal `$XDG_RUNTIME_DIR`. The module therefore depends on `../nextcloud-sync` being in the same bundle.
+- **Multiple calendars under one account:** pimsync `extraPairDirectives = collections all` discovers them; khal `type = "discover"` loads each discovered subdir as its own calendar.
+- **`primaryCollection`** sets only khal's `default_calendar` (the target for *new* events) — it must name a real discovered subdir (`ls ~/.local/share/calendars/nextcloud/`), not the account name, and never restricts which collections load.
+- **pimsync ships no scheduler** (neither the HM module nor the nixpkgs package; the `interval` directive is daemon-only and inert under one-shot `sync`). Driven by a one-shot `pimsync sync` systemd-user service + timer, ordered after `agenix.service`. First run is manual (`pimsync sync`) to perform collection discovery before the vdir/khal show anything.
+
 ## Commands
 
 ```sh
