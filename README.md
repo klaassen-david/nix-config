@@ -1,8 +1,6 @@
 # Improvement Ideas
 ## shared shell history
 for all 3 configs, maybe via nextcloud.dklaassen.de
-## show next appointment in i3status-rust
-- pull from nextcloud calendar
 ## keyring
 - two layers usually conflated: (1) the OS **Secret Service** (`org.freedesktop.secrets` over D-Bus) that apps read/write tokens from, and (2) the **password manager** you interact with. decide each separately.
 - Secret Service layer — pick a provider and auto-unlock it at login:
@@ -19,8 +17,11 @@ for all 3 configs, maybe via nextcloud.dklaassen.de
 - show preview of attachments
 - stop marking every mail as important
 ## switching terminal CTRL+SHIFT+F2 makes sway bar disappear
-## switching configurations takes very long
-- I think since adding agenix to hm, but unsure
+## nvim in ghostty as default editor
+- xdg-open should open .txt files and similar in nvim.
+## zathura text copying does not work
+## hestia sway crashes due to libseat crashing
+- triggers an automatic restart and everything works fine after that
 
 # Quality of Life
 ## self-hosted binary cache (attic on olympus)
@@ -94,4 +95,4 @@ for all 3 configs, maybe via nextcloud.dklaassen.de
 - revisit whether it's still needed; headless keeps it strict
 ## secrets ownership audit
 - confirm every agenix secret has the tightest `owner`/`mode` it can (mail/nextcloud passwords)
-
+- check id_priv vs. host key

@@ -8,6 +8,7 @@
     ../kdeconnect
     ../zen-browser
     ../nextcloud-sync
+    ../calendar
   ];
 
   home.packages = with pkgs; [
