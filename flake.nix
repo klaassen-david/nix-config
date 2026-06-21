@@ -27,6 +27,11 @@
       url = "github:ryantm/agenix";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
+    # Neovim plugin not in nixpkgs
+    claudecode-nvim = {
+      url = "github:coder/claudecode.nvim";
+      flake = false;
+    };
   };
 
   outputs =

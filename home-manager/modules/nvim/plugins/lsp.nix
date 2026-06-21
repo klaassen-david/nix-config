@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, inputs, ... }:
 {
   home.packages = with pkgs; [
     nixfmt
@@ -35,12 +35,7 @@
       let
         claudecode-nvim = pkgs.vimUtils.buildVimPlugin {
           name = "claudecode-nvim";
-          src = pkgs.fetchFromGitHub {
-            owner = "coder";
-            repo = "claudecode.nvim";
-            rev = "main";
-            sha256 = "h8wYaWBKjKrb7hYYKYs5yUS5RI0JVFo8Emcy99YK6Qw=";
-          };
+          src = inputs.claudecode-nvim;
         };
       in
       [
