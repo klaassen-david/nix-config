@@ -1,3 +1,32 @@
+# Bugs & review findings (2026-06)
+## nextcloud → stalwart SMTP likely fails TLS verification
+- `common/modules/nextcloud/default.nix` sets `mail_smtphost = "127.0.0.1"` with `mail_smtpsecure = "ssl"`; stalwart presents the sectigo cert (valid for `mail.dklaassen.de`), so peer-name verification against `127.0.0.1` can't match
+- fix: `mail_smtphost = "mail.dklaassen.de"` (VPS has a real public IP, hairpin is fine) or a `networking.hosts` entry pointing it at 127.0.0.1
+- verify either way: send a test mail from the nextcloud admin UI
+## stale screencast output in shared desktop base
+- `common/desktop.nix` hardcodes `output_name = "DP-2"` for the wlr portal, but no host has that connector (hermes: eDP-1, hestia: DP-3)
+- derive from `host.display.primary` instead of a per-host literal in shared code
+## nextcloud-sync app password on argv
+- `home-manager/modules/nextcloud-sync/default.nix` passes `-p "$(cat ...)"`; `/proc/<pid>/cmdline` is world-readable, so any local process can read the app password while a sync runs (the in-file comment claims same-uid-only exposure, which is wrong)
+- low risk on single-user machines; `nextcloudcmd -n` (netrc) avoids it entirely
+## leftover "testing" firewall range on desktops
+- `common/desktop.nix` opens 8000–8100 TCP+UDP permanently with a literal "testing" comment — remove or justify
+## minor / cosmetic
+- hermes sets `swaylock.fprintAuth = true`, but `desktop.nix` sets `swaylock.text` directly, which overrides the generated stack — the line is a no-op (fingerprint still works via the included `login` stack)
+- `wg-easy/default.nix` comments call the host hub interface "wg0"; it's actually named `olympus` (the container-internal `-i wg0` rules are correct)
+- `nixvim.inputs.nixpkgs.follows` in `flake.nix` triggers the "Nixvim's inputs pin Nixpkgs to..." eval warning twice per host — drop the follows or set `programs.nixvim.nixpkgs.source`
+- `users.extraUsers` in `common.nix` is a deprecated alias of `users.users`; the `networkmanager`/`gamemode` groups are also granted on olympus where neither exists
+- `headless.nix` builds its firewall from empty `ranges`/`ports` lets with `mkOrder` — dead scaffolding wrapping nothing
+
+# Priorities (review 2026-06)
+ranked take on the ideas below, by value-to-effort:
+- **1. backup for olympus** — the standout: mail + nextcloud data is the only irreplaceable state in the fleet (everything else rebuilds from the flake); a VPS disk failure currently loses it permanently
+- **2. cert-expiry / health alerting** — the SSL cert is a manually rotated agenix secret with no renewal automation, and it backs all vhosts *and* stalwart's SMTP/IMAP TLS; expiry would take down mail silently. even a cron + `openssl x509 -checkend` that emails is most of the value
+- **3. stable channel for olympus** — mail server on unstable means stalwart/nextcloud major bumps land whenever a rebuild happens; tradeoff is a second nixpkgs input and slightly divergent module behavior vs. the desktops
+- **cheap one-liners, do anytime**: fstrim everywhere, zram on hermes/olympus, `documentation.nixos.enable = false` on olympus, remove (or actually wire up) the inert ccache config
+- **worth it when motivated**: stylix (the `host.theme` struct is already scaffolded for it), vaultwarden over keepassxc+sync (real sync semantics beat `.kdbx` conflict copies; olympus already has the nginx/SSO/agenix plumbing)
+- **deprioritize**: attic (cachix works today, VPS disk caveat is real), shared shell history (low payoff), `allowUnfreePredicate` (documentation value only)
+
 # Improvement Ideas
 ## shared shell history
 for all 3 configs, maybe via nextcloud.dklaassen.de
@@ -35,16 +64,10 @@ for all 3 configs, maybe via nextcloud.dklaassen.de
 ## stylix for unified theming
 - single source of truth for colorscheme/fonts/wallpaper across sway, ghostty, nvim, zathura, gtk
 - ties in with the "host struct" idea (per-host color scheme + opacity)
-## `nh` (nix-helper) as the rebuild front-end
-- nicer diff output (shows what packages change), `nh os switch`, `nh clean` for GC
-- replaces remembering long `nixos-rebuild` invocations
 ## secrets-managed wifi / known networks
 - declaratively manage networkmanager connections so a fresh install has wifi without manual setup
 
 # Performance
-## automatic store optimisation + GC
-- `nix.settings.auto-optimise-store = true` (hardlink dedup) — currently unset on all hosts
-- `nix.gc.automatic` with `options = "--delete-older-than 30d"` so stores don't grow unbounded (esp. olympus VPS disk)
 ## SSD hygiene
 - `services.fstrim.enable = true` on all hosts (none enable it today)
 - `zramSwap.enable = true` on hermes/olympus to cut swap latency / OOM risk
@@ -66,13 +89,10 @@ for all 3 configs, maybe via nextcloud.dklaassen.de
 - extract a small module that takes ports/ranges as options
 ## use `lib.mkDefault` for overridable defaults
 - hestia already needs `lib.mkForce` for networkmanager.dns — set defaults with `mkDefault` so hosts override cleanly without force
-## `nix flake check` + per-host build checks
-- add `checks` to the flake so `nix flake check` actually builds each nixosConfiguration's toplevel
-- catches eval/build breakage before deploy
 ## narrow allowUnfree
 - replace global `allowUnfree = true` with `allowUnfreePredicate` listing the specific unfree pkgs (nvidia, steam, etc.) — documents *why* unfree is needed
 ## stable channel for the server
-- olympus (mail + nextcloud) tracks nixpkgs-unstable like the desktops; consider pinning it to nixos-25.05 for fewer surprise breakages (the commented-out `nixpks.url` is a start — note the typo)
+- olympus (mail + nextcloud) tracks nixpkgs-unstable like the desktops; consider pinning it to nixos-25.05 for fewer surprise breakages (the commented-out `nixpkgs.url` in flake.nix is a start)
 
 # Code quality & maintainability
 ## de-duplicate 
@@ -81,8 +101,6 @@ for all 3 configs, maybe via nextcloud.dklaassen.de
 - home.nix has commented imports (tmux, zellij); desktop.nix/hestia have commented network lines — decide keep vs. delete
 
 # Reliability & reproducibility
-## generations diff before switch
-- print a closure diff (`nvd diff` / `nh os switch`) as part of the rebuild workflow to see what actually changes
 ## backup story for olympus state
 - nextcloud data + stalwart mail are the irreplaceable bits — declarative restic/borg backup with off-site target
 ## health checks / alerting
