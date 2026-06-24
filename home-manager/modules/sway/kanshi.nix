@@ -43,7 +43,10 @@ let
         "${swaymsg} 'workspace number ${toString p.ws}; move workspace to output ${p.out}'"
       ]) pins;
       restoreFocus = ''[ -n "$focused" ] && ${swaymsg} "workspace \"$focused\""'';
-      lines = [ barLine ] ++ lib.optionals (pins != [ ]) ([ captureFocus ] ++ pinLines ++ [ restoreFocus ]);
+      lines = [
+        barLine
+      ]
+      ++ lib.optionals (pins != [ ]) ([ captureFocus ] ++ pinLines ++ [ restoreFocus ]);
     in
     "${pkgs.writeShellScript "kanshi-exec" (lib.concatStringsSep "\n" lines + "\n")}";
 in
@@ -108,15 +111,24 @@ in
             "bar ${barId} tray_output DP-1"
           ];
           pins = [
-            { ws = 1; out = "DP-1"; }
-            { ws = 2; out = host.display.primary; }
-            { ws = 3; out = "HDMI-A-1"; }
+            {
+              ws = 1;
+              out = "DP-1";
+            }
+            {
+              ws = 2;
+              out = host.display.primary;
+            }
+            {
+              ws = 3;
+              out = "HDMI-A-1";
+            }
           ];
         };
       }
 
       {
-        profile.name = "hermes-work";
+        profile.name = "hermes-work-01";
         profile.outputs = [
           {
             criteria = "BOE 0x0BC9 Unknown";
@@ -133,6 +145,36 @@ in
             criteria = "ASUSTek COMPUTER INC ASUS VA27A S9LMTF073523";
             mode = "2560x1440";
             position = "4480,0";
+            status = "enable";
+          }
+        ];
+        # bar + tray on all outputs; adjust if you want them pinned to one screen
+        profile.exec = mkExec {
+          bar = [
+            "bar ${barId} output *"
+            "bar ${barId} tray_output *"
+          ];
+        };
+      }
+
+      {
+        profile.name = "hermes-work-02";
+        profile.outputs = [
+          {
+            criteria = "BOE 0x0BC9 Unknown";
+            position = "0,560";
+            status = "enable";
+          }
+          {
+            criteria = "BNQ BenQ MA320U ET37S01742SL0";
+            mode = "3840x2160";
+            position = "2560,0";
+            status = "enable";
+          }
+          {
+            criteria = "BNQ BenQ MA320U ET37S01390SL0";
+            mode = "3840x2160";
+            position = "6400,0";
             status = "enable";
           }
         ];
