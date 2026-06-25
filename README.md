@@ -18,6 +18,7 @@
 - `users.extraUsers` in `common.nix` is a deprecated alias of `users.users`; the `networkmanager`/`gamemode` groups are also granted on olympus where neither exists
 - `headless.nix` builds its firewall from empty `ranges`/`ports` lets with `mkOrder` — dead scaffolding wrapping nothing
 - add common tools for claude invocation
+- do not sync vim .swp files via nextcloud
 
 # Priorities (review 2026-06)
 ranked take on the ideas below, by value-to-effort:
