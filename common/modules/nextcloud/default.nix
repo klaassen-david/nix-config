@@ -56,11 +56,11 @@
       ];
 
       mail_smtpmode = "smtp";
-      mail_smtphost = "127.0.0.1";
+      mail_smtphost = "mail.dklaassen.de";
       mail_smtpport = 465;
       mail_smtpsecure = "ssl";
       mail_smtpauth = true;
-      mail_smtpname = "nextcloud@dklaassen.de";
+      mail_smtpname = "nextcloud";
       mail_from_address = "nextcloud";
       mail_domain = "dklaassen.de";
 
