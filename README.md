@@ -84,6 +84,10 @@ for all 3 configs, maybe via nextcloud.dklaassen.de
 ## trim closure / boot time
 - `documentation.nixos.enable = false` on headless olympus
 - audit whether zen-browser not following nixpkgs causes duplicate nixpkgs evals / cache misses
+## hestia: drop nvidia from the initrd to shrink boot generations
+- `hestia/configuration.nix` lists `boot.initrd.kernelModules = [ "nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm" ]`, forcing the proprietary nvidia driver into the initrd (early KMS). The 595 module embeds GSP firmware → `nvidia.ko.xz` is 82M compressed, so every generation's initrd is ~199M. The 510M ESP (`/boot/efi`) then fits only ~2 generations, which is why `host.keepGenerations` had to be dropped to 2 (otherwise the systemd-boot install fails with "No space left on device")
+- future change: remove the `boot.initrd.kernelModules` nvidia line. The driver loads in stage-2 instead, shrinking each initrd to ~30M so ~15 generations fit again — then `keepGenerations` can be raised back up
+- trade-off: loss of early KMS = one console mode-switch flicker during boot; cosmetic here since hestia has no encrypted root needing an early graphical prompt
 
 # Nix-specific optimizations
 ## factor out the duplicated firewall block

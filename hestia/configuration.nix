@@ -18,6 +18,9 @@
     gpu = "nvidia";
     display.primary = "DP-3";
     capabilities.samba = true;
+    # 510M ESP only fits ~2 kernel+initrd pairs (initrd ~198M each); the
+    # default of 10 overflows /boot/efi and breaks the systemd-boot install.
+    keepGenerations = 2;
   };
 
   # games library on the second NVMe — mount by UUID so it survives the
