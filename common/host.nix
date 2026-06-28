@@ -48,6 +48,11 @@ in
         type = types.bool;
         default = false;
       };
+      samba = mkOption {
+        type = types.bool;
+        default = false;
+        description = "run the LAN Samba file share (smbd + wsdd discovery) for Windows interop";
+      };
     };
 
     gpu = mkOption {

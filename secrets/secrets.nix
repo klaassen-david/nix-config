@@ -15,6 +15,7 @@ let
     "wg-hermes.age"
     "wg-hestia.age"
     "wg-tukl.age"
+    "smb-dk.age"
   ];
 in
 builtins.listToAttrs (

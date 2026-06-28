@@ -48,8 +48,9 @@ One oauth2-proxy + one Nextcloud OAuth2 client gates all `*.dklaassen.de` vhosts
 - **Single recipient**: every `.age` encrypts to the one `id_priv` key in `secrets/secrets.nix`; all hosts set `age.identityPaths = [ "/home/dk/.ssh/id_priv" ]`, so any host decrypts any secret at activation.
 - Add a secret = append its filename to the `files` list in `secrets.nix`, then create `secrets/<name>.age`.
 - Secret *content* is the raw value, single line (a WireGuard private key is just the base64 string — no `[Interface]`/`PrivateKey =`).
-- **The user encrypts secrets themselves** (`cd secrets && agenix -e <name>.age`). Do not run the encryption for them, and **do not read or `cat` private-key material** — model configs around `privateKeyFile`/`configFile` references instead of inlining keys. Public keys (e.g. WireGuard peer pubkeys, oauth2 `clientID`) are not secret and live in plain `.nix`.
-- `nix flake check` does **not** decrypt anything — it only evals/builds. It passes even when `.age` files are missing or undecryptable. Test decryption manually with `agenix -d <name>.age`.
+- **The user encrypts secrets themselves** (`cd secrets && agenix -e <name>.age`). Do not run the encryption for them, and **never decrypt, read, or `cat` secret material** — not WireGuard/SSL private keys, *and not passwords*, even to "verify" them. Model configs around `privateKeyFile`/`configFile`/`age.secrets.<n>.path` references instead of inlining or inspecting values. Public keys (e.g. WireGuard peer pubkeys, oauth2 `clientID`) are not secret and live in plain `.nix`.
+- `nix flake check` does **not** decrypt anything — it only evals/builds. It passes even when `.age` files are missing or undecryptable. Decryption checks (`agenix -d <name>.age`) are a **user-only** step — Claude must not run them.
+- **New `.age` files must be `git add -N`'d** (intent-to-add) or the flake won't copy them into the store and activation can't decrypt them — failure is silent until runtime (see *Verifying changes*). **Whenever the user creates a new secret, remind them to `git add -N secrets/<name>.age`.**
 
 ## WireGuard
 
@@ -75,6 +76,22 @@ nixos-rebuild switch --flake .#<host>  # explicit per-host
 ```
 
 - GC is `nh.clean` (keeps `host.keepGenerations` gens + 30d). Do **not** also enable `nix.gc.automatic` — running both is rejected.
+
+## Verifying changes
+
+The flake builds from the **git tree**, so Nix ignores untracked files entirely. After creating any *new* file (a module under `common/modules/`, a new `*.age` secret, etc.), make it visible with `git add -N <path>` — *intent-to-add*: registers the path (and its working-tree content) so Nix sees it, **without** staging it for commit. This is the one git-staging operation that's allowed automatically; never `git add` content, `git rm`, or `git commit` without explicit instruction.
+
+Forgetting `-N` fails in two different ways:
+- a new **`.nix`** file → `nix flake check` errors loudly: *"Path '…' in the repository … is not tracked by Git"*.
+- a new **`.age`** secret → **silent**: `nix flake check` still passes (it never decrypts), but at activation agenix finds no source file, so `/run/agenix/<name>` is absent and the consuming unit fails (e.g. `cat: /run/agenix/<name>: No such file or directory`).
+
+Checklist for a change that adds a secret:
+1. Append the filename to the `files` list in `secrets/secrets.nix`.
+2. `cd secrets && agenix -e <name>.age` — **the user** encrypts; content is the raw single-line value.
+3. `git add -N secrets/<name>.age` (and any new `.nix` modules) so the flake copies them into the store. **Remind the user of this step.**
+4. Verify *without decrypting*: the `.age` file exists and is now tracked — `git ls-files --error-unmatch secrets/<name>.age`. **Never run `agenix -d` / decrypt a secret yourself**; if a decryption check is wanted, it's the user's to run.
+5. `nix flake check` — eval/build every host.
+6. `nh os switch`, then `systemctl status <unit>` for any service that consumes the secret.
 
 ## Deploying — known gotcha
 

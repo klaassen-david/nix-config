@@ -9,6 +9,8 @@
     ./host.nix
     # self-selects server (vps) vs on-demand client by host.role
     ./modules/wireguard
+    # self-gates on host.capabilities.samba
+    ./modules/samba
   ];
 
   nix.settings.experimental-features = [

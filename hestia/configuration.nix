@@ -17,6 +17,7 @@
     stateVersion = "25.05";
     gpu = "nvidia";
     display.primary = "DP-3";
+    capabilities.samba = true;
   };
 
   # games library on the second NVMe — mount by UUID so it survives the
