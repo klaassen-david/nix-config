@@ -1,14 +1,7 @@
 # Bugs & review findings (2026-06)
-## nextcloud → stalwart SMTP likely fails TLS verification
-- `common/modules/nextcloud/default.nix` sets `mail_smtphost = "127.0.0.1"` with `mail_smtpsecure = "ssl"`; stalwart presents the sectigo cert (valid for `mail.dklaassen.de`), so peer-name verification against `127.0.0.1` can't match
-- fix: `mail_smtphost = "mail.dklaassen.de"` (VPS has a real public IP, hairpin is fine) or a `networking.hosts` entry pointing it at 127.0.0.1
-- verify either way: send a test mail from the nextcloud admin UI
 ## stale screencast output in shared desktop base
 - `common/desktop.nix` hardcodes `output_name = "DP-2"` for the wlr portal, but no host has that connector (hermes: eDP-1, hestia: DP-3)
 - derive from `host.display.primary` instead of a per-host literal in shared code
-## nextcloud-sync app password on argv
-- `home-manager/modules/nextcloud-sync/default.nix` passes `-p "$(cat ...)"`; `/proc/<pid>/cmdline` is world-readable, so any local process can read the app password while a sync runs (the in-file comment claims same-uid-only exposure, which is wrong)
-- low risk on single-user machines; `nextcloudcmd -n` (netrc) avoids it entirely
 ## leftover "testing" firewall range on desktops
 - `common/desktop.nix` opens 8000–8100 TCP+UDP permanently with a literal "testing" comment — remove or justify
 ## minor / cosmetic

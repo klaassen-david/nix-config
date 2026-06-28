@@ -27,8 +27,12 @@ let
   # flock so the timer and the file-watcher can never run two sync engines at
   # once (concurrent nextcloudcmd on one folder corrupts the sync journal).
   # fd 9 has no close-on-exec, so the lock is held for nextcloudcmd's lifetime.
-  # the password is read here and handed to nextcloudcmd on argv: it already
-  # sits decrypted at credPath, so argv adds only a transient same-uid exposure.
+  # the password must NOT go on argv: /proc/<pid>/cmdline is world-readable, so
+  # any local process could read it for the sync's lifetime. instead we export
+  # it into the environment — `--non-interactive` reads $NC_PASSWORD "if not set
+  # by other means" — and /proc/<pid>/environ is owner-only (0400), closing that
+  # exposure. set it inside the script (not via systemd Environment=, which would
+  # surface it in the unit metadata/journal) so it only lives in this process.
   syncScript = pkgs.writeShellScript "nextcloud-cmd-sync" ''
     set -euo pipefail
     exec 9>"$XDG_RUNTIME_DIR/nextcloud-cmd.lock"
@@ -36,10 +40,11 @@ let
       echo "nextcloud sync already running, skipping" >&2
       exit 0
     fi
+    export NC_PASSWORD="$(cat ${credPath})"
     exec ${pkgs.nextcloud-client}/bin/nextcloudcmd \
       --non-interactive --silent \
       --exclude ${excludeFile} \
-      -u ${ncUser} -p "$(cat ${credPath})" \
+      -u ${ncUser} \
       ${localDir} ${serverUrl}
   '';
 in
