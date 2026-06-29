@@ -77,10 +77,12 @@
     phpOptions."memory_limit" = "512M";
 
     # Extra apps installed declaratively.
-    # The calendar app provides CalDAV at /remote.php/dav/
+    # The calendar app provides CalDAV at /remote.php/dav/; the tasks app adds
+    # the VTODO task UI on top of it (calendar alone renders events only).
     extraApps = {
       inherit (config.services.nextcloud.package.packages.apps)
         calendar
+        tasks
         contacts
         mail
         ; # contacts pairs naturally with calendar (CardDAV)

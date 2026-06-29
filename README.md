@@ -12,7 +12,6 @@
 - `headless.nix` builds its firewall from empty `ranges`/`ports` lets with `mkOrder` — dead scaffolding wrapping nothing
 - add common tools for claude invocation
 - hermes should only turn off wifi after 3 minutes in standby
-- nextcloud calendars should support tasks
 
 # Priorities (review 2026-06)
 ranked take on the ideas below, by value-to-effort:
