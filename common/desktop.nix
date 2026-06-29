@@ -7,6 +7,11 @@
 {
   imports = [ ./common.nix ];
 
+  # Desktop hosts inherit host.capabilities.binaryCachePush = true (role != "vps"),
+  # so the nix-daemon uploads every build to the self-hosted attic cache. The push
+  # wiring lives in common/common.nix; the server and its one-time bootstrap steps
+  # are documented in common/modules/attic/default.nix.
+
   environment.systemPackages = with pkgs; [
     gparted
     kitty

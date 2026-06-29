@@ -53,6 +53,11 @@ in
         default = false;
         description = "run the LAN Samba file share (smbd + wsdd discovery) for Windows interop";
       };
+      binaryCachePush = mkOption {
+        type = types.bool;
+        default = config.host.role != "vps";
+        description = "push every freshly built store path to the self-hosted attic cache (common/modules/attic); defaults on for non-server hosts, off for the vps that hosts the cache";
+      };
     };
 
     gpu = mkOption {

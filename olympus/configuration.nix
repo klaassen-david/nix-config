@@ -14,6 +14,7 @@
     ../common/modules/nextcloud
     ../common/modules/stalwart
     ../common/modules/wg-easy
+    ../common/modules/attic
   ];
 
   host = {
