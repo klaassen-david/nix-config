@@ -97,6 +97,7 @@ in
           --ignore '**/._sync_*.db*' \
           --ignore '**/.owncloudsync.log*' \
           --ignore '**/.git/**' \
+          --ignore '**/.swp' \
           -- systemctl --user start nextcloud-cmd.service
       '';
       Restart = "on-failure";
