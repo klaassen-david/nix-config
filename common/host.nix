@@ -48,6 +48,11 @@ in
         type = types.bool;
         default = false;
       };
+      lid = mkOption {
+        type = types.bool;
+        default = false;
+        description = "has a laptop lid; gates lid-close handling (e.g. wifi-keepalive suspend delay in modules/wifi)";
+      };
       samba = mkOption {
         type = types.bool;
         default = false;
@@ -124,6 +129,10 @@ in
       {
         assertion = config.host.capabilities.battery -> config.host.role == "laptop";
         message = ''host.capabilities.battery only makes sense when host.role = "laptop"'';
+      }
+      {
+        assertion = config.host.capabilities.lid -> config.host.role == "laptop";
+        message = ''host.capabilities.lid only makes sense when host.role = "laptop"'';
       }
       {
         assertion = !(config.host.role == "vps" && config.host.gpu != "none");

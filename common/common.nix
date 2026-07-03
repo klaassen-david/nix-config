@@ -9,6 +9,8 @@
     ./host.nix
     # self-selects server (vps) vs on-demand client by host.role
     ./modules/wireguard
+    # self-gates on host.capabilities.wifi (+ lid-close keepalive on capabilities.lid)
+    ./modules/wifi
     # self-gates on host.capabilities.samba
     ./modules/samba
     # consumer side of the self-hosted attic binary cache (substituter + pull

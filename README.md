@@ -11,7 +11,7 @@
 - `users.extraUsers` in `common.nix` is a deprecated alias of `users.users`; the `networkmanager`/`gamemode` groups are also granted on olympus where neither exists
 - `headless.nix` builds its firewall from empty `ranges`/`ports` lets with `mkOrder` — dead scaffolding wrapping nothing
 - add common tools for claude invocation
-- hermes should only turn off wifi after 3 minutes in standby
+- hermes should only turn off wifi after 3 minutes in standby -> DONE now must only be gated behind the lid capability
 
 # Priorities (review 2026-06)
 ranked take on the ideas below, by value-to-effort:

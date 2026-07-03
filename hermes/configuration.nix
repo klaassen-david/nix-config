@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 {
   imports = [
     ./hardware-configuration.nix
@@ -18,6 +23,7 @@
       bluetooth = true;
       battery = true;
       fingerprint = true;
+      lid = true;
     };
   };
 
@@ -34,20 +40,6 @@
     graphics.enable = true;
   };
   services.xserver.videoDrivers = [ "amdgpu" ];
-
-  networking = {
-    wireless.enable = false;
-    wireless.iwd.settings.General.EnableNetworkConfiguration = false;
-    networkmanager = {
-      enable = true;
-      wifi = {
-        backend = "iwd";
-        powersave = false;
-        scanRandMacAddress = true;
-        macAddress = "stable";
-      };
-    };
-  };
 
   # bluetooth
   hardware.enableAllFirmware = true;
