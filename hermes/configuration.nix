@@ -98,12 +98,6 @@
     framework-tool
   ];
 
-  # fingerprint auth
-  services.fprintd.enable = true;
-  security.pam.services.sudo.fprintAuth = true;
-  security.pam.services.login.fprintAuth = true;
-  security.pam.services.swaylock.fprintAuth = true;
-
   security.wrappers.framework_tool = {
     source = "${pkgs.framework-tool}/bin/framework_tool";
     owner = "root";
