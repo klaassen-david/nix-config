@@ -137,11 +137,15 @@
         '';
         # workspace->output pinning moved to kanshi profile exec (topology-dependent);
         # lid handling stays here (laptop input behavior, not display topology)
+        # On battery hosts the lid bindswitch also pokes power-profile-reconcile
+        # (sway sees lid events reliably); reconcile reads the authoritative state,
+        # so running it on both edges — and on --reload — is fine.
+        lidReconcile = lib.optionalString host.capabilities.battery ", exec power-profile-reconcile";
         hostSpecific =
           if host.role == "laptop" then
             ''
-              bindswitch --reload --locked lid:on output ${host.display.primary} disable
-              bindswitch --reload --locked lid:off output ${host.display.primary} enable
+              bindswitch --reload --locked lid:on output ${host.display.primary} disable${lidReconcile}
+              bindswitch --reload --locked lid:off output ${host.display.primary} enable${lidReconcile}
             ''
           else
             "";

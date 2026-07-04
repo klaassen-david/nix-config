@@ -76,6 +76,18 @@ in
       description = "primary GPU vendor; selects videoDrivers, graphics extraPackages, kernel modules";
     };
 
+    # single source of truth for reading the lid state. The /proc button path and
+    # its token format are hardware-dependent, so the check lives per-host (set in
+    # <host>/configuration.nix) rather than in shared code. Forwarded to
+    # home-manager with the rest of the struct, so both the system lid handling
+    # (modules/wifi) and user-session consumers (power-profile reconcile) call the
+    # same script instead of re-deriving the grep.
+    lid_state = mkOption {
+      type = types.nullOr types.package;
+      default = null;
+      description = "executable that prints the lid state (open|closed)";
+    };
+
     # only the primary connector ("mainDisplay") lives in the struct; the full monitor
     # topology stays in kanshi.nix, keyed by EDID, and drives tray/workspace via exec
     display.primary = mkOption {
@@ -133,6 +145,10 @@ in
       {
         assertion = config.host.capabilities.lid -> config.host.role == "laptop";
         message = ''host.capabilities.lid only makes sense when host.role = "laptop"'';
+      }
+      {
+        assertion = config.host.capabilities.lid -> config.host.lid_state != null;
+        message = "host.lid_state must be set when host.capabilities.lid is true";
       }
       {
         assertion = !(config.host.role == "vps" && config.host.gpu != "none");

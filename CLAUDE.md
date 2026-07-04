@@ -15,7 +15,7 @@ Inputs track `nixpkgs-unstable` + `home-manager/master`. Unfree allowed.
 - `flake.nix` — `mkHost { host, hostModules?, hmModules? }` builds each `nixosConfigurations.<host>`. `specialArgs` passes `inputs` and `secretsPath = ./secrets`. `checks` builds every host's `system.build.toplevel`.
 - `common/` — shared base:
   - `host.nix` — defines the `host.*` options struct (see below) and `imports`-ed everywhere via `common.nix`.
-  - `common.nix` — base for *all* hosts (nix settings, user `dk`, agenix identity, fish, nh). Imports `host.nix` + `modules/wireguard`.
+  - `common.nix` — base for *all* hosts (nix settings, user `dk`, agenix identity, fish, nh, `services.fstrim` + `zramSwap` fleet-wide). Imports `host.nix` + `modules/wireguard`.
   - `headless.nix` — server base; imports `common.nix` + `modules/nginx`. Holds `control.dklaassen.de`, sshd, fail2ban.
   - `desktop.nix` — desktop base; imports `common.nix`. Sway/greetd, audio, steam, printing.
   - `modules/{nginx,nextcloud,stalwart,wg-easy,wireguard}/default.nix` — service modules.

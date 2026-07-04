@@ -45,12 +45,12 @@ lib.mkIf config.host.capabilities.wifi (
       };
 
       services.acpid.enable = true;
-      # Read the actual lid state rather than parse the event tokens (their format
-      # is hardware-dependent); LID0/state is confirmed present on the Framework.
+      # Read the actual lid state (host.lid_state) rather than parse the event
+      # tokens, whose format is hardware-dependent.
       services.acpid.handlers.lid = {
         event = "button/lid.*";
         action = ''
-          if ${pkgs.gnugrep}/bin/grep -qi closed /proc/acpi/button/lid/*/state; then
+          if [ "$(${config.host.lid_state})" = closed ]; then
             ${pkgs.systemd}/bin/systemctl start --no-block lid-suspend-delay.service
           else
             ${pkgs.systemd}/bin/systemctl stop lid-suspend-delay.service
@@ -76,7 +76,7 @@ lib.mkIf config.host.capabilities.wifi (
             # reopen; the in-loop lid poll is a belt-and-suspenders backup.
             i=0
             while [ "$i" -lt 180 ]; do
-              ${pkgs.gnugrep}/bin/grep -qi closed /proc/acpi/button/lid/*/state 2>/dev/null || exit 0
+              [ "$(${config.host.lid_state})" = closed ] || exit 0
               case "$(${pkgs.networkmanager}/bin/nmcli -t -f STATE g 2>/dev/null)" in
                 connected*) ;;
                 *) break ;;

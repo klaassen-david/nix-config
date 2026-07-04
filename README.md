@@ -11,14 +11,14 @@
 - `users.extraUsers` in `common.nix` is a deprecated alias of `users.users`; the `networkmanager`/`gamemode` groups are also granted on olympus where neither exists
 - `headless.nix` builds its firewall from empty `ranges`/`ports` lets with `mkOrder` — dead scaffolding wrapping nothing
 - add common tools for claude invocation
-- hermes should only turn off wifi after 3 minutes in standby -> DONE now must only be gated behind the lid capability
+- middle mouse button should paste selected text in the terminal
 
 # Priorities (review 2026-06)
 ranked take on the ideas below, by value-to-effort:
 - **1. backup for olympus** — the standout: mail + nextcloud data is the only irreplaceable state in the fleet (everything else rebuilds from the flake); a VPS disk failure currently loses it permanently
 - **2. cert-expiry / health alerting** — the SSL cert is a manually rotated agenix secret with no renewal automation, and it backs all vhosts *and* stalwart's SMTP/IMAP TLS; expiry would take down mail silently. even a cron + `openssl x509 -checkend` that emails is most of the value
 - **3. stable channel for olympus** — mail server on unstable means stalwart/nextcloud major bumps land whenever a rebuild happens; tradeoff is a second nixpkgs input and slightly divergent module behavior vs. the desktops
-- **cheap one-liners, do anytime**: fstrim everywhere, zram on hermes/olympus, `documentation.nixos.enable = false` on olympus, remove (or actually wire up) the inert ccache config
+- **cheap one-liners, do anytime**: `documentation.nixos.enable = false` on olympus, remove (or actually wire up) the inert ccache config
 - **worth it when motivated**: stylix (the `host.theme` struct is already scaffolded for it), vaultwarden over keepassxc+sync (real sync semantics beat `.kdbx` conflict copies; olympus already has the nginx/SSO/agenix plumbing)
 - **deprioritize**: attic (cachix works today, VPS disk caveat is real), shared shell history (low payoff), `allowUnfreePredicate` (documentation value only)
 
@@ -63,9 +63,6 @@ for all 3 configs, maybe via nextcloud.dklaassen.de
 - declaratively manage networkmanager connections so a fresh install has wifi without manual setup
 
 # Performance
-## SSD hygiene
-- `services.fstrim.enable = true` on all hosts (none enable it today)
-- `zramSwap.enable = true` on hermes/olympus to cut swap latency / OOM risk
 ## faster builds
 - set `nix.settings.max-jobs`/`cores` explicitly per host instead of defaults
   - `max-jobs` = how many derivations build concurrently; `cores` = `NIX_BUILD_CORES`, the `-j` *inside* one build. Their product can oversubscribe the CPU, so tune per host (hermes 16c, olympus 8c EPYC) to trade build-graph width against per-build parallelism.
@@ -81,6 +78,24 @@ for all 3 configs, maybe via nextcloud.dklaassen.de
 - `hestia/configuration.nix` lists `boot.initrd.kernelModules = [ "nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm" ]`, forcing the proprietary nvidia driver into the initrd (early KMS). The 595 module embeds GSP firmware → `nvidia.ko.xz` is 82M compressed, so every generation's initrd is ~199M. The 510M ESP (`/boot/efi`) then fits only ~2 generations, which is why `host.keepGenerations` had to be dropped to 2 (otherwise the systemd-boot install fails with "No space left on device")
 - future change: remove the `boot.initrd.kernelModules` nvidia line. The driver loads in stage-2 instead, shrinking each initrd to ~30M so ~15 generations fit again — then `keepGenerations` can be raised back up
 - trade-off: loss of early KMS = one console mode-switch flicker during boot; cosmetic here since hestia has no encrypted root needing an early graphical prompt
+
+# Energy usage (hermes)
+status quo: `powerManagement.enable = true` is the *only* power tuning on hermes — no platform-profile daemon, no idle management, bluetooth radio powered at boot, wifi powersave explicitly off. Roughly in order of impact:
+## platform power profiles
+- `services.power-profiles-daemon.enable = true` — switches amd-pstate EPP hints + ACPI `platform_profile` between power-saver/balanced/performance; the 7040 already runs amd-pstate in active mode (kernel ≥ 6.5 default), what's missing is anything *driving* it on AC↔battery transitions
+- alternative: TLP — more knobs (PCIe ASPM, USB autosuspend, NVMe runtime PM, battery charge thresholds) but conflicts with power-profiles-daemon; pick exactly one. ppd is what Framework recommends and is the lower-maintenance default
+## panel: amdgpu adaptive backlight (ABM)
+- `boot.kernelParams = [ "amdgpu.abmlevel=1" ]` (levels 0–4): panel-side backlight reduction with compensating contrast shift — real backlight savings for a minor color-accuracy cost; runtime-togglable via the connector's `panel_power_savings` sysfs attribute, so it can be flipped on battery only
+## radios
+- `hardware.bluetooth.powerOnBoot = false` — hermes powers the BT radio at every boot whether or not anything pairs; blueman toggles it on demand anyway
+- wifi powersave is deliberately `false` in `common/modules/wifi` (latency-spike avoidance) — worth re-measuring under iwd, or enabling it on battery only via an NM dispatcher script, instead of paying the radio cost 100% of the time
+## suspend depth: s2idle drains — consider suspend-then-hibernate
+- the 7040 Framework has no S3; suspend is s2idle, which still burns ~1%/h — the lid-close module (`common/modules/wifi`) ends in `systemctl suspend`, so a forgotten closed laptop drains for days
+- switch it to `systemctl suspend-then-hibernate` + `HibernateDelaySec` (e.g. 2h); prereqs: `boot.resumeDevice` pointed at the existing swap partition and swap ≥ RAM for the hibernation image — check the partition size first
+## measurement + housekeeping
+- `powertop` for auditing (per-device tunables, wakeup offenders); `powerManagement.powertop.enable = true` auto-applies its tunables at boot, but that includes USB autosuspend which bites input devices / BT dongles — prefer cherry-picking the tunables it suggests
+- `services.fwupd.enable = true` — Framework BIOS/EC updates regularly ship power fixes and land via LVFS; hermes has `framework-tool` but no fwupd today
+- consider importing `nixos-hardware`'s `framework-16-7040-amd` module instead of hand-rolling hardware quirks (bundles fwupd, AMD defaults, known Framework fixes) — new flake input, overlaps with existing manual settings, so diff what it sets before adopting
 
 # Nix-specific optimizations
 ## factor out the duplicated firewall block

@@ -25,6 +25,15 @@
       fingerprint = true;
       lid = true;
     };
+
+    # LID0/state is confirmed present on the Framework 16; the token is "open"/"closed".
+    lid_state = pkgs.writeShellScript "lid-state" ''
+      if ${pkgs.gnugrep}/bin/grep -qi closed /proc/acpi/button/lid/*/state 2>/dev/null; then
+        echo closed
+      else
+        echo open
+      fi
+    '';
   };
 
   # Bootloader

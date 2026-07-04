@@ -4,10 +4,80 @@
   lib,
   ...
 }:
+let
+  # Where the powerProfiles bar block records the last manually chosen profile.
+  # Same expression is inlined into both the block's click handler (the writer)
+  # and the reconcile script (the reader), so they never drift.
+  manualFile = ''"''${XDG_STATE_HOME:-$HOME/.local/state}/power-profile/manual"'';
+
+  # AC state as 0|1 (any Mains supply online). Factored out so the reconcile rule
+  # and the monitor's edge filter share one definition.
+  onAc = pkgs.writeShellScript "on-ac" ''
+    for ps in /sys/class/power_supply/*; do
+      [ "$(cat "$ps/type" 2>/dev/null)" = Mains ] || continue
+      [ "$(cat "$ps/online" 2>/dev/null)" = 1 ] && { echo 1; exit 0; }
+    done
+    echo 0
+  '';
+
+  # The one place the profile rule lives: lid closed -> power-saver (wins the
+  # closed+charging overlap), else on AC -> performance, else the last manual
+  # value. Invoked ONLY on real lid/AC transitions (the sway lid bindswitch and
+  # the monitor's AC edge filter) — never on periodic ticks, and never by the bar
+  # click. So a manual click holds until the next lid/AC transition, at which
+  # point the rule reasserts.
+  reconcile = pkgs.writeShellScriptBin "power-profile-reconcile" ''
+    set -u
+    ppctl=${pkgs.power-profiles-daemon}/bin/powerprofilesctl
+    manual=${manualFile}
+
+    lid=open
+    ${lib.optionalString host.capabilities.lid ''lid=$(${host.lid_state})''}
+
+    if [ "$lid" = closed ]; then
+      target=power-saver
+    elif [ "$(${onAc})" = 1 ]; then
+      target=performance
+    else
+      target=$(cat "$manual" 2>/dev/null || true)
+      [ -n "$target" ] || target=$("$ppctl" get)
+    fi
+
+    [ "$("$ppctl" get)" = "$target" ] || "$ppctl" set "$target"
+  '';
+in
 {
-  home.packages = with pkgs; [
-    iwgtk
-  ];
+  home.packages =
+    (with pkgs; [
+      iwgtk
+    ])
+    ++ lib.optional host.capabilities.battery reconcile;
+
+  # Reconcile at login, then on AC edges only. upower --monitor is noisy (battery
+  # ticks fire it constantly), so we re-derive AC state on each event and act only
+  # when it flips — otherwise a periodic tick would revert a value the user forced
+  # via the bar click. Lid edges come from the sway bindswitch in ../sway.
+  systemd.user.services.power-profile-reconcile = lib.mkIf host.capabilities.battery {
+    Unit = {
+      Description = "Reconcile power profile on lid/AC change (lid > AC > manual)";
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" ];
+    };
+    Service = {
+      ExecStart = pkgs.writeShellScript "power-profile-reconcile-monitor" ''
+        ${reconcile}/bin/power-profile-reconcile
+        prev=$(${onAc})
+        ${pkgs.upower}/bin/upower --monitor | while read -r _; do
+          cur=$(${onAc})
+          [ "$cur" = "$prev" ] && continue
+          prev=$cur
+          ${reconcile}/bin/power-profile-reconcile
+        done
+      '';
+      Restart = "on-failure";
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
 
   programs.i3status-rust = {
     enable = true;
@@ -150,12 +220,16 @@
               button = "left";
               update = true;
               cmd = ''
-                current=$(powerprofilesctl get)
-                case "$current" in
-                  power-saver) powerprofilesctl set balanced ;;
-                  balanced) powerprofilesctl set performance ;;
-                  performance) powerprofilesctl set power-saver ;;
+                case "$(powerprofilesctl get)" in
+                  power-saver) next=balanced ;;
+                  balanced) next=performance ;;
+                  performance) next=power-saver ;;
                 esac
+                powerprofilesctl set "$next"
+                # Record as the manual value the reconcile script restores to.
+                manual=${manualFile}
+                mkdir -p "$(dirname "$manual")"
+                printf '%s\n' "$next" > "$manual"
               '';
             }
           ];
