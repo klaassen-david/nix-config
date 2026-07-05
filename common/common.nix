@@ -38,39 +38,14 @@
   # hardlink identical store paths to reclaim disk (esp. olympus VPS).
   nix.settings.auto-optimise-store = true;
 
-  # Weekly batched TRIM on every host: all three root on SSD/NVMe (olympus VPS
-  # included), and none mount with the `discard` option, so without this the
-  # firmware never learns which blocks are free — hurting write amplification and
-  # wear over time. The timer is the low-overhead alternative to continuous discard.
   services.fstrim.enable = true;
-
-  # Compressed RAM swap on every host. Backs swap with a zstd-compressed block
-  # device instead of (or ahead of) disk: on the RAM-limited olympus VPS it buys
-  # effective headroom against OOM, on the desktops it turns swap-out into a cheap
-  # in-memory compress rather than an SSD round-trip. Defaults (50% of RAM, zstd)
-  # are fine; real disk swap still exists as the lower-priority overflow tier.
   zramSwap.enable = true;
-
-  # nh: rebuild front-end (auto closure diff via nvd on `nh os switch`) plus its
-  # own GC timer. nh.clean replaces nix.gc.automatic — running both is rejected.
-  # keep host.keepGenerations generations and anything newer than 30 days.
-  programs.nh = {
-    enable = true;
-    flake = "/home/dk/nix-config";
-    clean = {
-      enable = true;
-      extraArgs = "--keep ${toString config.host.keepGenerations} --keep-since 30d";
-    };
-  };
 
   nixpkgs.config.allowUnfree = true;
 
   # decrypt agenix secrets with the shared user key (present on every host),
   # so a single recipient (id_priv) in secrets.nix covers all machines.
   age.identityPaths = [ "/home/dk/.ssh/id_priv" ];
-
-  programs.ccache.enable = true;
-  nix.settings.extra-sandbox-paths = [ "/var/cache/ccache" ];
 
   users.extraUsers.dk = {
     isNormalUser = true;
