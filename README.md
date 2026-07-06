@@ -43,7 +43,6 @@ for all 3 configs, maybe via nextcloud.dklaassen.de
 ## switching terminal CTRL+SHIFT+F2 makes sway bar disappear
 ## nvim in ghostty as default editor
 - xdg-open should open .txt files and similar in nvim.
-## zathura text copying does not work
 ## hestia sway crashes due to libseat crashing
 - triggers an automatic restart and everything works fine after that
 
@@ -128,3 +127,103 @@ status quo: `powerManagement.enable = true` is the *only* power tuning on hermes
 ## secrets ownership audit
 - confirm every agenix secret has the tightest `owner`/`mode` it can (mail/nextcloud passwords)
 - check id_priv vs. host key
+
+# Code review findings (2026-07)
+
+## Correctness / latent bugs
+### fingerprint module is orphaned — fingerprint auth is entirely dead
+- `common/modules/fingerprint/default.nix` is **never imported**: `common.nix` imports
+`wireguard`, `wifi`, `samba`, `attic-cache` but not `fingerprint`, and nothing else pulls it in
+(verified: no `imports` entry references it anywhere).
+- Consequence: `services.fprintd.enable`, all three
+`security.pam.services.{sudo,login,swaylock}.fprintAuth`, and `hermes`'
+`capabilities.fingerprint = true` are **inert**. `fprintd` is not enabled on any host.
+- This **contradicts the 2026-06 note** ("fingerprint still works via the included `login`
+stack") — with the module unimported there is no fprintd at all, so fingerprint works nowhere.
+Fix by importing the module in `desktop.nix`/`common.nix` (then the swaylock-override nit from
+the prior review becomes real again).
+
+### `--unsupported-gpu ` flag has a trailing space
+- `home-manager/modules/sway/default.nix:19`: `extraOptions = [ "--unsupported-gpu " ]`. The
+argv token becomes `--unsupported-gpu ` (trailing space) and won't match sway's exact flag
+string — a latent break on the **nvidia tower where the flag is actually required**.
+- Also unconditional: it's applied to both desktops, yet the nvidia-specific env vars right
+below it (`default.nix:30-42`) are gated on `host.gpu == "nvidia"`. Gate the flag the same way
+(it's pointless on hermes/amdgpu).
+
+### sway execs write to dirs nothing creates
+- `sway/default.nix:134`: `exec wl-gammarelay-rs run 2>> /home/dk/logs/wl-gammarelay-rs` — no
+tmpfiles/`home.file` rule creates `/home/dk/logs`; if absent the `2>>` redirect fails and
+gammarelay (the `Ctrl/Shift+XF86MonBrightness*` keybindings) silently never starts.
+- `sway/default.nix:132`: `mpvpaper … /home/dk/wallpaper/current` depends on a hand-placed
+file and hardcodes the path (see dead `host.theme.wallpaper` below).
+
+### `initialHashedPassword` hash is committed to the repo
+- `common/common.nix:53` stores the yescrypt hash for `dk` in version control (all hosts). A
+hash is offline-crackable; if this repo is ever public that's a real exposure. Consider
+`hashedPasswordFile` via agenix.
+
+### framework_tool is setuid-root
+- `hermes/configuration.nix:110-115`: `security.wrappers.framework_tool { setuid = true;
+owner/group = root; }` grants every session full root via the EC tool. A dedicated group + udev
+rule on the EC device is the tighter grant.
+
+## Dead code & unused scaffolding
+- **`host.firewall.tcpPorts` / `host.firewall.tcpRanges`** (`host.nix:115-131`) are defined
+but **never read** (`grep host.firewall` → no consumers). Both `desktop.nix` and `headless.nix`
+build firewalls from local `let ranges/ports` instead. Either wire the struct in (this is
+exactly the "factor out the firewall block" idea, already half-built) or delete the options.
+- **`host.theme.{base16,opacity,wallpaper}`** (`host.nix:99-113`) are defined but **never
+read** anywhere; the wallpaper path is hardcoded in `sway`. Pure stylix-scaffolding — keep only
+if stylix is imminent, else it's dead surface.
+- **`headless.nix:37-49`** firewall still built from empty `ranges = []`/`ports = []` via
+`mkOrder` — dead scaffolding wrapping nothing (flagged 2026-06, still present).
+- **`fingerprint/default.nix:8`**: `lib.mkMerge [ <single-attrset> ]` — the `mkMerge` + list
+wrapper are pointless around one element (plus a stray blank line at `:15`). Collapse to
+`lib.mkIf … { … }`.
+- **Unimported module dirs**: `home-manager/modules/tmux` and `home-manager/modules/zellij`
+exist but their imports are commented out in `home.nix:13,15`. Dead files.
+- **Commented-out code** scattered: `home.nix:13,15` (tmux/zellij), `desktop/default.nix:26`
+(`# lutris`), `sway/default.nix:37-39` (nvidia env), `sway/default.nix:86-88` (old pactl
+keybinds), `common.nix:73` (`# xkb.variant`), plus the hestia/desktop network lines from the
+prior review. Decide keep-vs-delete.
+
+## Duplication & single-source-of-truth violations
+- **Keyboard layout defined in three places, two disagreeing**: `common.nix:72` `xkb.layout =
+"gb"`, `home.nix:25` `home.keyboard.layout = "gb"`, and `sway/default.nix:60` `xkb_layout =
+"gb,de,us"`. No single source.
+- **samba hardcodes `"hestia"`** for `server string`/`netbios name`
+(`samba/default.nix:28-29`) in shared code — derive from `config.host.hostName`.
+- **`networking.enableIPv6 = true`** set redundantly in both `desktop.nix:40` and
+`headless.nix:36` (it's already the NixOS default). Drop or hoist to `common.nix`.
+- **`nix.settings` split into three assignments** in `common.nix` (`:21`, `:25`, `:39`) —
+consolidate into one block.
+- **`vim`** still in both `common.nix:78` systemPackages and `home.nix:28` (flagged 2026-06,
+unresolved).
+- **kdeconnect enabled twice**: system `programs.kdeconnect.enable` (`desktop.nix:88`) already
+runs the daemon + opens the firewall; the HM `services.kdeconnect`
+(`home-manager/modules/kdeconnect`) starts a second user daemon. Confirm both are wanted or drop
+one.
+- **`"dk"` / `/home/dk`** hardcoded in ~10 spots (common, home, samba, calendar,
+nextcloud-sync). Acceptable for single-user, but there's no shared constant.
+
+## Cosmetic / minor
+- **Unused module arguments**: `olympus/configuration.nix` declares `lib`/`pkgs` (uses
+neither), `hermes/configuration.nix` declares unused `lib`, `common.nix` declares unused
+`config`. Tidy the headers.
+- **Redundant explicit defaults**: `sway/default.nix:194` `programs.i3status.enable = false`
+(already false); `checkConfig = false` (`sway:20`) has no comment explaining why validation is
+off.
+- **`home.stateVersion = "24.11"`** (`home.nix:20`) trails the hosts' `25.05` — independent by
+design, but worth a comment since the whole point elsewhere is one authoritative version.
+- **fish nits** (`fish/default.nix`): `l` and `ll` are byte-identical (`eza -l $argv`,
+`:39-44`); `mkcd` (`:50`) breaks on multiple args (`cd $argv`); `cat`→`bat`/`ls`→`eza` are
+functions that shadow the real binaries in every interactive shell.
+- **`hardware.enableAllFirmware = true`** (`hermes:54`) pulls the full unfree firmware set;
+`enableRedistributableFirmware` (already implied by the nixos-hardware framework module) is
+usually enough — diff before keeping both.
+- **`vulkan-tools`** sits in `hardware.graphics.extraPackages` (`hestia:61`) — that list is
+for driver libs, not CLI tools; belongs in `systemPackages`.
+- **`udiskie.tray = "auto"; # FIXME does not show`** (`desktop/default.nix:69`) — unresolved
+FIXME shipped as config.
+- **Trailing whitespace**: `sway/default.nix:132`, `nvim/plugins/lsp.nix:168`.
