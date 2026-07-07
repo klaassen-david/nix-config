@@ -20,12 +20,30 @@ let
     echo 0
   '';
 
-  # The one place the profile rule lives: lid closed -> power-saver (wins the
-  # closed+charging overlap), else on AC -> performance, else the last manual
-  # value. Invoked ONLY on real lid/AC transitions (the sway lid bindswitch and
-  # the monitor's AC edge filter) — never on periodic ticks, and never by the bar
-  # click. So a manual click holds until the next lid/AC transition, at which
-  # point the rule reasserts.
+  # Is any external display connected? 1 iff some DRM connector other than the
+  # internal panel (host.display.primary) reports "connected" in sysfs. Read from
+  # sysfs rather than swaymsg so it works from the login-time systemd invocation
+  # too (no SWAYSOCK required). Sysfs connector dirs are `cardN-<connector>`, so
+  # we strip the `cardN-` prefix before comparing against the primary name.
+  externalDisplay = pkgs.writeShellScript "external-display" ''
+    for c in /sys/class/drm/*/status; do
+      dir=''${c%/status}
+      name=''${dir##*/}        # cardN-<connector>, e.g. card1-eDP-1
+      name=''${name#card*-}    # strip the cardN- prefix -> eDP-1
+      [ "$name" = "${host.display.primary}" ] && continue
+      [ "$(cat "$c" 2>/dev/null)" = connected ] && { echo 1; exit 0; }
+    done
+    echo 0
+  '';
+
+  # The one place the profile rule lives: lid closed *and no external display* ->
+  # power-saver (wins the closed+charging overlap), else on AC -> performance,
+  # else the last manual value. A closed lid while docked to an external screen is
+  # a desktop session, not an on-the-go one, so it falls through to the AC/manual
+  # rule instead of dropping to power-saver. Invoked ONLY on real lid/AC
+  # transitions (the sway lid bindswitch and the monitor's AC edge filter) — never
+  # on periodic ticks, and never by the bar click. So a manual click holds until
+  # the next lid/AC transition, at which point the rule reasserts.
   reconcile = pkgs.writeShellScriptBin "power-profile-reconcile" ''
     set -u
     ppctl=${pkgs.power-profiles-daemon}/bin/powerprofilesctl
@@ -34,7 +52,7 @@ let
     lid=open
     ${lib.optionalString host.capabilities.lid ''lid=$(${host.lid_state})''}
 
-    if [ "$lid" = closed ]; then
+    if [ "$lid" = closed ] && [ "$(${externalDisplay})" = 0 ]; then
       target=power-saver
     elif [ "$(${onAc})" = 1 ]; then
       target=performance

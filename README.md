@@ -12,7 +12,6 @@
 - `headless.nix` builds its firewall from empty `ranges`/`ports` lets with `mkOrder` — dead scaffolding wrapping nothing
 - add common tools for claude invocation
 - middle mouse button should paste selected text in the terminal
-- change to slow mode on closing lid only if no other outputs are connected
 
 # Priorities (review 2026-06)
 ranked take on the ideas below, by value-to-effort:

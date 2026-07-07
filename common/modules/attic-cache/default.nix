@@ -71,11 +71,18 @@ in
   # survivors with --no-closure (filtering only $OUT_PATHS would miss nvidia/
   # initrd when they ride in as transitive deps of the system toplevel). HOME
   # points at the config rendered above; `|| true` keeps a failed upload silent.
+  #
+  # RuntimeMaxSec caps each push: attic's uploader has been observed to wedge on
+  # large closures (e.g. a rust toolchain) and sit for a day pinning >1G of RAM
+  # per stuck -j8 job. The cap makes systemd SIGTERM a runaway push instead of
+  # leaking it forever; an aborted upload is harmless (the paths just re-push on
+  # the next build that produces them, and `|| true` already swallows failures).
   nix.settings.post-build-hook = lib.mkIf config.host.capabilities.binaryCachePush (
     pkgs.writeShellScript "attic-push" ''
       set -eu
       exec ${config.systemd.package}/bin/systemd-run \
         --collect --no-block --quiet \
+        --property=RuntimeMaxSec=1800 \
         --setenv=HOME=${pushHome} \
         --setenv=OUT_PATHS="$OUT_PATHS" \
         -- ${pkgs.writeShellScript "attic-push-upload" ''
