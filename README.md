@@ -1,7 +1,4 @@
 # Bugs & review findings (2026-06)
-## stale screencast output in shared desktop base
-- `common/desktop.nix` hardcodes `output_name = "DP-2"` for the wlr portal, but no host has that connector (hermes: eDP-1, hestia: DP-3)
-- derive from `host.display.primary` instead of a per-host literal in shared code
 ## leftover "testing" firewall range on desktops
 - `common/desktop.nix` opens 8000–8100 TCP+UDP permanently with a literal "testing" comment — remove or justify
 ## minor / cosmetic

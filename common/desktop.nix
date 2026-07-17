@@ -34,7 +34,13 @@
   boot.kernelModules = [
     "v4l2loopback"
     "uinput"
+    "snd_aloop"
   ];
+  # exclusive_caps=1 makes the loopback advertise capture-only caps, without
+  # which Firefox/Chromium filter it out of the camera list.
+  boot.extraModprobeConfig = ''
+    options v4l2loopback exclusive_caps=1 card_label="Droidcam"
+  '';
 
   networking = {
     enableIPv6 = true;
@@ -109,7 +115,7 @@
     wlr.enable = true;
     wlr.settings = {
       screencast = {
-        output_name = "DP-2";
+        output_name = config.host.display.primary;
         chooser_type = "simple";
         chooser_cmd = "${pkgs.slurp}/bin/slurp -f %o -or";
       };
@@ -126,6 +132,7 @@
   programs.steam = {
     enable = true;
     protontricks.enable = true;
+    extraCompatPackages = [ pkgs.steamtinkerlaunch ];
   };
   programs.gamemode.enable = true;
   programs.gamescope = {
