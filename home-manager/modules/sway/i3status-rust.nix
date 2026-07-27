@@ -20,18 +20,22 @@ let
     echo 0
   '';
 
-  # Is any external display connected? 1 iff some DRM connector other than the
-  # internal panel (host.display.primary) reports "connected" in sysfs. Read from
-  # sysfs rather than swaymsg so it works from the login-time systemd invocation
-  # too (no SWAYSOCK required). Sysfs connector dirs are `cardN-<connector>`, so
-  # we strip the `cardN-` prefix before comparing against the primary name.
+  # Is any external display actually in use? 1 iff some DRM connector other than
+  # the internal panel (host.display.primary) is "enabled" in sysfs — i.e. part
+  # of the current modeset. We deliberately read `enabled`, not `status`: a
+  # monitor left cabled but switched off usually still keeps its EDID line
+  # powered and reads status=connected, whereas `enabled` tracks whether the
+  # compositor is genuinely driving the output. Read from sysfs rather than
+  # swaymsg so it works from the login-time systemd invocation too (no SWAYSOCK
+  # required). Sysfs connector dirs are `cardN-<connector>`, so we strip the
+  # `cardN-` prefix before comparing against the primary name.
   externalDisplay = pkgs.writeShellScript "external-display" ''
-    for c in /sys/class/drm/*/status; do
-      dir=''${c%/status}
+    for c in /sys/class/drm/*/enabled; do
+      dir=''${c%/enabled}
       name=''${dir##*/}        # cardN-<connector>, e.g. card1-eDP-1
       name=''${name#card*-}    # strip the cardN- prefix -> eDP-1
       [ "$name" = "${host.display.primary}" ] && continue
-      [ "$(cat "$c" 2>/dev/null)" = connected ] && { echo 1; exit 0; }
+      [ "$(cat "$c" 2>/dev/null)" = enabled ] && { echo 1; exit 0; }
     done
     echo 0
   '';

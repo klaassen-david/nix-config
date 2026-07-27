@@ -117,4 +117,6 @@
   services.upower = {
     enable = true;
   };
+
+  services.resolved.enable = true;
 }
