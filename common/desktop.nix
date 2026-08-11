@@ -97,7 +97,7 @@
     enable = true;
     settings = rec {
       initial_session = {
-        command = "bash -l -c 'dbus-run-session sway'";
+        command = "bash -l -c sway";
         user = "dk";
       };
       default_session = initial_session;
@@ -115,7 +115,6 @@
     wlr.enable = true;
     wlr.settings = {
       screencast = {
-        output_name = config.host.display.primary;
         chooser_type = "simple";
         chooser_cmd = "${pkgs.slurp}/bin/slurp -f %o -or";
       };
