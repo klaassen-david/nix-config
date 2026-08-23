@@ -61,6 +61,6 @@ in
     # and a total lockup stops the pets so the timer resets the box. Recovery-only
     # — a watchdog cold reset leaves no pstore dump; the panic path above is what
     # captures. 30s tolerates brief load spikes / heavy swap before resetting.
-    systemd.watchdog.runtimeTime = "30s";
+    systemd.settings.Manager.RuntimeWatchdogSec = "30s";
   };
 }
