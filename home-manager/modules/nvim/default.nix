@@ -4,6 +4,7 @@
   imports = [
     ./plugins/nvim-cmp.nix
     ./plugins/lsp.nix
+    ./plugins/lean.nix
   ];
 
   home.packages = with pkgs; [
