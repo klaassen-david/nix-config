@@ -21,6 +21,9 @@
     # 510M ESP only fits ~2 kernel+initrd pairs (initrd ~198M each); the
     # default of 10 overflows /boot/efi and breaks the systemd-boot install.
     keepGenerations = 2;
+    # recurring hard freezes (display off, fans pinned, hard reset) leave no
+    # journal — capture the next lockup's dmesg to pstore. See modules/crash-capture.
+    debug.crashCapture = true;
   };
 
   # games library on the second NVMe — mount by UUID so it survives the

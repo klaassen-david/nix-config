@@ -16,6 +16,8 @@
     # consumer side of the self-hosted attic binary cache (substituter + pull
     # auth on every host, push on binaryCachePush hosts)
     ./modules/attic-cache
+    # self-gates on host.debug.crashCapture: panic-on-hang + pstore + watchdog
+    ./modules/crash-capture
   ];
 
   nix.settings.experimental-features = [

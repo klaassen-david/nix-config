@@ -129,6 +129,16 @@ in
         );
       };
     };
+
+    # opt-in diagnostics for hard lockups: a GPU/kernel freeze flushes nothing to
+    # the journal, so this turns the hang into a panic that dumps dmesg to pstore
+    # (EFI NVRAM, survives a power-cycle) and arms the hardware watchdog. See
+    # common/modules/crash-capture.
+    debug.crashCapture = mkOption {
+      type = types.bool;
+      default = false;
+      description = "capture kernel dmesg to pstore on a hard lockup (panic-on-hang) and arm the hardware watchdog; for diagnosing GPU/kernel freezes";
+    };
   };
 
   config = {
