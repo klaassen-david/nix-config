@@ -65,6 +65,12 @@
         ports = [
           2350 # wc3
           23756
+          # LLMNR. Avahi's openFirewall already punches 5353 through, which is why
+          # `ping hermes.local` works between desktops; a bare `ping hermes` is a
+          # single-label name and goes over LLMNR instead, so the *responder* needs
+          # 5355 reachable or the query is silently dropped and the name "does not
+          # exist". systemd-resolved is already listening on it on every desktop.
+          5355
         ];
       in
       {

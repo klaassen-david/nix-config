@@ -15,6 +15,8 @@
     # ./modules/zellij
     ./modules/git
     ./modules/bash
+    # ~/.ssh/config: fleet hosts + the id_priv identity ssh will not find on its own
+    ./modules/ssh
   ];
 
   home.stateVersion = "24.11";
