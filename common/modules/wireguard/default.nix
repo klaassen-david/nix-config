@@ -96,7 +96,9 @@ in
   # networking.wireguard does NOT do this and would blackhole the handshake.
   #
   # On-demand: autostart = false. Dial in deliberately with
-  #   sudo systemctl start wg-quick-olympus   (stop to return to direct connectivity)
+  #   systemctl start wg-quick-olympus   (stop to return to direct connectivity)
+  # No sudo needed — the unit is registered in host.userManagedUnits below, which
+  # common/modules/polkit-units turns into a polkit exemption for wheel.
   # Full tunnel means DNS queries also egress via olympus; the clients' existing
   # public resolvers (1.1.1.1/8.8.8.8) keep working, so no `dns` override needed.
   networking.wg-quick.interfaces.olympus = lib.mkIf (!isServer) {
@@ -116,6 +118,12 @@ in
     ];
   };
 
+  # both client tunnels are hand-dialled, so let wheel flip them without sudo
+  host.userManagedUnits = lib.optionals (!isServer) [
+    "wg-quick-olympus.service"
+    "wg-quick-tukl.service"
+  ];
+
   # keep NetworkManager off the tunnel iface on the desktop clients
   networking.networkmanager.unmanaged = lib.mkIf (!isServer) [ "interface-name:olympus" ];
 
@@ -126,7 +134,7 @@ in
   # key is secret: it lives in agenix (wg-tukl.age) and is referenced via
   # privateKeyFile so it never lands in the Nix store. Everything else (addresses,
   # DNS, peer/endpoint) is public config inlined below. On-demand, like olympus:
-  #   sudo systemctl start wg-quick-tukl   (stop to disconnect)
+  #   systemctl start wg-quick-tukl   (stop to disconnect)
   age.secrets.wg-tukl = lib.mkIf (!isServer) {
     file = "${secretsPath}/wg-tukl.age";
     mode = "0400";

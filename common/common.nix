@@ -18,6 +18,12 @@
     ./modules/attic-cache
     # self-gates on host.debug.crashCapture: panic-on-hang + pstore + watchdog
     ./modules/crash-capture
+    # self-gates on host.capabilities.onDemandSshServer: sshd configured but never
+    # started at boot (desktops); headless.nix runs its own permanent sshd
+    ./modules/ssh-on-demand
+    # password-less systemctl start/stop for the units modules register in
+    # host.userManagedUnits (wg-quick clients, on-demand sshd)
+    ./modules/polkit-units
   ];
 
   nix.settings.experimental-features = [
