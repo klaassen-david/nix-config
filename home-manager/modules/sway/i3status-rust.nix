@@ -5,6 +5,10 @@
   ...
 }:
 let
+  # Middle-click target for the service blocks below: a live, read-only
+  # `systemctl status <unit>` in neovim. See ./unit-status-view.nix.
+  unitStatusView = pkgs.callPackage ./unit-status-view.nix { };
+
   # Where the powerProfiles bar block records the last manually chosen profile.
   # Same expression is inlined into both the block's click handler (the writer)
   # and the reconcile script (the reader), so they never drift.
@@ -73,6 +77,7 @@ in
     (with pkgs; [
       iwgtk
     ])
+    ++ [ unitStatusView ]
     ++ lib.optional host.capabilities.battery reconcile;
 
   # Reconcile at login, then on AC edges only. upower --monitor is noisy (battery
@@ -106,7 +111,28 @@ in
     bars.default =
       let
         defaultIconSize = 1024 * 11;
-        wrapIcon = icon: "<span size='${toString defaultIconSize}'>${icon}</span>";
+        # swaybar renders every block as pango markup (i3status-rs sets
+        # "markup":"pango" on each one unconditionally), so span attributes buy
+        # more than the size bump: `foreground` overrides the theme's state
+        # colour for this run of text, and `strikethrough` draws a line through
+        # the glyph. Both are honoured by the bar's font.
+        styledIcon =
+          {
+            color ? null,
+            strike ? false,
+          }:
+          icon:
+          "<span size='${toString defaultIconSize}'"
+          + lib.optionalString (color != null) " foreground='${color}'"
+          + lib.optionalString strike " strikethrough='true'"
+          + ">${icon}</span>";
+        wrapIcon = styledIcon { };
+        # on/off colours for the service blocks. The blue is solarized, i.e. the
+        # palette the `plain` theme's state colours already come from (green
+        # #859900, yellow #b58900, red #dc322f); the white matches the bar's
+        # statusline (./kanshi.nix).
+        colorOn = "#268bd2";
+        colorOff = "#ffffff";
         net = {
           block = "net";
           format = " $icon {$signal_strength $ssid |Wired connection}";
@@ -256,8 +282,59 @@ in
             }
           ];
         };
+        # on-demand sshd (common/modules/ssh-on-demand): the daemon is off at
+        # boot and flipped by hand, so the bar is the only thing that says
+        # whether the machine is currently reachable. Blue glyph = listening,
+        # struck-through white = stopped.
+        #
+        # service_status reads ActiveState off org.freedesktop.systemd1 and
+        # repaints when it changes — no `interval`, unlike the custom blocks
+        # above. It talks to the unit's D-Bus object directly, so should systemd
+        # ever unload sshd.service while it is stopped the block would error;
+        # the fallback in that case is a custom block polling
+        # `systemctl is-active`.
+        sshServer = {
+          block = "service_status";
+          service = "sshd"; # the block appends .service itself
+          active_format = " ${styledIcon { color = colorOn; } "󰣀"} ";
+          inactive_format = " ${
+             styledIcon {
+               color = colorOff;
+               strike = true;
+             } "󰣀"
+           } ";
+          # both Idle so the pango foreground above is the only thing colouring
+          # the glyph: the default inactive_state = Critical would paint an
+          # off-by-design daemon in alarm red.
+          active_state = "Idle";
+          inactive_state = "Idle";
+          click = [
+            {
+              # no sudo needed — sshd.service is in host.userManagedUnits, so
+              # common/modules/polkit-units lets wheel flip it unprivileged.
+              button = "right";
+              # the D-Bus property change already repaints the block; this only
+              # closes the gap if that signal is ever missed.
+              update = true;
+              cmd = ''
+                if systemctl is-active -q sshd; then verb=stop; else verb=start; fi
+                # a refused start is otherwise entirely silent: the glyph just
+                # stays as it was and looks like a click that did not register
+                err=$(systemctl "$verb" sshd 2>&1) \
+                  || ${pkgs.libnotify}/bin/notify-send -u critical "sshd $verb failed" "$err"
+              '';
+            }
+            {
+              button = "middle";
+              cmd = "ghostty -e ${unitStatusView}/bin/unit-status-view sshd.service";
+            }
+          ];
+        };
         common = [
           net
+        ]
+        ++ lib.optional host.capabilities.onDemandSshServer sshServer
+        ++ [
           diskSpace
           memory
           cpu

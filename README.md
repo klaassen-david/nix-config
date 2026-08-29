@@ -226,3 +226,30 @@ for driver libs, not CLI tools; belongs in `systemPackages`.
 - **`udiskie.tray = "auto"; # FIXME does not show`** (`desktop/default.nix:69`) — unresolved
 FIXME shipped as config.
 - **Trailing whitespace**: `sway/default.nix:132`, `nvim/plugins/lsp.nix:168`.
+
+# Bar follow-ups (2026-08-30)
+
+Suggestions raised alongside the `sshd` bar toggle (`sway/i3status-rust.nix`) and
+`sway/unit-status-view.nix`, deliberately *not* implemented there:
+
+- **Pin ghostty's font to the bar's**: the bar renders with `pango:FiraCode Nerd Font Propo`
+(`sway/kanshi.nix:57`), while `ghostty/default.nix:10` leaves `font-family` commented out, so
+the terminal falls back to its bundled JetBrains Mono plus *Symbols Nerd Font* for the icon
+range. Both cover the Material-Design glyphs the bar uses (verified with `ghostty +show-face`
+and against the TTF's cmap), so today they agree only by coincidence of that fallback.
+Setting `font-family = "FiraCode Nerd Font Mono"` — already installed via
+`home-manager/modules/desktop` + fontconfig — makes bar and terminal the same face, and any
+glyph that renders in one is then guaranteed in the other.
+- **Stop polling once a second**: `chargeLimit` and `powerProfiles` (`i3status-rust.nix`) run
+`interval = 1`, so each spawns a shell pipeline every second forever — on the laptop, on
+battery. i3status-rust's common `signal = N` option covers the case they actually need: raise
+`interval` to something lazy (30s+) and have the click handler end with
+`pkill -SIGRTMIN+N i3status-rs`, which repaints the block immediately after the only event
+that ever changes it. The `sshd` block avoids the issue entirely — `service_status` is D-Bus
+driven and has no interval at all.
+- **Reuse the status viewer for the wg-quick tunnels**: `unit-status-view` takes the unit as
+an argument, and the tunnels are hand-toggled units in `host.userManagedUnits` exactly like
+`sshd` (`common/modules/wireguard`, `common/modules/polkit-units`). A `service_status` block
+per client interface — same right-click toggle, same middle-click status window — is a few
+lines each, and would make "is the VPN actually up" answerable from the bar instead of from
+`systemctl`.
