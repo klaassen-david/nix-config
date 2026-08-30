@@ -28,7 +28,7 @@
 
   services.nextcloud = {
     enable = true;
-    package = pkgs.nextcloud33; # pin to a major version; update deliberately
+    package = pkgs.nextcloud34; # pin to a major version; update deliberately
     secretFile = config.age.secrets.nextcloud-general.path;
 
     hostName = "nextcloud.dklaassen.de";
