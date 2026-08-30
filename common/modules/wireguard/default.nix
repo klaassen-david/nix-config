@@ -29,20 +29,27 @@
 
 let
   subnet = "10.100.0";
+  # ULA (RFC 4193, randomly generated). The tunnel is dual-stack so a client with
+  # native IPv6 does not silently blackhole AAAA traffic into a v4-only tunnel.
+  # Egress caveat on networking.nat below.
+  subnet6 = "fdaa:e184:83f::";
   port = 51820;
   endpoint = "vpn.dklaassen.de:${toString port}";
 
   nodes = {
     olympus = {
       ip = "${subnet}.1";
+      ip6 = "${subnet6}1";
       publicKey = "8ujDiLPMOK3X0BdAWVTDWPMUOxPSnGNdFKtYD1MgxRk=";
     };
     hestia = {
       ip = "${subnet}.2";
+      ip6 = "${subnet6}2";
       publicKey = "4YGKRQjZN2l4OmoxOfvL9zAa5hVFBb3IoE6+uUGz4kk=";
     };
     hermes = {
       ip = "${subnet}.3";
+      ip6 = "${subnet6}3";
       publicKey = "bAad0LzXDbsnk4NISns3VOfWiOlmgVMc3dkWd4Z2KTM=";
     };
   };
@@ -62,26 +69,46 @@ in
   # ---------------------------------------------------------------------------
   networking.wireguard.interfaces = lib.mkIf isServer {
     olympus = {
-      ips = [ "${self.ip}/24" ];
+      ips = [
+        "${self.ip}/24"
+        "${self.ip6}/64"
+      ];
       listenPort = port;
       privateKeyFile = config.age.secrets."wg-${selfName}".path;
       peers = [
         {
           publicKey = nodes.hestia.publicKey;
-          allowedIPs = [ "${nodes.hestia.ip}/32" ];
+          allowedIPs = [
+            "${nodes.hestia.ip}/32"
+            "${nodes.hestia.ip6}/128"
+          ];
         }
         {
           publicKey = nodes.hermes.publicKey;
-          allowedIPs = [ "${nodes.hermes.ip}/32" ];
+          allowedIPs = [
+            "${nodes.hermes.ip}/32"
+            "${nodes.hermes.ip6}/128"
+          ];
         }
       ];
     };
   };
 
-  # networking.nat enables ip_forward and installs the masquerade/forward rules
-  # so client traffic (0.0.0.0/0) can egress via olympus's WAN interface.
+  # networking.nat enables forwarding and installs the masquerade/forward rules
+  # so client traffic (0.0.0.0/0, ::/0) can egress via olympus's WAN interface.
+  # enableIPv6 adds the ip6tables half plus net.ipv6.conf.*.forwarding.
+  #
+  # CAVEAT: olympus currently has NO global IPv6 on ens6 (link-local only, no v6
+  # default route) — the VPS provider has not assigned a prefix. Until it does,
+  # the v6 masquerade rule matches nothing routable and traffic to the v6
+  # internet dies at olympus with an ICMPv6 "no route", which the client sees
+  # immediately and Happy Eyeballs turns into a fast fallback to IPv4. That is
+  # the point of giving the tunnel v6 addresses at all: a v4-only tunnel that
+  # still carries ::/0 blackholes AAAA traffic silently instead. Once the
+  # provider hands olympus a prefix, full v6 egress works with no config change.
   networking.nat = lib.mkIf isServer {
     enable = true;
+    enableIPv6 = true;
     externalInterface = "ens6";
     internalInterfaces = [ "olympus" ];
   };
@@ -103,7 +130,10 @@ in
   # public resolvers (1.1.1.1/8.8.8.8) keep working, so no `dns` override needed.
   networking.wg-quick.interfaces.olympus = lib.mkIf (!isServer) {
     autostart = false;
-    address = [ "${self.ip}/24" ];
+    address = [
+      "${self.ip}/24"
+      "${self.ip6}/64"
+    ];
     privateKeyFile = config.age.secrets."wg-${selfName}".path;
     peers = [
       {

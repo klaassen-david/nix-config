@@ -26,6 +26,15 @@ in
     "${cacheName}:i+2mRKAyTgO2dXVt2bnJV6TuUdIn1sLK+vUL07dnAJY="
   ];
 
+  # A dead or unreachable attic must not brick every host's builds. Nix treats a
+  # substituter error (nginx 502, TCP timeout) as FATAL unless `fallback` is set:
+  # substitution-goal.cc stashes the exception, and once the substituter list is
+  # exhausted it rethrows — so a path that exists only in OUR cache fails the whole
+  # build instead of being built locally. With fallback it is merely logged, and
+  # http-binary-cache-store's auto-disable (gated on the same setting) sidelines the
+  # cache for 60s instead of re-timing-out on every single path.
+  nix.settings.fallback = true;
+
   # Pull auth for the PRIVATE cache. Nix authenticates to the substituter above
   # by sending the netrc password as the token (attic accepts it as the
   # Basic-auth password; the username is ignored). Deployed to EVERY host — pulls
