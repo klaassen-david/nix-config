@@ -57,7 +57,10 @@
   # so a single recipient (id_priv) in secrets.nix covers all machines.
   age.identityPaths = [ "/home/dk/.ssh/id_priv" ];
 
-  users.extraUsers.dk = {
+  # only groups that exist on every host; the ones a service creates are added
+  # where that service is enabled (networkmanager/gamemode in desktop.nix, seat
+  # with seatd on hestia, bluetooth on hermes)
+  users.users.dk = {
     isNormalUser = true;
     shell = pkgs.fish;
     initialHashedPassword = "$y$j9T$cnJaTuoqcS9wMqEV..0Ie0$/jU6CWhP4O4PUqKD.YprPkcbDVnfkc90XjarzlO6kh9";
@@ -65,11 +68,8 @@
     openssh.authorizedKeys.keyFiles = [ ./keys/id_priv.pub ];
     extraGroups = [
       "wheel"
-      "networkmanager"
-      "gamemode"
       "video"
       "render"
-      "seat"
     ];
   };
 

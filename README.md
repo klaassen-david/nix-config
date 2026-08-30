@@ -1,8 +1,5 @@
 # Bugs & review findings (2026-06)
 ## minor / cosmetic
-- `wg-easy/default.nix` comments call the host hub interface "wg0"; it's actually named `olympus` (the container-internal `-i wg0` rules are correct)
-- `nixvim.inputs.nixpkgs.follows` in `flake.nix` triggers the "Nixvim's inputs pin Nixpkgs to..." eval warning twice per host — drop the follows or set `programs.nixvim.nixpkgs.source`
-- `users.extraUsers` in `common.nix` is a deprecated alias of `users.users`; the `networkmanager`/`gamemode` groups are also granted on olympus where neither exists
 - add common tools for claude invocation
 - middle mouse button should paste selected text in the terminal
 - make notifications disappear after focusing their origin window (except firefox)

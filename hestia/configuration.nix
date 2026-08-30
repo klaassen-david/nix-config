@@ -53,6 +53,7 @@
     "nvidia_drm"
   ];
   services.seatd.enable = true;
+  users.users.dk.extraGroups = [ "seat" ];
   hardware = {
     graphics = {
       enable = true;

@@ -159,4 +159,11 @@
   };
 
   services.udisks2.enable = true;
+
+  # groups only the desktop hosts create: gamemode above, networkmanager from the
+  # wifi module (hermes) or the host itself (hestia)
+  users.users.dk.extraGroups = [
+    "networkmanager"
+    "gamemode"
+  ];
 }

@@ -6,34 +6,13 @@
 }:
 
 # ---------------------------------------------------------------------------
-# wg-easy — ad-hoc phone/guest WireGuard plane (olympus only)
+# wg-easy — the phone plane
 # ---------------------------------------------------------------------------
-# A web UI for enrolling phones/guests on the fly: it generates a keypair,
-# adds the peer, and renders a QR you scan with the WireGuard mobile app — no
-# rebuild per device. Runs on its OWN WireGuard interface, subnet and UDP port
-# so the declarative wg0 hub (../wireguard) stays untouched and managed-host
-# config never depends on wg-easy's runtime-generated server key.
-#
-# Two surfaces:
-#   - WireGuard UDP 51821  -> published publicly (phones dial in from anywhere).
-#   - Web admin UI         -> https://vpn.dklaassen.de, published publicly but
-#     gated by Nextcloud SSO (../nginx). wg-easy's own login is DISABLED; SSO is
-#     the real auth.
-#
-# Endpoint: vpn.dklaassen.de:51821 (UDP tunnel). The same name serves the UI on
-# 443. Phones are full tunnel (wg-easy's default WG_ALLOWED_IPS = 0.0.0.0/0,
-# ::/0); wg-easy NATs its own clients, so no extra host NAT entries are needed
-# beyond what wg0 already set up.
-#
-# Enrolling a phone (no rebuild — all done in the web UI):
-#   1. Browse to https://vpn.dklaassen.de and log in with your Nextcloud account
-#      (SSO; no separate wg-easy password).
-#   2. "+ New Client" -> name it. wg-easy generates the keypair, assigns the
-#      next 10.100.1.0/24 IP, and renders a QR inline.
-#   3. On the phone: WireGuard app -> + -> "Scan from QR code". The tunnel
-#      imports full-tunnel (all traffic egresses via olympus). The client row
-#      also has a .conf download button if you'd rather send the file.
-#   4. Revoke any time by deleting that client row — keys are per-client.
+# Independent of the fleet hub in ../wireguard. That one is a host interface
+# literally named `olympus` (10.100.0.0/24, UDP 51820) — the one `ip a` shows
+# here. wg-easy instead runs in a podman netns and creates its own `wg0` there
+# (10.100.1.0/24, UDP 51821), which never appears on the host. Every `wg0` and
+# `eth0` below names a *container* interface.
 
 let
   image = "ghcr.io/wg-easy/wg-easy:14"; # pinned; do not use :latest
@@ -54,7 +33,7 @@ in
     environment = {
       WG_HOST = "vpn.dklaassen.de";
       WG_PORT = "51821"; # UDP port advertised in generated client configs
-      WG_DEFAULT_ADDRESS = "10.100.1.x"; # own client subnet, separate from wg0
+      WG_DEFAULT_ADDRESS = "10.100.1.x";
       # No PASSWORD / PASSWORD_HASH: this v14 image hard-errors on PASSWORD, and with
       # neither set its own login is disabled — exactly what we want, since the real
       # gate is Nextcloud SSO in front (../nginx) and the UI binds to 127.0.0.1 only.
@@ -91,12 +70,14 @@ in
 
   # Public UI behind Nextcloud SSO. nginx terminates TLS and oauth2-proxy gates
   # access before proxying to the container's localhost-bound UI.
-  services.nginx.virtualHosts."vpn.dklaassen.de" = lib.recursiveUpdate (sslVhost { } // nextcloudSSO) {
-    locations."/" = {
-      proxyPass = "http://127.0.0.1:51821/";
-      proxyWebsockets = true; # wg-easy UI uses websockets
-    };
-  };
+  services.nginx.virtualHosts."vpn.dklaassen.de" =
+    lib.recursiveUpdate (sslVhost { } // nextcloudSSO)
+      {
+        locations."/" = {
+          proxyPass = "http://127.0.0.1:51821/";
+          proxyWebsockets = true; # wg-easy UI uses websockets
+        };
+      };
 
   # Public UDP for the phone tunnel. The web UI is not opened here — it is bound
   # to 127.0.0.1 and reached only via nginx (443, already open in ../nginx).
