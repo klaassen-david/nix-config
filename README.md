@@ -1,6 +1,5 @@
 # Bugs & review findings (2026-06)
 ## minor / cosmetic
-- add common tools for claude invocation
 - middle mouse button should paste selected text in the terminal
 - make notifications disappear after focusing their origin window (except firefox)
 - notification dismissal with right-click only works with the mouse

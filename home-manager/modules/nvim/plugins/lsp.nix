@@ -2,7 +2,6 @@
 {
   home.packages = with pkgs; [
     nixfmt
-    claude-code
   ];
 
   programs.nixvim = {
