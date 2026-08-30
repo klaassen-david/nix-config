@@ -27,8 +27,6 @@
   home.keyboard.layout = "gb";
 
   home.packages = with pkgs; [
-    vim
-
     # rust implementations
     uutils-coreutils-noprefix
 

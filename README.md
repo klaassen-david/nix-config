@@ -106,12 +106,6 @@ status quo: `powerManagement.enable = true` is the *only* power tuning on hermes
 ## stable channel for the server
 - olympus (mail + nextcloud) tracks nixpkgs-unstable like the desktops; consider pinning it to nixos-25.05 for fewer surprise breakages (the commented-out `nixpkgs.url` in flake.nix is a start)
 
-# Code quality & maintainability
-## de-duplicate 
-- `vim` is listed in both common systemPackages and home.packages
-## tidy commented-out code
-- home.nix has commented imports (tmux, zellij); desktop.nix/hestia have commented network lines — decide keep vs. delete
-
 # Reliability & reproducibility
 ## backup story for olympus state
 - nextcloud data + stalwart mail are the irreplaceable bits — declarative restic/borg backup with off-site target
@@ -191,15 +185,6 @@ prior review. Decide keep-vs-delete.
 - **Keyboard layout defined in three places, two disagreeing**: `common.nix:72` `xkb.layout =
 "gb"`, `home.nix:25` `home.keyboard.layout = "gb"`, and `sway/default.nix:60` `xkb_layout =
 "gb,de,us"`. No single source.
-- **samba hardcodes `"hestia"`** for `server string`/`netbios name`
-(`samba/default.nix:28-29`) in shared code — derive from `config.host.hostName`.
-- **`networking.enableIPv6 = true`** set redundantly in both `desktop.nix:40` and
-`headless.nix:36` (it's already the NixOS default). Drop or hoist to `common.nix`.
-- **`nix.settings` split into three assignments** in `common.nix` (`:21`, `:25`, `:39`) —
-consolidate into one block.
-- **`vim`** still in both `common.nix:78` systemPackages and `home.nix:28` (flagged 2026-06,
-unresolved).
-one.
 - **`"dk"` / `/home/dk`** hardcoded in ~10 spots (common, home, samba, calendar,
 nextcloud-sync). Acceptable for single-user, but there's no shared constant.
 
