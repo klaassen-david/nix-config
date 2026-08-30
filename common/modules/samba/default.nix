@@ -3,6 +3,7 @@
   lib,
   pkgs,
   secretsPath,
+  host,
   ...
 }:
 
@@ -25,8 +26,8 @@ lib.mkIf config.host.capabilities.samba {
     settings = {
       global = {
         "workgroup" = "200";
-        "server string" = "hestia";
-        "netbios name" = "hestia";
+        "server string" = host.hostName;
+        "netbios name" = host.hostName;
         "security" = "user";
         "map to guest" = "bad user";
         "hosts allow" = "192.168.0.0/16 10.0.0.0/8 172.16.0.0/12 127.0.0.1 localhost";
@@ -44,7 +45,7 @@ lib.mkIf config.host.capabilities.samba {
     };
   };
 
-  # makes hestia show up in the Windows "Network" view (modern Windows dropped the
+  # makes host.hostName show up in the Windows "Network" view (modern Windows dropped the
   # legacy NetBIOS browse-master that nmbd alone relied on)
   services.samba-wsdd = {
     enable = true;
