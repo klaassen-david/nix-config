@@ -89,22 +89,12 @@ status quo: `powerManagement.enable = true` is the *only* power tuning on hermes
 # Code review findings (2026-07)
 
 ## Correctness / latent bugs
-### `--unsupported-gpu ` flag has a trailing space
-- Also unconditional: it's applied to both desktops, yet the nvidia-specific env vars right
-below it (`default.nix:30-42`) are gated on `host.gpu == "nvidia"`. Gate the flag the same way
-(it's pointless on hermes/amdgpu).
-
 ### sway execs write to dirs nothing creates
 - `sway/default.nix:134`: `exec wl-gammarelay-rs run 2>> /home/dk/logs/wl-gammarelay-rs` — no
 tmpfiles/`home.file` rule creates `/home/dk/logs`; if absent the `2>>` redirect fails and
 gammarelay (the `Ctrl/Shift+XF86MonBrightness*` keybindings) silently never starts.
 - `sway/default.nix:132`: `mpvpaper … /home/dk/wallpaper/current` depends on a hand-placed
 file and hardcodes the path (see dead `host.theme.wallpaper` below).
-
-### `initialHashedPassword` hash is committed to the repo
-- `common/common.nix:53` stores the yescrypt hash for `dk` in version control (all hosts). A
-hash is offline-crackable; if this repo is ever public that's a real exposure. Consider
-`hashedPasswordFile` via agenix.
 
 ### framework_tool is setuid-root
 - `hermes/configuration.nix:110-115`: `security.wrappers.framework_tool { setuid = true;

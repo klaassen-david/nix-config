@@ -16,7 +16,7 @@
 
     wrapperFeatures.gtk = true;
     swaynag.enable = true;
-    extraOptions = [ "--unsupported-gpu " ];
+    extraOptions = lib.optional (host.gpu == "nvidia") "--unsupported-gpu";
     checkConfig = false;
     extraSessionCommands =
       let
