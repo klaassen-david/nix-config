@@ -193,6 +193,15 @@ in
       };
     };
 
+    # TLS material for the public vhosts (common/modules/acme). Off by default:
+    # only the vps terminates TLS. Flipping it back is the rollback path from
+    # ACME to the static ssl-fullchain/ssl-key pair.
+    tls.acme = mkOption {
+      type = types.bool;
+      default = false;
+      description = "renew the shared cert with ACME/HTTP-01 instead of reading the static ssl-fullchain/ssl-key secrets";
+    };
+
     # Backup fleet: one host owns a restic repository, other hosts' data is
     # pulled into it. `restic.*` is generic (mail is only its first client);
     # `mail.*` is the stalwart export/import channel in common/modules/mail-backup.

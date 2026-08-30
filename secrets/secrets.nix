@@ -3,6 +3,7 @@ let
   files = [
     "ssl-fullchain.age"
     "ssl-key.age"
+    "acme-env.age"
     "stalwart-admin-pass.age"
     "stalwart-dk-pass.age"
     "stalwart-nextcloud-pass.age"

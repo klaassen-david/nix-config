@@ -6,6 +6,12 @@
 }:
 
 let
+  domain = "dklaassen.de";
+
+  # ../acme owns the shared cert when this is on; sslVhost and tlsCert below
+  # follow it, and the static ssl-* secrets are only declared when it is off.
+  acme = config.host.tls.acme;
+
   # HSTS — pin browsers to HTTPS for a year, all subdomains (everything under
   # dklaassen.de is TLS-only). `always` so the header is also sent on 4xx/5xx.
   hstsHeader = ''
@@ -19,11 +25,18 @@ let
   # module) and a second copy would conflict.
   sslVhost =
     { hsts ? true }:
-    {
-      forceSSL = true;
-      sslCertificate = config.age.secrets.ssl-fullchain.path;
-      sslCertificateKey = config.age.secrets.ssl-key.path;
-    }
+    { forceSSL = true; }
+    // (
+      if acme then
+        # the nixpkgs nginx module fills in sslCertificate/Key from the cert
+        # directory and registers nginx.service for reload on renewal.
+        { useACMEHost = domain; }
+      else
+        {
+          sslCertificate = config.age.secrets.ssl-fullchain.path;
+          sslCertificateKey = config.age.secrets.ssl-key.path;
+        }
+    )
     // lib.optionalAttrs hsts { extraConfig = hstsHeader; };
 
   # Per-vhost Nextcloud-SSO gate; exported below as a module arg. Spreading this
@@ -62,6 +75,8 @@ let
   };
 in
 {
+  imports = [ ../acme ];
+
   # ---------------------------------------------------------------------------
   # Shared TLS material
   # ---------------------------------------------------------------------------
@@ -71,6 +86,12 @@ in
   users.users.nginx.extraGroups = [ "ssl-cert" ];
 
   age.secrets = {
+    # oauth2-proxy reads these via systemd LoadCredential (run as root before the
+    # service drops privileges), so root-owned 0400 defaults are correct.
+    oauth2-client-secret.file = "${secretsPath}/oauth2-client-secret.age";
+    oauth2-cookie-secret.file = "${secretsPath}/oauth2-cookie-secret.age";
+  }
+  // lib.optionalAttrs (!acme) {
     ssl-fullchain = {
       file = "${secretsPath}/ssl-fullchain.age";
       group = "ssl-cert";
@@ -81,11 +102,6 @@ in
       group = "ssl-cert";
       mode = "0440";
     };
-
-    # oauth2-proxy reads these via systemd LoadCredential (run as root before the
-    # service drops privileges), so root-owned 0400 defaults are correct.
-    oauth2-client-secret.file = "${secretsPath}/oauth2-client-secret.age";
-    oauth2-cookie-secret.file = "${secretsPath}/oauth2-cookie-secret.age";
   };
 
   # Consumers (nextcloud, stalwart, ...) take `sslVhost` / `nextcloudSSO` as
@@ -94,6 +110,21 @@ in
   #   "host" = lib.recursiveUpdate (sslVhost { } // nextcloudSSO) {...}; (TLS + SSO)
   _module.args.sslVhost = sslVhost;
   _module.args.nextcloudSSO = nextcloudSSO;
+
+  # Raw PEM paths for consumers that read the files themselves instead of going
+  # through an nginx vhost (stalwart terminates SMTP/IMAP). Same switch as
+  # sslVhost, so both sides of host.tls.acme stay in step.
+  _module.args.tlsCert =
+    if acme then
+      {
+        fullchain = "${config.security.acme.certs.${domain}.directory}/fullchain.pem";
+        key = "${config.security.acme.certs.${domain}.directory}/key.pem";
+      }
+    else
+      {
+        fullchain = config.age.secrets.ssl-fullchain.path;
+        key = config.age.secrets.ssl-key.path;
+      };
 
   # ---------------------------------------------------------------------------
   # nginx base

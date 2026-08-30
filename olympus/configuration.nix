@@ -22,6 +22,9 @@
     hostName = "olympus";
     role = "vps";
     stateVersion = "25.05";
+    # shared vhost cert renewed by ACME (../common/modules/acme) instead of the
+    # hand-rolled ssl-fullchain/ssl-key pair
+    tls.acme = true;
     # hestia pulls the mail store from here; see ../common/modules/mail-backup
     backup.mail.serve = true;
   };

@@ -3,6 +3,7 @@
   lib,
   secretsPath,
   sslVhost,
+  tlsCert,
   nextcloudSSO,
   ...
 }:
@@ -98,9 +99,11 @@ in
         };
       };
 
+      # PEMs are inlined at startup, so a renewal only takes effect on restart —
+      # ../acme lists stalwart.service in reloadServices for exactly that.
       certificate.sectigo = {
-        cert = "%{file:${config.age.secrets.ssl-fullchain.path}}%";
-        private-key = "%{file:${config.age.secrets.ssl-key.path}}%";
+        cert = "%{file:${tlsCert.fullchain}}%";
+        private-key = "%{file:${tlsCert.key}}%";
       };
 
       lookup.default = {

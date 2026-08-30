@@ -57,34 +57,15 @@ See *Theming*.
 
 Ranked by value-to-effort. Everything here is expanded in its own section.
 
-1. **cert-expiry alerting** — the wildcard cert is a hand-rotated agenix secret
-   with no renewal automation, and it backs every vhost *and* stalwart's
-   SMTP/IMAP TLS. Expiry takes down mail silently. A timer running
-   `openssl x509 -checkend` is most of the value.
-2. **backup integrity** — the restic repo has no scheduled `check` and
+1. **backup integrity** — the restic repo has no scheduled `check` and
    `mail-backup` failures are silent. A backup nobody verifies is a guess.
-3. **Vaultwarden** — olympus already has the nginx/SSO/agenix plumbing; real
+2. **Vaultwarden** — olympus already has the nginx/SSO/agenix plumbing; real
    sync semantics beat `.kdbx` conflict copies.
-4. **stylix** — `host.theme` is already scaffolded for it and currently dead.
+3. **stylix** — `host.theme` is already scaffolded for it and currently dead.
 
 ---
 
 # Reliability & alerting
-
-## cert expiry has no alarm
-`ssl-fullchain.age` / `ssl-key.age` (`common/modules/nginx/default.nix:73-84`)
-are manually rotated; nothing watches them. They are consumed by nginx *and* by
-stalwart's TLS (`common/modules/stalwart/default.nix:102-103`), so an expiry is
-a fleet-wide mail outage with no warning.
-
-Cheapest useful shape: a systemd timer on olympus running
-`openssl x509 -checkend $((30*86400)) -noout -in /run/agenix/ssl-fullchain` and
-mailing on non-zero exit. `[auto]` — the unit exists, is enabled, and its exit
-status can be read back with `systemctl status`; the alert *path* actually
-delivering mail is `[manual]`.
-
-Worth considering as the real fix: ACME/lego against the DNS-01 challenge would
-retire the manual rotation entirely, at the cost of an API token secret.
 
 ## `restic check` never runs
 `common/modules/backup/default.nix:20` names `restic-repo check` as the
@@ -547,5 +528,14 @@ Kept so they are not re-proposed.
 - **setuid `framework_tool`** — replaced by `common/modules/charge-limit`, a
   udev rule that group-owns the battery's `charge_control_end_threshold`, so no
   setuid EC tool is on the system.
+- **cert-expiry alerting** (was priority 1) — superseded by the real fix:
+  `common/modules/acme` renews the cert with lego against IONOS' ACME endpoint
+  over HTTP-01, gated by `host.tls.acme`. Nothing watches an expiry date any
+  more because nothing is hand-rotated;
+  `systemctl status acme-order-renew-dklaassen.de.service` is the health check.
+  The wildcard is gone — dns-01 would need a zone API key we do not have — so
+  the cert carries a SAN list derived from the nginx vhost names instead. The
+  static `ssl-fullchain.age` / `ssl-key.age` pair stays as the rollback for a
+  failed issuance and can be retired once ACME has renewed once.
 - **`documentation.nixos.enable = false` on olympus** — dropped from the list.
 - **stable channel for olympus** — decided against; see *Decisions on record*.
