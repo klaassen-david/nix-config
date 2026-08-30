@@ -55,6 +55,11 @@ in
         type = types.bool;
         default = false;
       };
+      chargeLimit = mkOption {
+        type = types.bool;
+        default = false;
+        description = "Battery charge limit is settable without root: group-owned charge_control_end_threshold (common/modules/charge-limit)";
+      };
       lid = mkOption {
         type = types.bool;
         default = false;

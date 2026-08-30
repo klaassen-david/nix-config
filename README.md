@@ -96,11 +96,6 @@ gammarelay (the `Ctrl/Shift+XF86MonBrightness*` keybindings) silently never star
 - `sway/default.nix:132`: `mpvpaper … /home/dk/wallpaper/current` depends on a hand-placed
 file and hardcodes the path (see dead `host.theme.wallpaper` below).
 
-### framework_tool is setuid-root
-- `hermes/configuration.nix:110-115`: `security.wrappers.framework_tool { setuid = true;
-owner/group = root; }` grants every session full root via the EC tool. A dedicated group + udev
-rule on the EC device is the tighter grant.
-
 ## Dead code & unused scaffolding
 - **`host.theme.{base16,opacity,wallpaper}`** (`host.nix:99-113`) are defined but **never
 read** anywhere; the wallpaper path is hardcoded in `sway`. Pure stylix-scaffolding — keep only

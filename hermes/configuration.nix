@@ -23,6 +23,7 @@
       bluetooth = true;
       battery = true;
       fingerprint = true;
+      chargeLimit = true;
       lid = true;
     };
 
@@ -104,15 +105,9 @@
   environment.systemPackages = with pkgs; [
     playerctl
     calibre
+    # EC/firmware inspection; needs root (see common/modules/charge-limit)
     framework-tool
   ];
-
-  security.wrappers.framework_tool = {
-    source = "${pkgs.framework-tool}/bin/framework_tool";
-    owner = "root";
-    group = "root";
-    setuid = true;
-  };
 
   services.upower = {
     enable = true;

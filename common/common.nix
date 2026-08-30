@@ -26,6 +26,8 @@
     ./modules/polkit-units
     # fprintd, driven by host.capabilities.fingerprint
     ./modules/fingerprint
+    # self-gates on host.capabilities.chargeLimit: unprivileged battery charge limit
+    ./modules/charge-limit
   ];
 
   nix.settings.experimental-features = [

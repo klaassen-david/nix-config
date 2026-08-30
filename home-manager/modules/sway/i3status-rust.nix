@@ -44,6 +44,29 @@ let
     echo 0
   '';
 
+  # Charge limit via the kernel's power_supply attribute, not framework_tool --
+  # that tool needs root for SMBIOS platform detection even to read (see
+  # common/modules/charge-limit). The read is world-readable; the write works
+  # because that module hands the attribute to the charge-limit group.
+  # An empty read means the attribute is absent (no such battery, or the module
+  # is off), not "0%", so both the block and the toggle bail rather than
+  # comparing an empty string against 60.
+  chargeLimitAttr = "/sys/class/power_supply/*/charge_control_end_threshold";
+
+  chargeLimitGet = pkgs.writeShellScript "charge-limit-get" ''
+    cat ${chargeLimitAttr} 2>/dev/null | head -1
+  '';
+
+  chargeLimitToggle = pkgs.writeShellScript "charge-limit-toggle" ''
+    current=$(${chargeLimitGet})
+    [ -n "$current" ] || exit 1
+    if [ "$current" -le 60 ]; then target=100; else target=60; fi
+    for f in ${chargeLimitAttr}; do
+      [ -w "$f" ] || exit 1
+      echo "$target" > "$f"
+    done
+  '';
+
   # The one place the profile rule lives: lid closed *and no external display* ->
   # power-saver (wins the closed+charging overlap), else on AC -> performance,
   # else the last manual value. A closed lid while docked to an external screen is
@@ -58,7 +81,7 @@ let
     manual=${manualFile}
 
     lid=open
-    ${lib.optionalString host.capabilities.lid ''lid=$(${host.lid_state})''}
+    ${lib.optionalString host.capabilities.lid "lid=$(${host.lid_state})"}
 
     if [ "$lid" = closed ] && [ "$(${externalDisplay})" = 0 ]; then
       target=power-saver
@@ -228,24 +251,25 @@ in
         chargeLimit = {
           block = "custom";
           shell = "sh";
-          interval = 1;
+          interval = 60;
           json = true;
           command = ''
-            LIMIT=$(framework_tool --charge-limit 2>/dev/null | grep -oP '\d+' | tail -1)
-            STATE=$([ "$LIMIT" -le 60 ] && echo "Good" || echo "Warning")
-            printf '{"text": "%s %s", "state": "%s"}' "${wrapIcon "󱞜"}" "$LIMIT" "$STATE"
+            LIMIT=$(${chargeLimitGet})
+            if [ -z "$LIMIT" ]; then
+              printf '{"text": "%s ?", "state": "Critical"}' "${wrapIcon "󱞜"}"
+            else
+              STATE=$([ "$LIMIT" -le 60 ] && echo "Good" || echo "Warning")
+              printf '{"text": "%s %s", "state": "%s"}' "${wrapIcon "󱞜"}" "$LIMIT" "$STATE"
+            fi
           '';
           click = [
             {
               button = "left";
-              cmd = ''
-                CURRENT=$(framework_tool --charge-limit 2>/dev/null | grep -oP '\d+' | tail -1)
-                if [ "$CURRENT" -le 60 ]; then
-                  framework_tool --charge-limit 100
-                else
-                  framework_tool --charge-limit 60
-                fi
-              '';
+              cmd = "${chargeLimitToggle}";
+              # both default false: without them the block would re-read before
+              # the write landed, and then not refresh until the next interval
+              sync = true;
+              update = true;
             }
           ];
         };
@@ -351,11 +375,12 @@ in
         blocks =
           common
           ++ lib.optionals host.capabilities.bluetooth [ bluetooth ]
-          ++ lib.optionals host.capabilities.battery [
-            battery
-            chargeLimit
-            powerProfiles
-          ];
+          ++ lib.optionals host.capabilities.battery (
+            [ battery ]
+            # not every battery exposes charge_control_end_threshold
+            ++ lib.optional host.capabilities.chargeLimit chargeLimit
+            ++ [ powerProfiles ]
+          );
       };
   };
 }
