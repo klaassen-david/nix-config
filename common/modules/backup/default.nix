@@ -49,6 +49,11 @@ in
     # in — the interactive counterpart to the units in ../mail-backup, and the
     # only sane way to run snapshots/check/restore by hand. Needs root to read
     # the password file and the repo.
+    #
+    # RESTIC_CACHE_DIR is not optional: restic derives the cache from
+    # $XDG_CACHE_HOME or $HOME, and systemd sets neither for a root service, so
+    # without it every command that opens the repository aborts. ../mail-backup
+    # exports the same value, keeping interactive and timed runs on one cache.
     environment.systemPackages = [
       (pkgs.writeShellApplication {
         name = "restic-repo";
@@ -56,6 +61,7 @@ in
         text = ''
           export RESTIC_REPOSITORY=${cfg.repository}
           export RESTIC_PASSWORD_FILE=${config.age.secrets.restic-repo-pass.path}
+          export RESTIC_CACHE_DIR=${cfg.cacheDir}
           exec restic "$@"
         '';
       })

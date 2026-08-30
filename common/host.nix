@@ -194,6 +194,11 @@ in
           default = "/var/backup/restic";
           description = "path of the local restic repository";
         };
+        cacheDir = mkOption {
+          type = types.str;
+          default = "/var/cache/restic";
+          description = "restic metadata cache; named explicitly because systemd units have no HOME to derive it from";
+        };
         retention = mkOption {
           type = types.listOf types.str;
           default = [

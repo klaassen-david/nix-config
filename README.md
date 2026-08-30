@@ -30,20 +30,9 @@ for all 3 configs, maybe via nextcloud.dklaassen.de
 ## hestia sway crashes due to libseat crashing
 - triggers an automatic restart and everything works fine after that
 
-# Quality of Life
-## self-hosted binary cache (attic on olympus)
-- goal: keep local-first builds (every host builds itself) but stop recompiling artifacts another host already built
-- run `attic` on olympus (only always-on host, already terminates TLS via nginx) behind the existing reverse proxy
-- hermes/hestia push built paths to it (post-build-hook / `attic push`); olympus dedups and runs attic's own retention/GC
-- add the cache URL + signing public key to substituters on all three hosts; signing key managed via agenix
-- replaces the public `klaassen-david.cachix.org` dependency with something fully self-owned
-- caveat: VPS disk is limited — rely on attic's retention policy so the cache doesn't grow unbounded
-- not a remote *builder* — hosts still build themselves; this only shares the *binary cache* (no cross-host build dependency, immune to hestia being unreachable)
 ## stylix for unified theming
 - single source of truth for colorscheme/fonts/wallpaper across sway, ghostty, nvim, zathura, gtk
 - ties in with the "host struct" idea (per-host color scheme + opacity)
-## secrets-managed wifi / known networks
-- declaratively manage networkmanager connections so a fresh install has wifi without manual setup
 
 # Performance
 ## faster builds
@@ -51,11 +40,7 @@ for all 3 configs, maybe via nextcloud.dklaassen.de
   - `max-jobs` = how many derivations build concurrently; `cores` = `NIX_BUILD_CORES`, the `-j` *inside* one build. Their product can oversubscribe the CPU, so tune per host (hermes 16c, olympus 8c EPYC) to trade build-graph width against per-build parallelism.
 - `boot.tmp.useTmpfs = true` to build in RAM where memory allows
   - puts `/tmp` (nix's build dir) on tmpfs → faster build IO, no SSD wear; caveat: a big build (chromium, fat closures) can OOM, so not on the RAM-limited olympus VPS.
-- reconsider `programs.ccache` once **attic** lands (see the binary-cache idea above)
-  - attic shares *whole build outputs across hosts*, so it subsumes most of what ccache would save; ccache only helps the narrow case where this host recompiles a *changed* derivation whose object files are still reusable. So attic makes "is ccache worth it" sharper, not softer — measure before keeping a second, compiler-level cache.
-  - latent issue: the current `programs.ccache.enable = true` sets no `packageNames`, so it wraps nothing in nixpkgs today — effectively inert until packages opt in.
 ## trim closure / boot time
-- `documentation.nixos.enable = false` on headless olympus
 - audit whether zen-browser not following nixpkgs causes duplicate nixpkgs evals / cache misses
 ## hestia: drop nvidia from the initrd to shrink boot generations
 - `hestia/configuration.nix` lists `boot.initrd.kernelModules = [ "nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm" ]`, forcing the proprietary nvidia driver into the initrd (early KMS). The 595 module embeds GSP firmware → `nvidia.ko.xz` is 82M compressed, so every generation's initrd is ~199M. The 510M ESP (`/boot/efi`) then fits only ~2 generations, which is why `host.keepGenerations` had to be dropped to 2 (otherwise the systemd-boot install fails with "No space left on device")
@@ -89,8 +74,6 @@ status quo: `powerManagement.enable = true` is the *only* power tuning on hermes
 - olympus (mail + nextcloud) tracks nixpkgs-unstable like the desktops; consider pinning it to nixos-25.05 for fewer surprise breakages (the commented-out `nixpkgs.url` in flake.nix is a start)
 
 # Reliability & reproducibility
-## backup story for olympus state
-- nextcloud data + stalwart mail are the irreplaceable bits — declarative restic/borg backup with off-site target
 ## health checks / alerting
 - lightweight uptime + cert-expiry + disk-usage alerting for the VPS (the SSL secrets are manually managed — a cert nearing expiry should page you)
 
@@ -107,9 +90,6 @@ status quo: `powerManagement.enable = true` is the *only* power tuning on hermes
 
 ## Correctness / latent bugs
 ### `--unsupported-gpu ` flag has a trailing space
-- `home-manager/modules/sway/default.nix:19`: `extraOptions = [ "--unsupported-gpu " ]`. The
-argv token becomes `--unsupported-gpu ` (trailing space) and won't match sway's exact flag
-string — a latent break on the **nvidia tower where the flag is actually required**.
 - Also unconditional: it's applied to both desktops, yet the nvidia-specific env vars right
 below it (`default.nix:30-42`) are gated on `host.gpu == "nvidia"`. Gate the flag the same way
 (it's pointless on hermes/amdgpu).

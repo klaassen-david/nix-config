@@ -125,6 +125,7 @@ let
   resticEnv = ''
     export RESTIC_REPOSITORY=${resticCfg.repository}
     export RESTIC_PASSWORD_FILE=${config.age.secrets.restic-repo-pass.path or ""}
+    export RESTIC_CACHE_DIR=${resticCfg.cacheDir}
   '';
 
   backupScript = pkgs.writeShellApplication {
