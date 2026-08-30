@@ -36,6 +36,11 @@
 
   fonts.fontconfig.enable = true;
 
+  # Middle-click paste of the primary selection. gsettings-desktop-schemas ships
+  # this key defaulting to false, and ghostty honours it since 1.3.0, so without
+  # this every GTK app (ghostty included) ignores the middle button.
+  dconf.settings."org/gnome/desktop/interface".gtk-enable-primary-paste = true;
+
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {

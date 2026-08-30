@@ -8,10 +8,8 @@
 ranked take on the ideas below, by value-to-effort:
 - **1. backup for olympus** — the standout: mail + nextcloud data is the only irreplaceable state in the fleet (everything else rebuilds from the flake); a VPS disk failure currently loses it permanently
 - **2. cert-expiry / health alerting** — the SSL cert is a manually rotated agenix secret with no renewal automation, and it backs all vhosts *and* stalwart's SMTP/IMAP TLS; expiry would take down mail silently. even a cron + `openssl x509 -checkend` that emails is most of the value
-- **3. stable channel for olympus** — mail server on unstable means stalwart/nextcloud major bumps land whenever a rebuild happens; tradeoff is a second nixpkgs input and slightly divergent module behavior vs. the desktops
-- **cheap one-liners, do anytime**: `documentation.nixos.enable = false` on olympus, remove (or actually wire up) the inert ccache config
+- **cheap one-liners, do anytime**: `documentation.nixos.enable = false` on olympus
 - **worth it when motivated**: stylix (the `host.theme` struct is already scaffolded for it), vaultwarden over keepassxc+sync (real sync semantics beat `.kdbx` conflict copies; olympus already has the nginx/SSO/agenix plumbing)
-- **deprioritize**: attic (cachix works today, VPS disk caveat is real), shared shell history (low payoff), `allowUnfreePredicate` (documentation value only)
 
 # Improvement Ideas
 ## shared shell history
