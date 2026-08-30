@@ -33,7 +33,6 @@
       };
 
   networking = {
-    enableIPv6 = true;
     firewall =
       let
         ranges = [ ];
