@@ -1,162 +1,551 @@
-# Bugs & review findings (2026-06)
-# Priorities (review 2026-06)
-ranked take on the ideas below, by value-to-effort:
-- **1. backup for olympus** — the standout: mail + nextcloud data is the only irreplaceable state in the fleet (everything else rebuilds from the flake); a VPS disk failure currently loses it permanently
-- **2. cert-expiry / health alerting** — the SSL cert is a manually rotated agenix secret with no renewal automation, and it backs all vhosts *and* stalwart's SMTP/IMAP TLS; expiry would take down mail silently. even a cron + `openssl x509 -checkend` that emails is most of the value
-- **cheap one-liners, do anytime**: `documentation.nixos.enable = false` on olympus
-- **worth it when motivated**: stylix (the `host.theme` struct is already scaffolded for it), vaultwarden over keepassxc+sync (real sync semantics beat `.kdbx` conflict copies; olympus already has the nginx/SSO/agenix plumbing)
+# nix-config — open items
 
-# Improvement Ideas
-## shared shell history
-for all 3 configs, maybe via nextcloud.dklaassen.de
-## keyring
-- two layers usually conflated: (1) the OS **Secret Service** (`org.freedesktop.secrets` over D-Bus) that apps read/write tokens from, and (2) the **password manager** you interact with. decide each separately.
-- Secret Service layer — pick a provider and auto-unlock it at login:
-  - `gnome-keyring` is the path of least resistance on sway: `services.gnome.gnome-keyring.enable`, run as a session daemon (`--components=secrets,ssh`), unlocked by the login password via `pam_gnome_keyring` in the **greetd** PAM service (`security.pam.services.greetd.enableGnomeKeyring = true`). stays open for the rest of the session.
-  - alternative: let **KeePassXC** be the Secret Service provider (its "Secret Service Integration" setting), collapsing layers (1) and (2) into one app — at the cost of KeePassXC having to be unlocked before *anything* can fetch a secret.
-- password-manager layer — three coherent options:
-  - **KeePassXC + nextcloud-client**: the `.kdbx` lives in the synced nextcloud folder, opened locally. matches the original "syncs via nextcloud" note. risk: editing on two hosts at once → sync-conflict copies of the db.
-  - **Vaultwarden on olympus**: self-host (olympus already runs nextcloud + stalwart behind nginx), use Bitwarden clients. real multi-device sync, no file-conflict risk; costs one more service + an agenix-managed admin token.
-  - the desktop module currently ships **Proton Pass**, which syncs via Proton's servers (not nextcloud) — so it doesn't fit the "via nextcloud" goal; keep it or replace it.
-- browser integration:
-  - KeePassXC → `keepassxc-browser` over native messaging (enable the native-messaging host + the zen/firefox extension); Vaultwarden → the Bitwarden extension pointed at olympus.
-  - the "unlock for the plugin" worry: the extension can only talk to KeePassXC while the db is **unlocked**. options: unlock manually per session, keep the db keyfile inside the gnome-keyring that PAM already unlocked at login, or KeePassXC Quick-Unlock. on hermes the `fprintd` fingerprint could gate that unlock.
-## nextcloud mail
-- show preview of attachments
-- stop marking every mail as important
-## switching terminal CTRL+SHIFT+F2 makes sway bar disappear
-## nvim in ghostty as default editor
-- xdg-open should open .txt files and similar in nvim.
-## hestia sway crashes due to libseat crashing
-- triggers an automatic restart and everything works fine after that
+Audited against the tree on **2026-08-31** (at `c70ff62`). Every item below was
+re-checked; line references are valid at that commit. Items that had been fixed
+in the meantime moved to *Closed* at the bottom rather than being deleted, so a
+re-read does not re-propose them.
 
-## stylix for unified theming
-- single source of truth for colorscheme/fonts/wallpaper across sway, ghostty, nvim, zathura, gtk
-- ties in with the "host struct" idea (per-host color scheme + opacity)
+**Legend** — the marker says whether *Claude can confirm a fix on its own*:
 
-# Performance
-## faster builds
-- set `nix.settings.max-jobs`/`cores` explicitly per host instead of defaults
-  - `max-jobs` = how many derivations build concurrently; `cores` = `NIX_BUILD_CORES`, the `-j` *inside* one build. Their product can oversubscribe the CPU, so tune per host (hermes 16c, olympus 8c EPYC) to trade build-graph width against per-build parallelism.
-- `boot.tmp.useTmpfs = true` to build in RAM where memory allows
-  - puts `/tmp` (nix's build dir) on tmpfs → faster build IO, no SSD wear; caveat: a big build (chromium, fat closures) can OOM, so not on the RAM-limited olympus VPS.
-## trim closure / boot time
-- audit whether zen-browser not following nixpkgs causes duplicate nixpkgs evals / cache misses
-## hestia: drop nvidia from the initrd to shrink boot generations
-- `hestia/configuration.nix` lists `boot.initrd.kernelModules = [ "nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm" ]`, forcing the proprietary nvidia driver into the initrd (early KMS). The 595 module embeds GSP firmware → `nvidia.ko.xz` is 82M compressed, so every generation's initrd is ~199M. The 510M ESP (`/boot/efi`) then fits only ~2 generations, which is why `host.keepGenerations` had to be dropped to 2 (otherwise the systemd-boot install fails with "No space left on device")
-- future change: remove the `boot.initrd.kernelModules` nvidia line. The driver loads in stage-2 instead, shrinking each initrd to ~30M so ~15 generations fit again — then `keepGenerations` can be raised back up
-- trade-off: loss of early KMS = one console mode-switch flicker during boot; cosmetic here since hestia has no encrypted root needing an early graphical prompt
+- `[auto]` — verifiable mechanically: `nix flake check`, `nix eval`, a grep for
+  the absence of the pattern, `systemctl status`, a file existing. No human in
+  the loop.
+- `[manual]` — needs eyes or a stopwatch: something rendering on a screen, a
+  glyph, a battery drain figure, a server-side setting in someone else's web UI,
+  or state that only exists on a host this session cannot reach.
 
-# Energy usage (hermes)
-status quo: `powerManagement.enable = true` is the *only* power tuning on hermes — no platform-profile daemon, no idle management, bluetooth radio powered at boot, wifi powersave explicitly off. Roughly in order of impact:
-## platform power profiles
-- `services.power-profiles-daemon.enable = true` — switches amd-pstate EPP hints + ACPI `platform_profile` between power-saver/balanced/performance; the 7040 already runs amd-pstate in active mode (kernel ≥ 6.5 default), what's missing is anything *driving* it on AC↔battery transitions
-- alternative: TLP — more knobs (PCIe ASPM, USB autosuspend, NVMe runtime PM, battery charge thresholds) but conflicts with power-profiles-daemon; pick exactly one. ppd is what Framework recommends and is the lower-maintenance default
-## panel: amdgpu adaptive backlight (ABM)
-- `boot.kernelParams = [ "amdgpu.abmlevel=1" ]` (levels 0–4): panel-side backlight reduction with compensating contrast shift — real backlight savings for a minor color-accuracy cost; runtime-togglable via the connector's `panel_power_savings` sysfs attribute, so it can be flipped on battery only
-## radios
-- `hardware.bluetooth.powerOnBoot = false` — hermes powers the BT radio at every boot whether or not anything pairs; blueman toggles it on demand anyway
-- wifi powersave is deliberately `false` in `common/modules/wifi` (latency-spike avoidance) — worth re-measuring under iwd, or enabling it on battery only via an NM dispatcher script, instead of paying the radio cost 100% of the time
-## suspend depth: s2idle drains — consider suspend-then-hibernate
-- the 7040 Framework has no S3; suspend is s2idle, which still burns ~1%/h — the lid-close module (`common/modules/wifi`) ends in `systemctl suspend`, so a forgotten closed laptop drains for days
-- switch it to `systemctl suspend-then-hibernate` + `HibernateDelaySec` (e.g. 2h); prereqs: `boot.resumeDevice` pointed at the existing swap partition and swap ≥ RAM for the hibernation image — check the partition size first
-## measurement + housekeeping
-- `powertop` for auditing (per-device tunables, wakeup offenders); `powerManagement.powertop.enable = true` auto-applies its tunables at boot, but that includes USB autosuspend which bites input devices / BT dongles — prefer cherry-picking the tunables it suggests
-- consider importing `nixos-hardware`'s `framework-16-7040-amd` module instead of hand-rolling hardware quirks (AMD defaults, known Framework fixes) — new flake input, overlaps with existing manual settings, so diff what it sets before adopting
+Two hosts are reachable from where these checks run (hestia); **hermes-only**
+facts (swap size, panel behaviour, battery drain) are called out where they gate
+an item.
 
-# Nix-specific optimizations
-## use `lib.mkDefault` for overridable defaults
-- hestia already needs `lib.mkForce` for networkmanager.dns — set defaults with `mkDefault` so hosts override cleanly without force
-## narrow allowUnfree
-- replace global `allowUnfree = true` with `allowUnfreePredicate` listing the specific unfree pkgs (nvidia, steam, etc.) — documents *why* unfree is needed
-## stable channel for the server
-- olympus (mail + nextcloud) tracks nixpkgs-unstable like the desktops; consider pinning it to nixos-25.05 for fewer surprise breakages (the commented-out `nixpkgs.url` in flake.nix is a start)
+---
 
-# Reliability & reproducibility
-## health checks / alerting
-- lightweight uptime + cert-expiry + disk-usage alerting for the VPS (the SSL secrets are manually managed — a cert nearing expiry should page you)
+# Decisions on record
+
+Settled questions, kept here so they stop being re-litigated.
+
+## Nextcloud data is deliberately not backed up
+`common/modules/mail-backup` covers the stalwart store only (`--host olympus
+--tag mail`); olympus's `/var/lib/nextcloud` and its database are in **no**
+backup. That is intentional: the Nextcloud content is itself continuously synced
+down to the desktops (`home-manager/modules/nextcloud-sync` → `~/sync`), so the
+irreplaceable-state argument that justified the mail backup does not apply. Mail
+is different — it exists nowhere but olympus.
+
+The residual exposure, accepted: server-side-only state (share links, app
+config, calendars/contacts beyond the vdir mirror, anything never synced to a
+desktop) is lost with the VPS disk, and a sync-propagated deletion has no
+history to roll back to.
+
+## One nixpkgs channel for the fleet
+olympus tracks `nixpkgs-unstable` like the desktops. Pinning the server to
+`nixos-25.05` (the commented `nixpkgs.url` in `flake.nix:6`) was considered and
+**dropped** — one channel for three hosts is the point. Leave the commented line
+or delete it; it is not a to-do.
+
+## Password manager: Vaultwarden on olympus
+Decided 2026-08-31 — see *Passwords & keyring* below. KeePassXC-over-nextcloud
+and keeping Proton Pass are both off the table.
+
+## Theming: adopt stylix
+Decided 2026-08-31 — `host.theme.*` stays and gets wired up rather than deleted.
+See *Theming*.
+
+---
+
+# Priorities
+
+Ranked by value-to-effort. Everything here is expanded in its own section.
+
+1. **cert-expiry alerting** — the wildcard cert is a hand-rotated agenix secret
+   with no renewal automation, and it backs every vhost *and* stalwart's
+   SMTP/IMAP TLS. Expiry takes down mail silently. A timer running
+   `openssl x509 -checkend` is most of the value.
+2. **backup integrity** — the restic repo has no scheduled `check` and
+   `mail-backup` failures are silent. A backup nobody verifies is a guess.
+3. **Vaultwarden** — olympus already has the nginx/SSO/agenix plumbing; real
+   sync semantics beat `.kdbx` conflict copies.
+4. **stylix** — `host.theme` is already scaffolded for it and currently dead.
+
+---
+
+# Reliability & alerting
+
+## cert expiry has no alarm
+`ssl-fullchain.age` / `ssl-key.age` (`common/modules/nginx/default.nix:73-84`)
+are manually rotated; nothing watches them. They are consumed by nginx *and* by
+stalwart's TLS (`common/modules/stalwart/default.nix:102-103`), so an expiry is
+a fleet-wide mail outage with no warning.
+
+Cheapest useful shape: a systemd timer on olympus running
+`openssl x509 -checkend $((30*86400)) -noout -in /run/agenix/ssl-fullchain` and
+mailing on non-zero exit. `[auto]` — the unit exists, is enabled, and its exit
+status can be read back with `systemctl status`; the alert *path* actually
+delivering mail is `[manual]`.
+
+Worth considering as the real fix: ACME/lego against the DNS-01 challenge would
+retire the manual rotation entirely, at the cost of an API token secret.
+
+## `restic check` never runs
+`common/modules/backup/default.nix:20` names `restic-repo check` as the
+counterweight to the whole fleet sharing one repository — but nothing schedules
+it. Only `restic forget --prune` runs, inside the mail job
+(`mail-backup/default.nix:166-167`). Silent repo corruption is exactly the
+failure mode a single shared repo has, and it would be found at restore time.
+
+Add a weekly `restic-check` timer on hestia (`check --read-data-subset=…` to
+keep it cheap). `[auto]`
+
+## mail-backup failure is silent
+`systemd.services.mail-backup` (`mail-backup/default.nix:241`) has no
+`OnFailure=`. If the ssh channel, the export, or the repo write fails, the unit
+goes `failed` on a headless-ish desktop and nothing says so. The bar already has
+the machinery for this (`service_status` blocks, D-Bus driven, see
+`sway/i3status-rust.nix:315`) — a failed-unit indicator there, or an
+`OnFailure=` unit that sends mail, closes it. `[auto]`
+
+## the backup is a single copy on one desktop
+`/var/backup/restic` lives only on hestia. A house fire, a disk failure, or a
+mistaken `rm` takes olympus's mail *and* its only backup. The repo password is
+already documented as needing to survive losing hestia
+(`backup/default.nix:25-30`) — the repo itself deserves the same. Options: a
+second `restic copy` target (external disk, or a rented S3/B2 bucket), or a
+`restic-repo copy` cron to a drive that is normally unplugged. `[manual]` (the
+copy job is `[auto]`-checkable; "is the offsite copy actually offsite" is not).
+
+## host/disk alerting
+No uptime, disk-usage, or service-failure alerting on olympus at all. A
+`systemd` generator-level `OnFailure=` on the important units
+(stalwart, nextcloud, nginx, oauth2-proxy) plus a disk-usage timer is the
+minimum. `[auto]` for the units existing; `[manual]` for the notification
+arriving.
+
+---
 
 # Security
-## SSH hardening already good — extend it
-- headless restricts users + disables password/root login; consider the same `openssh.settings` hardening (KexAlgorithms, no agent forwarding) on the desktops
-## firewall: desktop sets `checkReversePath = false`
-- revisit whether it's still needed; headless keeps it strict
-## secrets ownership audit
-- confirm every agenix secret has the tightest `owner`/`mode` it can (mail/nextcloud passwords)
-- check id_priv vs. host key
 
-# Code review findings (2026-07)
+## desktop sshd accepts passwords
+`common/modules/ssh-on-demand/default.nix:46` sets
+`PasswordAuthentication = true`, while `common/headless.nix:45` sets it
+`false`. The desktops' sshd is off at boot and hand-toggled, which limits the
+window — but while it is up, the account is password-reachable from the LAN,
+and the login password hash is in this repo (next item). Key-only there too
+unless the password path is deliberately kept for a "locked myself out" case
+— in which case say so in the module header. `[auto]`
 
-## Correctness / latent bugs
-### sway execs write to dirs nothing creates
-- `sway/default.nix:134`: `exec wl-gammarelay-rs run 2>> /home/dk/logs/wl-gammarelay-rs` — no
-tmpfiles/`home.file` rule creates `/home/dk/logs`; if absent the `2>>` redirect fails and
-gammarelay (the `Ctrl/Shift+XF86MonBrightness*` keybindings) silently never starts.
-- `sway/default.nix:132`: `mpvpaper … /home/dk/wallpaper/current` depends on a hand-placed
-file and hardcodes the path (see dead `host.theme.wallpaper` below).
+## the login password hash is committed
+`common/common.nix:68` carries `initialHashedPassword = "$y$j9T$…"` — a
+yescrypt hash of the login password, in a repo with a GitHub remote
+(`git@github.com:klaassen-david/nix-config.git`; this session could not check
+whether it is public). yescrypt is a strong KDF, so this is not an immediate
+break, but it is an offline-crackable artifact of the password that also
+unlocks the sway session and (via `pam_gnome_keyring`, if that lands) the
+keyring.
 
-## Dead code & unused scaffolding
-- **`host.theme.{base16,opacity,wallpaper}`** (`host.nix:99-113`) are defined but **never
-read** anywhere; the wallpaper path is hardcoded in `sway`. Pure stylix-scaffolding — keep only
-if stylix is imminent, else it's dead surface.
-- **Unimported module dirs**: `home-manager/modules/tmux` and `home-manager/modules/zellij`
-exist but their imports are commented out in `home.nix:13,15`. Dead files.
-- **Commented-out code** scattered: `home.nix:13,15` (tmux/zellij), `desktop/default.nix:26`
-(`# lutris`), `sway/default.nix:37-39` (nvidia env), `sway/default.nix:86-88` (old pactl
-keybinds), `common.nix:73` (`# xkb.variant`), plus the hestia/desktop network lines from the
-prior review. Decide keep-vs-delete.
+`initialHashedPassword` is only read on first activation, so the fix is cheap:
+move it to `hashedPasswordFile` pointed at an agenix secret, or drop the line
+now that all three hosts are provisioned. `[auto]`
 
-## Duplication & single-source-of-truth violations
-- **Keyboard layout defined in three places, two disagreeing**: `common.nix:72` `xkb.layout =
-"gb"`, `home.nix:25` `home.keyboard.layout = "gb"`, and `sway/default.nix:60` `xkb_layout =
-"gb,de,us"`. No single source.
-- **`"dk"` / `/home/dk`** hardcoded in ~10 spots (common, home, samba, calendar,
-nextcloud-sync). Acceptable for single-user, but there's no shared constant.
+## extend the sshd hardening
+`headless.nix:40-49` already restricts users and disables password/root login.
+Not set anywhere: `KexAlgorithms`, `Ciphers`, `MACs` allowlists,
+`AllowAgentForwarding no`, `AllowTcpForwarding` scoping, `MaxAuthTries`.
+Apply the same block to the desktops' on-demand sshd rather than only olympus.
+`[auto]` (`nix eval` the rendered `sshd_config`).
 
-## Cosmetic / minor
-- **Unused module arguments**: `olympus/configuration.nix` declares `lib`/`pkgs` (uses
-neither), `hermes/configuration.nix` declares unused `lib`, `common.nix` declares unused
-`config`. Tidy the headers.
-- **Redundant explicit defaults**: `sway/default.nix:194` `programs.i3status.enable = false`
-(already false); `checkConfig = false` (`sway:20`) has no comment explaining why validation is
-off.
-- **`home.stateVersion = "24.11"`** (`home.nix:20`) trails the hosts' `25.05` — independent by
-design, but worth a comment since the whole point elsewhere is one authoritative version.
-- **fish nits** (`fish/default.nix`): `l` and `ll` are byte-identical (`eza -l $argv`,
-`:39-44`); `mkcd` (`:50`) breaks on multiple args (`cd $argv`); `cat`→`bat`/`ls`→`eza` are
-functions that shadow the real binaries in every interactive shell.
-- **`hardware.enableAllFirmware = true`** (`hermes:54`) pulls the full unfree firmware set;
-`enableRedistributableFirmware` (already implied by the nixos-hardware framework module) is
-usually enough — diff before keeping both.
-- **`vulkan-tools`** sits in `hardware.graphics.extraPackages` (`hestia:61`) — that list is
-for driver libs, not CLI tools; belongs in `systemPackages`.
-- **`udiskie.tray = "auto"; # FIXME does not show`** (`desktop/default.nix:69`) — unresolved
-FIXME shipped as config.
-- **Trailing whitespace**: `sway/default.nix:132`, `nvim/plugins/lsp.nix:168`.
+## desktops disable reverse-path filtering
+`common/desktop.nix:47` sets `checkReversePath = false`; `headless.nix:37`
+keeps it `true`. This is usually a workaround for a VPN/multi-homing edge —
+the wg-quick clients are full-tunnel, which is precisely the case that *doesn't*
+need it. Try `"loose"` (or removing the line) and see whether the tunnels still
+come up. `[auto]` for it evaluating; `[manual]` for "the VPN still works".
 
-# Bar follow-ups (2026-08-30)
+## secret ownership audit
+Most `age.secrets` already set a tight `owner`/`mode`
+(`nextcloud:15-16`, `stalwart:31-32`, `wireguard:64`, `backup:42`,
+`nginx:77` at `0440`). Sweep the remainder that set neither — notably
+`attic-cache/default.nix:48` (`attic-netrc`, read by the nix daemon) and
+`samba/default.nix:20` (`smb-dk`) — and give each the narrowest owner it can
+have. `[auto]` — `nix eval` every `age.secrets.*.{owner,mode}` and diff against
+the consuming unit's user.
 
-Suggestions raised alongside the `sshd` bar toggle (`sway/i3status-rust.nix`) and
-`sway/unit-status-view.nix`, deliberately *not* implemented there:
+## one key is every credential in the fleet
+`id_priv` is simultaneously the sole agenix recipient (`common/common.nix:60`,
+`secrets/secrets.nix`), the user's login key on all three hosts
+(`common.nix:70`, `keys/id_priv.pub`), and the forced-command key that lets
+hestia pull olympus's entire mail store (`mail-backup/default.nix:31,123`).
+That is deliberate and documented — the backup channel "grants nothing
+`id_priv` did not already have" — but it means one compromised private key
+opens every secret in the repo *and* every host, with no revocation short of
+re-encrypting every `.age`.
 
-- **Pin ghostty's font to the bar's**: the bar renders with `pango:FiraCode Nerd Font Propo`
-(`sway/kanshi.nix:57`), while `ghostty/default.nix:10` leaves `font-family` commented out, so
-the terminal falls back to its bundled JetBrains Mono plus *Symbols Nerd Font* for the icon
-range. Both cover the Material-Design glyphs the bar uses (verified with `ghostty +show-face`
-and against the TTF's cmap), so today they agree only by coincidence of that fallback.
-Setting `font-family = "FiraCode Nerd Font Mono"` — already installed via
-`home-manager/modules/desktop` + fontconfig — makes bar and terminal the same face, and any
-glyph that renders in one is then guaranteed in the other.
-- **Stop polling once a second**: `chargeLimit` and `powerProfiles` (`i3status-rust.nix`) run
-`interval = 1`, so each spawns a shell pipeline every second forever — on the laptop, on
-battery. i3status-rust's common `signal = N` option covers the case they actually need: raise
-`interval` to something lazy (30s+) and have the click handler end with
-`pkill -SIGRTMIN+N i3status-rs`, which repaints the block immediately after the only event
-that ever changes it. The `sshd` block avoids the issue entirely — `service_status` is D-Bus
-driven and has no interval at all.
-- **Reuse the status viewer for the wg-quick tunnels**: `unit-status-view` takes the unit as
-an argument, and the tunnels are hand-toggled units in `host.userManagedUnits` exactly like
-`sshd` (`common/modules/wireguard`, `common/modules/polkit-units`). A `service_status` block
-per client interface — same right-click toggle, same middle-click status window — is a few
-lines each, and would make "is the VPN actually up" answerable from the bar instead of from
-`systemctl`.
+Worth deciding rather than drifting: keep it (single-user fleet, the key never
+leaves the machines) and write that down as a decision, or split at least the
+agenix recipient from the login key so a stolen laptop key does not decrypt
+olympus's mail secrets. Related: nothing rotates the host keys either.
+`[auto]` for the mechanics of a split (`secrets.nix` recipients, `agenix -r`,
+`nix flake check`); `[manual]` for the decision itself.
+
+---
+
+# Bugs
+
+## confirmed in the tree
+
+### sway execs write to a directory nothing creates
+`sway/default.nix:134`: `exec wl-gammarelay-rs run 2>> /home/dk/logs/wl-gammarelay-rs`
+— no tmpfiles or `home.file` rule creates `/home/dk/logs`. If it is absent the
+redirect fails and gammarelay never starts, silently taking the
+`Ctrl/Shift+XF86MonBrightness*` keybindings (`:99-105`) with it. Fix by creating
+the dir via `home.file."logs/.keep"`, or by dropping the redirect and letting
+the output land in the journal. `[auto]` — the exec's exit status and the
+`rs.wl-gammarelay` D-Bus name are both checkable after a switch.
+
+### the wallpaper path is hand-placed and hardcoded
+`sway/default.nix:132`: `exec mpvpaper ${host.display.primary} /home/dk/wallpaper/current`
+depends on a file no module puts there, and hardcodes a path while
+`host.theme.wallpaper` (`host.nix:146-149`) exists and is read by nothing.
+Folded into the stylix work below. `[auto]` for the option being read;
+`[manual]` for "a wallpaper is actually on screen".
+
+## reported from use, not visible in the config
+
+### Ctrl+Shift+F2 (VT switch) makes the sway bar disappear
+Not reproducible by reading the config — the bar is a swaybar with
+`hidden_state hide` / `mode dock` (`sway/kanshi.nix:57-60`), so a suspect is the
+mode being lost across a VT switch rather than the bar dying. Next step is
+`swaymsg -t get_bar_config` before and after, plus the sway log.
+`[manual]` to reproduce; `[auto]` once it is a config change.
+
+### nextcloud mail: no attachment previews, everything marked important
+Both are server-side Nextcloud Mail app settings, not in this flake. Nothing to
+verify here; either accept as out of scope or note the Nextcloud app version
+that changes it. `[manual]`
+
+---
+
+# Desktop & UX
+
+## nvim as the default editor for text files
+`$EDITOR` is already nvim — `home-manager/modules/nvim/default.nix:18` sets
+`programs.nixvim.defaultEditor = true`. What is missing is the *graphical*
+half: `home-manager/modules/desktop/default.nix:44-67` maps `xdg.mimeApps` for
+mail, LibreOffice documents and PDFs, but nothing for `text/plain`, so
+`xdg-open foo.txt` falls through to whatever happens to be registered.
+
+nvim ships a terminal-only `.desktop` entry, so this wants a small
+`ghostty -e nvim %f` wrapper entry (`xdg.desktopEntries.nvim`) mapped from
+`text/plain` and the handful that follow it (`text/markdown`, `application/json`,
+`text/x-shellscript`, `text/x-nix`). `[auto]` — `xdg-mime query default
+text/plain` and an actual `xdg-open` after a switch.
+
+## shared shell history across the three hosts
+Nothing exists today (no `history` setting anywhere in `home-manager/`). Fish's
+history is a plain file, so the naive version is a symlink into `~/sync` — which
+loses writes when two hosts are up at once, the same conflict problem that
+killed KeePassXC-over-nextcloud. Better shapes: `atuin` (self-hostable sync
+server; olympus already has the nginx/SSO/agenix plumbing, same argument as
+Vaultwarden) or a periodic merge job. `[auto]` for the service running;
+`[manual]` for "history from hermes shows up on hestia".
+
+## bar: pin ghostty's font to the bar's
+The bar renders with `pango:FiraCode Nerd Font Propo` (`sway/kanshi.nix:57`);
+`ghostty/default.nix:10` leaves `font-family` commented out, so the terminal
+falls back to its bundled JetBrains Mono plus *Symbols Nerd Font* for the icon
+range. Both cover the Material Design glyphs the bar uses — verified with
+`ghostty +show-face` against the TTF cmap — so today they agree only by
+coincidence of that fallback. Setting
+`font-family = "FiraCode Nerd Font Mono"` (already installed via
+`home-manager/modules/desktop` + fontconfig) makes bar and terminal the same
+face, and any glyph that renders in one is then guaranteed in the other.
+`[auto]` — `ghostty +show-face` reports the resolved face.
+
+## bar: `powerProfiles` still polls once a second
+`i3status-rust.nix:278` runs `interval = 1`, spawning a shell pipeline every
+second forever — on the laptop, on battery — to read a value that only changes
+when something explicitly sets it. Use i3status-rust's `signal = N`: raise the
+interval to 30s+ and end the click handler (and
+`power-profile-reconcile`, `:78`) with `pkill -SIGRTMIN+N i3status-rs` so the
+block repaints immediately after the only events that change it.
+`[auto]` — the interval is in the generated TOML, and the repaint-on-signal is
+observable from the block's own output.
+
+*(The same finding for `chargeLimit` is closed — it is `interval = 60` at
+`:254` now. The `cpu` block's `interval = 1` at `:211` is a genuine meter and
+should stay.)*
+
+## bar: reuse the status viewer for the wg-quick tunnels
+`unit-status-view` takes the unit as an argument — its own header already says
+the tunnels can reuse it verbatim (`unit-status-view.nix:29-30`) — and the
+tunnels are hand-toggled units in `host.userManagedUnits`
+(`wireguard/default.nix:152`) exactly like `sshd`. A `service_status` block per
+client interface, modelled on the sshd one (`i3status-rust.nix:309-347`), is a
+few lines each and makes "is the VPN up" answerable from the bar instead of from
+`systemctl`. `[auto]`
+
+---
+
+# Theming — stylix (decided)
+
+Single source of truth for colorscheme/fonts/wallpaper across sway, ghostty,
+nvim, zathura and gtk, driven from the existing `host.theme` struct
+(`host.nix:136-150`) so per-host colour/opacity stays a host-struct fact rather
+than a per-module literal.
+
+State today: `host.theme.{base16,opacity,wallpaper}` are declared and read by
+**nothing** (`grep -rn 'host.theme' --include='*.nix' .` returns no consumers) —
+pure scaffolding, dead until this lands. It also absorbs two other items: the
+hardcoded wallpaper path (`sway/default.nix:132`) and ghostty's commented-out
+`font-family` / `background-opacity = 0.8` (`ghostty/default.nix:10-11`).
+
+`[auto]` — after the change, the same grep must show consumers, and
+`nix flake check` must build all three hosts. Whether the result *looks* right
+is `[manual]`.
+
+---
+
+# Passwords & keyring — Vaultwarden (decided)
+
+Two layers usually conflated; they stay separate decisions.
+
+**(1) Secret Service** (`org.freedesktop.secrets` over D-Bus) — what apps read
+and write tokens from. Nothing provides it today. Path of least resistance on
+sway: `services.gnome.gnome-keyring.enable`, run as a session daemon
+(`--components=secrets,ssh`), unlocked by the login password via
+`pam_gnome_keyring` in the **greetd** PAM service
+(`security.pam.services.greetd.enableGnomeKeyring = true`, alongside the
+existing `security.pam.services.swaylock` at `desktop.nix:96`). Stays open for
+the rest of the session. `[auto]` — `busctl --user list | grep secrets` plus the
+PAM stack in the built config.
+
+**(2) Password manager** — **Vaultwarden on olympus**. Self-hosted behind the
+existing nginx wildcard vhost and agenix; Bitwarden clients + the browser
+extension pointed at it. Real multi-device sync, no `.kdbx` conflict copies.
+Costs one service and an admin-token secret.
+
+Notes for when it is built:
+- vhost shape is `sslVhost { }` from `common/modules/nginx` — but **do not**
+  put it behind `nextcloudSSO`: the mobile/browser clients speak the Bitwarden
+  API and cannot pass an `auth_request` gate. Gate `/admin` only, or leave
+  `/admin` disabled and set no admin token at all.
+- new agenix secret for the admin token; remember `git add -N`.
+- the desktop module currently ships **Proton Pass**
+  (`home-manager/modules/desktop`) — decide whether it goes at cutover or
+  stays as a second, unrelated vault.
+- fingerprint unlock: hermes has `fprintd` (`common/modules/fingerprint`), which
+  the Bitwarden desktop client can use for unlock.
+
+`[auto]` for the service, vhost, secret wiring and `systemctl status
+vaultwarden`; `[manual]` for the clients actually syncing.
+
+---
+
+# Energy (hermes)
+
+Status quo is better than the last review recorded: `nixos-hardware`'s
+`framework-16-7040-amd` module is imported (`flake.nix:101`), which brings
+`amd_pstate=active` and enables `power-profiles-daemon` — and
+`sway/i3status-rust.nix:78-96` now *drives* it, reconciling the profile on
+lid/AC transitions. Verified by evaluating hermes: `services.power-profiles-daemon.enable = true`,
+`boot.kernelParams = ["amd_pstate=active" "amdgpu.dcdebugmask=0x10" …]`.
+
+What is left, roughly by impact:
+
+## panel: amdgpu adaptive backlight (ABM)
+Not set — `amdgpu.abmlevel` is absent from hermes's evaluated `kernelParams`.
+`boot.kernelParams = [ "amdgpu.abmlevel=1" ]` (levels 0–4) is panel-side
+backlight reduction with a compensating contrast shift: real backlight savings
+for a minor colour-accuracy cost, and runtime-togglable via the connector's
+`panel_power_savings` sysfs attribute, so it can be flipped on battery only —
+which the existing AC/lid reconcile script is the natural place for.
+`[auto]` for the parameter and the sysfs attribute's value; `[manual]` for
+whether the colour shift is acceptable and what it actually saves.
+
+## bluetooth radio is powered at every boot
+`hermes/configuration.nix:59` sets `powerOnBoot = true` (confirmed by eval)
+whether or not anything ever pairs; blueman toggles it on demand anyway. Flip to
+`false`. `[auto]` — `bluetoothctl show` / `rfkill list` after a reboot.
+
+## wifi powersave is off fleet-wide
+`common/modules/wifi/default.nix:32` sets `powersave = false` deliberately, to
+avoid latency spikes (`:11`). That is a 100%-of-the-time radio cost for a
+sometimes-problem. Worth re-measuring under the current stack, or enabling it on
+battery only via a NetworkManager dispatcher script — the lid/AC machinery for
+"on battery" already exists. `[auto]` for the setting; `[manual]` for the
+latency measurement that justifies either answer.
+
+## suspend depth: s2idle drains
+The 7040 Framework has no S3, so suspend is s2idle and still burns ~1%/h; the
+lid path ends in `systemctl suspend`
+(`common/modules/wifi/default.nix:88`), so a forgotten closed laptop drains for
+days. Switch to `systemctl suspend-then-hibernate` with a
+`HibernateDelaySec` of ~2h.
+
+**Blocker to check first, on hermes:** hibernation needs `boot.resumeDevice`
+set and a swap device ≥ RAM. hermes has exactly one swap partition
+(`hermes/hardware-configuration.nix:43-45`, by-uuid `cf70f01c…`) and no
+`resumeDevice` anywhere in the flake — and its size could not be checked from
+here. `lsblk -b -o NAME,SIZE /dev/disk/by-uuid/cf70f01c-2bcc-49f3-bdea-5584615d4e91`
+against `free -b` decides whether this item is a two-line change or a
+repartition. `[auto]` once run on hermes.
+
+## measurement & housekeeping
+`powertop` for auditing (per-device tunables, wakeup offenders).
+`powerManagement.powertop.enable = true` auto-applies its tunables at boot, but
+that includes USB autosuspend, which bites input devices and BT dongles — prefer
+cherry-picking what it suggests. `[manual]`
+
+---
+
+# Performance & build
+
+## per-host `max-jobs` / `cores`
+Neither is set anywhere (`grep -rn 'max-jobs\|cores' --include='*.nix' .` is
+empty), so both take nix's defaults. `max-jobs` is how many derivations build
+concurrently; `cores` is `NIX_BUILD_CORES`, the `-j` *inside* one build. Their
+product can oversubscribe the CPU, so tune per host (hermes 16c, olympus 8c
+EPYC) to trade build-graph width against per-build parallelism. Natural home is
+a `host.build.{maxJobs,cores}` pair on the struct rather than per-host literals.
+`[auto]` for the evaluated `nix.settings`; `[manual]` for whether it is faster.
+
+## build in RAM where memory allows
+`boot.tmp.useTmpfs = true` puts `/tmp` (nix's build dir) on tmpfs → faster build
+IO, no SSD wear. Caveat: a big build (chromium, fat closures) can OOM, so **not**
+on the RAM-limited olympus VPS. Gate it on the host struct, not a per-host line.
+`[auto]` — `findmnt /tmp` after a switch.
+
+## inputs that do not follow nixpkgs
+`nixvim` and `zen-browser` both have their `inputs.nixpkgs.follows` commented
+out (`flake.nix:13`, `:17-19`) — zen-browser's with a note that it needs
+`libgbm` from unstable. Each unfollowed input pulls a second nixpkgs into the
+lock, which means duplicate evals and cache misses for anything they build.
+Since the flake *is* on unstable, re-testing the `follows` for both is cheap.
+`[auto]` — `nix flake metadata` shows how many nixpkgs are in the lock, and
+`nix flake check` proves it still builds.
+
+## hestia: drop nvidia from the initrd
+`hestia/configuration.nix:56-61` lists
+`boot.initrd.kernelModules = [ "nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm" ]`,
+forcing the proprietary driver into the initrd for early KMS. The 595 module
+embeds GSP firmware → `nvidia.ko.xz` is 82M compressed, so every generation's
+initrd is ~199M; the 510M ESP then fits ~2 generations, which is why
+`host.keepGenerations` is pinned to `2` on hestia (`:30`) against the struct's
+default of 10 (`host.nix:36`) — otherwise the systemd-boot install fails with
+"No space left on device".
+
+Removing the line lets the driver load in stage 2 instead, shrinking each initrd
+to ~30M so ~15 generations fit and `keepGenerations` can go back up. Trade-off:
+loss of early KMS = one console mode-switch flicker during boot, cosmetic here
+since hestia has no encrypted root needing an early graphical prompt.
+`[auto]` — initrd size and `du /boot/efi` are both measurable, and the flicker
+is the only `[manual]` part.
+
+---
+
+# Code hygiene
+
+## dead code & unused scaffolding
+- **`home-manager/modules/tmux` and `.../zellij`** exist on disk but their
+  imports are commented out (`home.nix:13,15`). Delete the directories or
+  re-enable them. `[auto]`
+- **Commented-out code** scattered: `home.nix:13,15` (tmux/zellij),
+  `desktop/default.nix:26` (`# lutris`), `sway/default.nix:37-39` (nvidia env
+  vars), `sway/default.nix:86-88` (pre-swayosd `pactl` keybinds),
+  `common.nix:85` (`# xkb.variant = "dvorak"`), `ghostty/default.nix:10,14`,
+  `flake.nix:6,13,17-19`. Decide keep-vs-delete per site; the nvidia and
+  zen-browser ones carry information and are worth converting to prose
+  comments rather than deleting. `[auto]`
+- **`host.theme.*`** — covered under *Theming*; no longer "delete if stylix
+  isn't imminent", since stylix is now decided.
+
+## duplication & single-source-of-truth
+- **Keyboard layout in three places, two disagreeing**: `common.nix:84`
+  `xkb.layout = "gb"`, `home.nix:28` `home.keyboard.layout = "gb"`, and
+  `sway/default.nix:60` `xkb_layout = "gb,de,us"`. The sway one is the real
+  desktop behaviour; the other two are the console/XWayland fallback. A
+  `host.keyboard.{layout,variant,options}` triple on the struct, with sway
+  deriving its multi-layout list from it, would leave one authority.
+  `[auto]` — the three evaluated values can be diffed.
+- **`"dk"` / `/home/dk`** hardcoded in ~10 spots (`common.nix`, `home.nix`,
+  `samba`, `calendar`, `nextcloud-sync`, `sway`). Acceptable for a single-user
+  fleet, but there is no shared constant; `host.user` would be the obvious one,
+  and it is what the wallpaper/logs paths in sway would consume too. `[auto]`
+
+## nix idiom
+- **`lib.mkForce` where nothing forces**: `hestia/configuration.nix:95` sets
+  `networking.networkmanager.dns = lib.mkForce "none"`, but no other module in
+  the flake defines that option (`common/modules/wifi/default.nix:28-35` sets
+  only `enable` and `wifi.*`), so the `mkForce` overrides nothing but the
+  nixpkgs default and a plain assignment would do. The general rule the
+  original note was reaching for still holds: set shared values with
+  `lib.mkDefault` in the bases so hosts override cleanly without reaching for
+  `mkForce`. `[auto]` — drop the `mkForce` and `nix flake check`; a real
+  conflict fails loudly with "The option … has conflicting definitions".
+- **narrow `allowUnfree`**: `common/common.nix:56` sets
+  `nixpkgs.config.allowUnfree = true` for everything, and
+  `home-manager/modules/nvim/default.nix:19` sets it again for nixvim's own
+  nixpkgs. Replacing the global with an `allowUnfreePredicate` listing the
+  actual packages (nvidia, steam, the Framework firmware blob, zen-browser…)
+  documents *why* unfree is needed and turns a surprise unfree dependency into
+  a build error instead of a silent pull. `[auto]` — `nix flake check` fails on
+  anything unfree not in the list, which is precisely the point.
+
+## cosmetic / minor
+- **Unused module arguments**: `olympus/configuration.nix:3-4` declares `lib`
+  and `pkgs` and uses neither; `hermes/configuration.nix:3` declares an unused
+  `lib`; `common/common.nix:2` declares an unused `config` (`nixpkgs.config` at
+  `:56` is an attribute path, not the argument). `[auto]`
+- **`sway/default.nix:194`** `programs.i3status.enable = false` — already the
+  default, and misleading next to `programs.i3status-rust` being the thing
+  actually in use. `[auto]`
+- **`sway/default.nix:20`** `checkConfig = false` with no comment explaining
+  why validation is off. Either restore the check or write the one-line reason.
+  `[auto]` — flipping it back either builds or does not.
+- **`home.stateVersion = "24.11"`** (`home.nix:23`) trails the hosts' `25.05`.
+  Independent by design, but worth a comment saying so, since the whole point
+  of the host struct is one authoritative version. `[auto]`
+- **fish nits** (`home-manager/modules/fish/default.nix`): `l` (`:39-41`) and
+  `ll` (`:42-44`) are byte-identical (`eza -l $argv`); `mkcd` (`:50-52`) breaks
+  on multiple args (`mkdir -p $argv && cd $argv`); `cat`→`bat` (`:46`) and
+  `ls`→`eza` (`:33`) are *functions*, so they shadow the real binaries in every
+  interactive shell, including in scripts sourced from one. `[auto]`
+- **`hardware.enableAllFirmware = true`** (`hermes:56`) pulls the full unfree
+  firmware set. `enableRedistributableFirmware` — already implied by the
+  nixos-hardware framework module now in use — is usually enough; diff the
+  closures before keeping both. `[auto]`
+- **`vulkan-tools`** sits in `hardware.graphics.extraPackages`
+  (`hestia:72`) — that list is for driver libs loaded into every GL/Vulkan
+  client, not CLI tools. It is *also* already in
+  `home-manager/modules/desktop/default.nix:29`, so the hestia entry is
+  redundant as well as misplaced. `[auto]`
+- **`udiskie.tray = "auto"; # FIXME does not show`**
+  (`desktop/default.nix:74`) — an unresolved FIXME shipped as config. `"auto"`
+  hides the icon when nothing is mounted; if the intent is always-visible it
+  wants `"always"`, and if the tray itself is missing it wants a status-notifier
+  host in the bar. `[manual]` to confirm the icon appears.
+- **Trailing whitespace**: `sway/default.nix:132`,
+  `nvim/plugins/lsp.nix:167`. `[auto]`
+
+---
+
+# Closed since the 2026-06 / 2026-07 reviews
+
+Kept so they are not re-proposed.
+
+- **backup for olympus** (was priority 1) — done: `common/modules/backup` owns
+  the restic repo on hestia and `common/modules/mail-backup` pulls the stalwart
+  store into it over a forced-command ssh channel, with `mail-restore` for the
+  way back. *Open follow-ups moved to Reliability: no scheduled `check`, no
+  failure notification, single copy.*
+- **`nixos-hardware`'s `framework-16-7040-amd`** — adopted (`flake.nix:101`).
+- **`services.power-profiles-daemon`** — now enabled (via that module) *and*
+  driven: `sway/i3status-rust.nix` reconciles the profile across AC and lid
+  transitions and remembers a manual override.
+- **hestia sway crashing via libseat** — no longer reported.
+- **`chargeLimit` polling every second** — now `interval = 60`
+  (`i3status-rust.nix:254`).
+- **setuid `framework_tool`** — replaced by `common/modules/charge-limit`, a
+  udev rule that group-owns the battery's `charge_control_end_threshold`, so no
+  setuid EC tool is on the system.
+- **`documentation.nixos.enable = false` on olympus** — dropped from the list.
+- **stable channel for olympus** — decided against; see *Decisions on record*.
