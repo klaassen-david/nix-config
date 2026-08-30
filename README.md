@@ -1,12 +1,9 @@
 # Bugs & review findings (2026-06)
-## leftover "testing" firewall range on desktops
-- `common/desktop.nix` opens 8000–8100 TCP+UDP permanently with a literal "testing" comment — remove or justify
 ## minor / cosmetic
 - hermes sets `swaylock.fprintAuth = true`, but `desktop.nix` sets `swaylock.text` directly, which overrides the generated stack — the line is a no-op (fingerprint still works via the included `login` stack)
 - `wg-easy/default.nix` comments call the host hub interface "wg0"; it's actually named `olympus` (the container-internal `-i wg0` rules are correct)
 - `nixvim.inputs.nixpkgs.follows` in `flake.nix` triggers the "Nixvim's inputs pin Nixpkgs to..." eval warning twice per host — drop the follows or set `programs.nixvim.nixpkgs.source`
 - `users.extraUsers` in `common.nix` is a deprecated alias of `users.users`; the `networkmanager`/`gamemode` groups are also granted on olympus where neither exists
-- `headless.nix` builds its firewall from empty `ranges`/`ports` lets with `mkOrder` — dead scaffolding wrapping nothing
 - add common tools for claude invocation
 - middle mouse button should paste selected text in the terminal
 - make notifications disappear after focusing their origin window (except firefox)
@@ -96,9 +93,6 @@ status quo: `powerManagement.enable = true` is the *only* power tuning on hermes
 - consider importing `nixos-hardware`'s `framework-16-7040-amd` module instead of hand-rolling hardware quirks (bundles fwupd, AMD defaults, known Framework fixes) — new flake input, overlaps with existing manual settings, so diff what it sets before adopting
 
 # Nix-specific optimizations
-## factor out the duplicated firewall block
-- the `let ranges/ports in { firewall ... }` pattern is copy-pasted in common/headless.nix and common/desktop.nix
-- extract a small module that takes ports/ranges as options
 ## use `lib.mkDefault` for overridable defaults
 - hestia already needs `lib.mkForce` for networkmanager.dns — set defaults with `mkDefault` so hosts override cleanly without force
 ## narrow allowUnfree
@@ -162,15 +156,9 @@ owner/group = root; }` grants every session full root via the EC tool. A dedicat
 rule on the EC device is the tighter grant.
 
 ## Dead code & unused scaffolding
-- **`host.firewall.tcpPorts` / `host.firewall.tcpRanges`** (`host.nix:115-131`) are defined
-but **never read** (`grep host.firewall` → no consumers). Both `desktop.nix` and `headless.nix`
-build firewalls from local `let ranges/ports` instead. Either wire the struct in (this is
-exactly the "factor out the firewall block" idea, already half-built) or delete the options.
 - **`host.theme.{base16,opacity,wallpaper}`** (`host.nix:99-113`) are defined but **never
 read** anywhere; the wallpaper path is hardcoded in `sway`. Pure stylix-scaffolding — keep only
 if stylix is imminent, else it's dead surface.
-- **`headless.nix:37-49`** firewall still built from empty `ranges = []`/`ports = []` via
-`mkOrder` — dead scaffolding wrapping nothing (flagged 2026-06, still present).
 - **`fingerprint/default.nix:8`**: `lib.mkMerge [ <single-attrset> ]` — the `mkMerge` + list
 wrapper are pointless around one element (plus a stray blank line at `:15`). Collapse to
 `lib.mkIf … { … }`.

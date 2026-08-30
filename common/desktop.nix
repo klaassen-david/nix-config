@@ -42,40 +42,40 @@
     options v4l2loopback exclusive_caps=1 card_label="Droidcam"
   '';
 
-  networking = {
-    firewall =
-      let
-        ranges = [
-          {
-            from = 6112;
-            to = 6119;
-          }
-          {
-            # testing
-            from = 8000;
-            to = 8100;
-          }
-          {
-            # kdeconnect
-            from = 1714;
-            to = 1764;
-          }
-        ];
-        ports = [
-          2350 # wc3
-          23756
-          5355 # LLMNR
-        ];
-      in
-      {
-        enable = true;
-        checkReversePath = false;
-        allowedTCPPorts = ports;
-        allowedTCPPortRanges = ranges;
-        allowedUDPPorts = ports;
-        allowedUDPPortRanges = ranges;
-      };
+  networking.firewall = {
+    enable = true;
+    checkReversePath = false;
   };
+
+  # temp ports are opened with
+  #   sudo iptables -I nixos-fw 1 -p tcp --dport 8000 -j nixos-fw-accept
+  #   sudo systemctl restart firewall     # drops every ad-hoc rule
+  host.firewall =
+    let
+      ranges = [
+        {
+          # wc3
+          from = 6112;
+          to = 6119;
+        }
+        {
+          # kdeconnect
+          from = 1714;
+          to = 1764;
+        }
+      ];
+      ports = [
+        2350 # wc3
+        23756
+        5355 # LLMNR
+      ];
+    in
+    {
+      tcpPorts = ports;
+      udpPorts = ports;
+      tcpRanges = ranges;
+      udpRanges = ranges;
+    };
 
   # audio
   security.rtkit.enable = true;

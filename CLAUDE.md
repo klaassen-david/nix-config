@@ -99,4 +99,4 @@ Verify decryptability and a console/recovery path before rebooting a remote host
 
 ## Style
 
-Modules carry substantial header/section comments explaining *why* (trade-offs, manual prereqs, gotchas) — match that when editing. Keep the `host` struct authoritative; prefer deriving from it over per-host literals.
+Modules carry substantial header/section comments explaining *why* (trade-offs, manual prereqs, gotchas) — match that when editing. That licenses the *module header*, not every edit inside one: comments added alongside a change should be as short as the point requires, a few lines at most. Write the command or the constraint; drop the framing, the restatement of what the code says, and the justification for the design (that belongs in the chat or the commit message). Assume the reader knows nix. Keep the `host` struct authoritative; prefer deriving from it over per-host literals.

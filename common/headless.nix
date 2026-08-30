@@ -32,20 +32,9 @@
         };
       };
 
-  networking = {
-    firewall =
-      let
-        ranges = [ ];
-        ports = [ ];
-      in
-      {
-        enable = true;
-        checkReversePath = true;
-        allowedTCPPorts = lib.mkOrder 1000 ports;
-        allowedTCPPortRanges = lib.mkOrder 1000 ranges;
-        allowedUDPPorts = lib.mkOrder 1000 ports;
-        allowedUDPPortRanges = lib.mkOrder 1000 ranges;
-      };
+  networking.firewall = {
+    enable = true;
+    checkReversePath = true;
   };
 
   services.openssh = {

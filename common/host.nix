@@ -2,6 +2,13 @@
 
 let
   inherit (lib) mkOption types;
+
+  portRange = types.submodule {
+    options = {
+      from = mkOption { type = types.port; };
+      to = mkOption { type = types.port; };
+    };
+  };
 in
 {
   options.host = {
@@ -128,21 +135,47 @@ in
       };
     };
 
+    # Extra ports to accept, on top of whatever the service modules open through
+    # their own `openFirewall`. Like userManagedUnits above this is a merge point
+    # rather than a per-host literal — listOf concatenates across definitions, so a
+    # base (desktop.nix) and a host can each contribute — and the config block below
+    # renders all four lists into networking.firewall. TCP and UDP stay separate
+    # lists: anything speaking both gets listed twice, which is the price of being
+    # able to open only one.
     firewall = {
       tcpPorts = mkOption {
         type = types.listOf types.port;
         default = [ ];
+        example = [ 5355 ];
+        description = "extra TCP ports to accept on all interfaces";
+      };
+      udpPorts = mkOption {
+        type = types.listOf types.port;
+        default = [ ];
+        example = [ 5355 ];
+        description = "extra UDP ports to accept on all interfaces";
       };
       tcpRanges = mkOption {
+        type = types.listOf portRange;
         default = [ ];
-        type = types.listOf (
-          types.submodule {
-            options = {
-              from = mkOption { type = types.port; };
-              to = mkOption { type = types.port; };
-            };
+        example = [
+          {
+            from = 1714;
+            to = 1764;
           }
-        );
+        ];
+        description = "extra TCP port ranges to accept on all interfaces";
+      };
+      udpRanges = mkOption {
+        type = types.listOf portRange;
+        default = [ ];
+        example = [
+          {
+            from = 1714;
+            to = 1764;
+          }
+        ];
+        description = "extra UDP port ranges to accept on all interfaces";
       };
     };
 
@@ -162,6 +195,15 @@ in
     # stateVersion replaces the duplicated per-host block, so derive both downstream
     networking.hostName = config.host.hostName;
     system.stateVersion = config.host.stateVersion;
+
+    # the struct's four port lists, rendered once for every host; `enable` and
+    # `checkReversePath` stay with the bases, which disagree about the latter
+    networking.firewall = {
+      allowedTCPPorts = config.host.firewall.tcpPorts;
+      allowedUDPPorts = config.host.firewall.udpPorts;
+      allowedTCPPortRanges = config.host.firewall.tcpRanges;
+      allowedUDPPortRanges = config.host.firewall.udpRanges;
+    };
 
     assertions = [
       {
