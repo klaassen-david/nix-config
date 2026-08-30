@@ -179,6 +179,46 @@ in
       };
     };
 
+    # Backup fleet: one host owns a restic repository, other hosts' data is
+    # pulled into it. `restic.*` is generic (mail is only its first client);
+    # `mail.*` is the stalwart export/import channel in common/modules/mail-backup.
+    backup = {
+      restic = {
+        enable = mkOption {
+          type = types.bool;
+          default = false;
+          description = "own the shared restic repository and run the jobs that write to it";
+        };
+        repository = mkOption {
+          type = types.str;
+          default = "/var/backup/restic";
+          description = "path of the local restic repository";
+        };
+        retention = mkOption {
+          type = types.listOf types.str;
+          default = [
+            "--keep-daily=7"
+            "--keep-weekly=5"
+            "--keep-monthly=12"
+          ];
+          description = "restic forget policy flags, applied per --group-by host,tags";
+        };
+      };
+
+      mail = {
+        serve = mkOption {
+          type = types.bool;
+          default = false;
+          description = "expose the stalwart export/import channel to the backup host over a forced-command ssh key";
+        };
+        pull = mkOption {
+          type = types.bool;
+          default = false;
+          description = "pull the mail store into the local restic repository 30 min after boot";
+        };
+      };
+    };
+
     # opt-in diagnostics for hard lockups: a GPU/kernel freeze flushes nothing to
     # the journal, so this turns the hang into a panic that dumps dmesg to pstore
     # (EFI NVRAM, survives a power-cycle) and arms the hardware watchdog. See

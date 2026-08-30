@@ -15,12 +15,15 @@
     ../common/modules/stalwart
     ../common/modules/wg-easy
     ../common/modules/attic
+    ../common/modules/mail-backup
   ];
 
   host = {
     hostName = "olympus";
     role = "vps";
     stateVersion = "25.05";
+    # hestia pulls the mail store from here; see ../common/modules/mail-backup
+    backup.mail.serve = true;
   };
 
   boot.loader.grub.enable = true;

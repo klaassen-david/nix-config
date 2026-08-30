@@ -19,6 +19,7 @@ let
     "wg-hestia.age"
     "wg-tukl.age"
     "smb-dk.age"
+    "restic-repo-pass.age"
   ];
 in
 builtins.listToAttrs (

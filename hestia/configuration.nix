@@ -9,6 +9,8 @@
   imports = [
     ./hardware-configuration.nix
     ../common/desktop.nix
+    ../common/modules/backup
+    ../common/modules/mail-backup
   ];
 
   host = {
@@ -18,6 +20,11 @@
     gpu = "nvidia";
     display.primary = "DP-3";
     capabilities.samba = true;
+    # owns the fleet restic repo and pulls olympus's mail into it 30 min after boot
+    backup = {
+      restic.enable = true;
+      mail.pull = true;
+    };
     # 510M ESP only fits ~2 kernel+initrd pairs (initrd ~198M each); the
     # default of 10 overflows /boot/efi and breaks the systemd-boot install.
     keepGenerations = 2;

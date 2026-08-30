@@ -48,13 +48,23 @@ One oauth2-proxy + one Nextcloud OAuth2 client gates all `*.dklaassen.de` vhosts
 - **Single recipient**: every `.age` encrypts to the one `id_priv` key in `secrets/secrets.nix`; all hosts set `age.identityPaths = [ "/home/dk/.ssh/id_priv" ]`, so any host decrypts any secret at activation.
 - Add a secret = append its filename to the `files` list in `secrets.nix`, then create `secrets/<name>.age`.
 - Secret *content* is the raw value, single line (a WireGuard private key is just the base64 string — no `[Interface]`/`PrivateKey =`).
-- **The user encrypts secrets themselves** (`cd secrets && agenix -e <name>.age`). Do not run the encryption for them, and **never decrypt, read, or `cat` secret material** — not WireGuard/SSL private keys, *and not passwords*, even to "verify" them. Model configs around `privateKeyFile`/`configFile`/`age.secrets.<n>.path` references instead of inlining or inspecting values. Public keys (e.g. WireGuard peer pubkeys, oauth2 `clientID`) are not secret and live in plain `.nix`.
-- `nix flake check` does **not** decrypt anything — it only evals/builds. It passes even when `.age` files are missing or undecryptable. Decryption checks (`agenix -d <name>.age`) are a **user-only** step — Claude must not run them.
+- **The user encrypts secrets themselves** (`cd secrets && agenix -e <name>.age`). Do not run the encryption for them. **Secret plaintext must never enter the model's context** — no bare `agenix -d`, `cat`, `head`, `od`, or piping into a file that then gets read. Decrypting *into an aggregate* is fine, because nothing sensitive comes back: `agenix -d <name>.age | wc -lc`, `| cksum`, `| grep -c`. Model configs around `privateKeyFile`/`configFile`/`age.secrets.<n>.path` references rather than inlining values. Public keys (e.g. WireGuard peer pubkeys, oauth2 `clientID`) are not secret and live in plain `.nix`.
+- `nix flake check` does **not** decrypt anything — it only evals/builds. It passes even when `.age` files are missing or undecryptable. A real decryptability check needs `agenix -d`, which requires the flake devshell for `agenix` on PATH: `nix develop --command sh -c 'cd secrets && agenix -d <name>.age | wc -lc'` — exit 0 proves it decrypts, and the counts catch a stray trailing newline or a wrong length.
 - **New `.age` files must be `git add -N`'d** (intent-to-add) or the flake won't copy them into the store and activation can't decrypt them — failure is silent until runtime (see *Verifying changes*). **Whenever the user creates a new secret, remind them to `git add -N secrets/<name>.age`.**
 
 ## WireGuard
 
 `modules/wireguard` self-selects by `host.role`: `vps` runs the `olympus` server interface (`networking.wireguard.interfaces`) + NAT; clients run on-demand `wg-quick` interfaces (`autostart = false`, full-tunnel). `tukl` is the university VPN on desktops, modeled declaratively with only its private key from agenix. Per-interface keys are `wg-<host>.age`; peer public keys are inlined in the `nodes` registry.
+
+## Backups
+
+`common/modules/backup` owns the restic repository (hestia, `host.backup.restic.*`); `common/modules/mail-backup` pulls olympus's stalwart store into it (`host.backup.mail.serve` on olympus, `host.backup.mail.pull` on hestia). All flags default false.
+
+- **Pull, not push.** hestia runs `mail-backup.service` 30 min after boot (`OnBootSec`, plus a weekly `OnUnitActiveSec` for a machine left running), streams the dump over ssh and files it as `--host olympus --tag mail`. Run one by hand with `systemctl start mail-backup` — no sudo, it is in `userManagedUnits`.
+- **Snapshot = `stalwart --export` / `--import`**, verified against the live server: no downtime, round-trips the fs blob store as well as the sqlite one, and stays valid across a store-backend change. It runs against a *store-only* toml generated from `services.stalwart.settings.{store,storage}`, because the service's own config references `/run/credentials/stalwart.service/*` and only resolves inside that unit's namespace.
+- **One forced-command ssh key** — `command="mail-backup-channel",restrict` on the existing `keys/id_priv.pub`, with exactly two verbs (`export`, `import`) read from `$SSH_ORIGINAL_COMMAND`; olympus sets `PermitRootLogin = "forced-commands-only"`. That key cannot get a shell or read anything else, and grants nothing `id_priv` (the sole agenix recipient) did not already have.
+- **Restore**: `sudo mail-restore` lists snapshots and refuses to act; `sudo mail-restore [--snapshot ID] --yes` performs it. olympus stops stalwart, renames the live store to `/var/lib/stalwart/data.bak-<timestamp>` (never deletes, and puts it back if the import fails), imports, restarts. Clear the `.bak-*` dirs by hand once a restore is confirmed good.
+- **Repository**: `/var/backup/restic`, `0700 root`, password in `restic-repo-pass.age` — keep a copy off this host, it is not inside the repo it protects. `restic init` runs on the first backup; `sudo restic-repo <args>` is the interactive handle (`snapshots`, `check`, `restore`). Retention is `--keep-daily=7 --keep-weekly=5 --keep-monthly=12` applied per `--group-by host,tags`, so a second source can share the repo without evicting mail snapshots.
 
 ## Calendar & contacts (desktop)
 
@@ -89,7 +99,7 @@ Checklist for a change that adds a secret:
 1. Append the filename to the `files` list in `secrets/secrets.nix`.
 2. `cd secrets && agenix -e <name>.age` — **the user** encrypts; content is the raw single-line value.
 3. `git add -N secrets/<name>.age` (and any new `.nix` modules) so the flake copies them into the store. **Remind the user of this step.**
-4. Verify *without decrypting*: the `.age` file exists and is now tracked — `git ls-files --error-unmatch secrets/<name>.age`. **Never run `agenix -d` / decrypt a secret yourself**; if a decryption check is wanted, it's the user's to run.
+4. Verify: the `.age` file exists and is tracked — `git ls-files --error-unmatch secrets/<name>.age` — and decrypts to the expected shape, via an aggregate that reveals nothing: `nix develop --command sh -c 'cd secrets && agenix -d <name>.age | wc -lc'` (expect 0 newlines for a single-line value).
 5. `nix flake check` — eval/build every host.
 6. `nh os switch`, then `systemctl status <unit>` for any service that consumes the secret.
 

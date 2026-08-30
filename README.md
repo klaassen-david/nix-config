@@ -1,9 +1,4 @@
 # Bugs & review findings (2026-06)
-## minor / cosmetic
-- middle mouse button should paste selected text in the terminal
-- make notifications disappear after focusing their origin window (except firefox)
-- notification dismissal with right-click only works with the mouse
-
 # Priorities (review 2026-06)
 ranked take on the ideas below, by value-to-effort:
 - **1. backup for olympus** — the standout: mail + nextcloud data is the only irreplaceable state in the fleet (everything else rebuilds from the flake); a VPS disk failure currently loses it permanently
