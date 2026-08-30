@@ -24,6 +24,8 @@
     # password-less systemctl start/stop for the units modules register in
     # host.userManagedUnits (wg-quick clients, on-demand sshd)
     ./modules/polkit-units
+    # fprintd, driven by host.capabilities.fingerprint
+    ./modules/fingerprint
   ];
 
   nix.settings.experimental-features = [

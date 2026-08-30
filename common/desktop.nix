@@ -89,7 +89,11 @@
     jack.enable = true;
   };
 
-  security.pam.services.swaylock.text = "auth include login";
+  # sway comes from home-manager, so nixpkgs' wayland-session module never
+  # registers this service. Declaring it empty takes the generated stack, which
+  # picks up pam_fprintd from services.fprintd (common/modules/fingerprint);
+  # an explicit `text` would override that stack wholesale.
+  security.pam.services.swaylock = { };
 
   services.greetd = {
     enable = true;

@@ -1,6 +1,5 @@
 # Bugs & review findings (2026-06)
 ## minor / cosmetic
-- hermes sets `swaylock.fprintAuth = true`, but `desktop.nix` sets `swaylock.text` directly, which overrides the generated stack — the line is a no-op (fingerprint still works via the included `login` stack)
 - `wg-easy/default.nix` comments call the host hub interface "wg0"; it's actually named `olympus` (the container-internal `-i wg0` rules are correct)
 - `nixvim.inputs.nixpkgs.follows` in `flake.nix` triggers the "Nixvim's inputs pin Nixpkgs to..." eval warning twice per host — drop the follows or set `programs.nixvim.nixpkgs.source`
 - `users.extraUsers` in `common.nix` is a deprecated alias of `users.users`; the `networkmanager`/`gamemode` groups are also granted on olympus where neither exists
@@ -118,18 +117,6 @@ status quo: `powerManagement.enable = true` is the *only* power tuning on hermes
 # Code review findings (2026-07)
 
 ## Correctness / latent bugs
-### fingerprint module is orphaned — fingerprint auth is entirely dead
-- `common/modules/fingerprint/default.nix` is **never imported**: `common.nix` imports
-`wireguard`, `wifi`, `samba`, `attic-cache` but not `fingerprint`, and nothing else pulls it in
-(verified: no `imports` entry references it anywhere).
-- Consequence: `services.fprintd.enable`, all three
-`security.pam.services.{sudo,login,swaylock}.fprintAuth`, and `hermes`'
-`capabilities.fingerprint = true` are **inert**. `fprintd` is not enabled on any host.
-- This **contradicts the 2026-06 note** ("fingerprint still works via the included `login`
-stack") — with the module unimported there is no fprintd at all, so fingerprint works nowhere.
-Fix by importing the module in `desktop.nix`/`common.nix` (then the swaylock-override nit from
-the prior review becomes real again).
-
 ### `--unsupported-gpu ` flag has a trailing space
 - `home-manager/modules/sway/default.nix:19`: `extraOptions = [ "--unsupported-gpu " ]`. The
 argv token becomes `--unsupported-gpu ` (trailing space) and won't match sway's exact flag
@@ -159,9 +146,6 @@ rule on the EC device is the tighter grant.
 - **`host.theme.{base16,opacity,wallpaper}`** (`host.nix:99-113`) are defined but **never
 read** anywhere; the wallpaper path is hardcoded in `sway`. Pure stylix-scaffolding — keep only
 if stylix is imminent, else it's dead surface.
-- **`fingerprint/default.nix:8`**: `lib.mkMerge [ <single-attrset> ]` — the `mkMerge` + list
-wrapper are pointless around one element (plus a stray blank line at `:15`). Collapse to
-`lib.mkIf … { … }`.
 - **Unimported module dirs**: `home-manager/modules/tmux` and `home-manager/modules/zellij`
 exist but their imports are commented out in `home.nix:13,15`. Dead files.
 - **Commented-out code** scattered: `home.nix:13,15` (tmux/zellij), `desktop/default.nix:26`

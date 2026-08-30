@@ -1,18 +1,14 @@
 {
   config,
-  lib,
   ...
 }:
 
-lib.mkIf config.host.capabilities.fingerprint (
-  lib.mkMerge [
-    {
-      # fingerprint auth
-      services.fprintd.enable = true;
-      security.pam.services.sudo.fprintAuth = true;
-      security.pam.services.login.fprintAuth = true;
-      security.pam.services.swaylock.fprintAuth = true;
+{
+  # Enabling fprintd is enough: nixpkgs defaults every PAM service's
+  # `fprintAuth` to it, so sudo/login/swaylock all gain pam_fprintd.
+  # Set unconditionally (no mkIf) so the capability flag can also *disable*
+  # what nixos-hardware's framework-16 module turns on by mkDefault.
+  services.fprintd.enable = config.host.capabilities.fingerprint;
 
-    }
-  ]
-)
+  # Fingerprints are per-user enrollment state, not config: `fprintd-enroll`.
+}
