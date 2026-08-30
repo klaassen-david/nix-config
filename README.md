@@ -199,9 +199,6 @@ prior review. Decide keep-vs-delete.
 consolidate into one block.
 - **`vim`** still in both `common.nix:78` systemPackages and `home.nix:28` (flagged 2026-06,
 unresolved).
-- **kdeconnect enabled twice**: system `programs.kdeconnect.enable` (`desktop.nix:88`) already
-runs the daemon + opens the firewall; the HM `services.kdeconnect`
-(`home-manager/modules/kdeconnect`) starts a second user daemon. Confirm both are wanted or drop
 one.
 - **`"dk"` / `/home/dk`** hardcoded in ~10 spots (common, home, samba, calendar,
 nextcloud-sync). Acceptable for single-user, but there's no shared constant.

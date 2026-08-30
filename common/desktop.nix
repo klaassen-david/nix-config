@@ -92,8 +92,6 @@
 
   security.pam.services.swaylock.text = "auth include login";
 
-  programs.kdeconnect.enable = true;
-
   services.greetd = {
     enable = true;
     settings = rec {
