@@ -29,5 +29,25 @@
         RUN+="${pkgs.coreutils}/bin/chgrp charge-limit /sys%p/charge_control_end_threshold", \
         RUN+="${pkgs.coreutils}/bin/chmod 0664 /sys%p/charge_control_end_threshold"
     '';
+
+    # The EC keeps the limit across reboots, so this is not about restoring a lost
+    # value -- it is what makes the configured percentage win over a panel toggle.
+    # A oneshot rather than a udev ATTR= assignment so a rejected write is visible
+    # in `systemctl status` instead of vanishing into the udev worker.
+    systemd.services.charge-limit-default =
+      lib.mkIf (config.host.chargeLimitPercent != null) {
+        description = "Apply the configured battery charge limit";
+        wantedBy = [ "multi-user.target" ];
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+          ExecStart = pkgs.writeShellScript "charge-limit-default" ''
+            for f in /sys/class/power_supply/*/charge_control_end_threshold; do
+              [ -e "$f" ] || continue
+              echo ${toString config.host.chargeLimitPercent} > "$f"
+            done
+          '';
+        };
+      };
   };
 }

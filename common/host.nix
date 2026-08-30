@@ -82,6 +82,15 @@ in
       };
     };
 
+    # Reasserted at every boot by common/modules/charge-limit. null leaves whatever
+    # the EC kept, which means a panel toggle to 100 survives; setting it here makes
+    # that toggle last only until the next boot.
+    chargeLimitPercent = mkOption {
+      type = types.nullOr (types.ints.between 1 100);
+      default = null;
+      description = "battery charge limit to apply at boot, in percent";
+    };
+
     gpu = mkOption {
       type = types.enum [
         "nvidia"
@@ -259,6 +268,10 @@ in
       {
         assertion = config.host.capabilities.battery -> config.host.role == "laptop";
         message = ''host.capabilities.battery only makes sense when host.role = "laptop"'';
+      }
+      {
+        assertion = config.host.chargeLimitPercent != null -> config.host.capabilities.chargeLimit;
+        message = "host.chargeLimitPercent needs host.capabilities.chargeLimit (common/modules/charge-limit applies it)";
       }
       {
         assertion = config.host.capabilities.lid -> config.host.role == "laptop";

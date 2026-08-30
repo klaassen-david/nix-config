@@ -26,6 +26,7 @@
       chargeLimit = true;
       lid = true;
     };
+    chargeLimitPercent = 60;
 
     # LID0/state is confirmed present on the Framework 16; the token is "open"/"closed".
     lid_state = pkgs.writeShellScript "lid-state" ''
@@ -105,12 +106,22 @@
   environment.systemPackages = with pkgs; [
     playerctl
     calibre
-    # EC/firmware inspection; needs root (see common/modules/charge-limit)
     framework-tool
   ];
 
   services.upower = {
     enable = true;
+  };
+
+  services.fwupd.enable = true;
+  systemd.services.fp-led-brightness = {
+    description = "Set fingerprint LED brightness";
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.framework-tool}/bin/framework_tool --fp-brightness 1";
+    };
   };
 
   services.resolved.enable = true;

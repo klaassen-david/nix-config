@@ -62,8 +62,7 @@ status quo: `powerManagement.enable = true` is the *only* power tuning on hermes
 - switch it to `systemctl suspend-then-hibernate` + `HibernateDelaySec` (e.g. 2h); prereqs: `boot.resumeDevice` pointed at the existing swap partition and swap ≥ RAM for the hibernation image — check the partition size first
 ## measurement + housekeeping
 - `powertop` for auditing (per-device tunables, wakeup offenders); `powerManagement.powertop.enable = true` auto-applies its tunables at boot, but that includes USB autosuspend which bites input devices / BT dongles — prefer cherry-picking the tunables it suggests
-- `services.fwupd.enable = true` — Framework BIOS/EC updates regularly ship power fixes and land via LVFS; hermes has `framework-tool` but no fwupd today
-- consider importing `nixos-hardware`'s `framework-16-7040-amd` module instead of hand-rolling hardware quirks (bundles fwupd, AMD defaults, known Framework fixes) — new flake input, overlaps with existing manual settings, so diff what it sets before adopting
+- consider importing `nixos-hardware`'s `framework-16-7040-amd` module instead of hand-rolling hardware quirks (AMD defaults, known Framework fixes) — new flake input, overlaps with existing manual settings, so diff what it sets before adopting
 
 # Nix-specific optimizations
 ## use `lib.mkDefault` for overridable defaults
