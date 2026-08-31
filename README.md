@@ -91,28 +91,6 @@ units existing; `[manual]` for the notification arriving.
 
 # Security
 
-## desktop sshd accepts passwords
-`common/modules/ssh-on-demand/default.nix:46` sets
-`PasswordAuthentication = true`, while `common/headless.nix:45` sets it
-`false`. The desktops' sshd is off at boot and hand-toggled, which limits the
-window — but while it is up, the account is password-reachable from the LAN,
-and the login password hash is in this repo (next item). Key-only there too
-unless the password path is deliberately kept for a "locked myself out" case
-— in which case say so in the module header. `[auto]`
-
-## the login password hash is committed
-`common/common.nix:68` carries `initialHashedPassword = "$y$j9T$…"` — a
-yescrypt hash of the login password, in a repo with a GitHub remote
-(`git@github.com:klaassen-david/nix-config.git`; this session could not check
-whether it is public). yescrypt is a strong KDF, so this is not an immediate
-break, but it is an offline-crackable artifact of the password that also
-unlocks the sway session and (via `pam_gnome_keyring`, if that lands) the
-keyring.
-
-`initialHashedPassword` is only read on first activation, so the fix is cheap:
-move it to `hashedPasswordFile` pointed at an agenix secret, or drop the line
-now that all three hosts are provisioned. `[auto]`
-
 ## extend the sshd hardening
 `headless.nix:40-49` already restricts users and disables password/root login.
 Not set anywhere: `KexAlgorithms`, `Ciphers`, `MACs` allowlists,
@@ -126,34 +104,6 @@ keeps it `true`. This is usually a workaround for a VPN/multi-homing edge —
 the wg-quick clients are full-tunnel, which is precisely the case that *doesn't*
 need it. Try `"loose"` (or removing the line) and see whether the tunnels still
 come up. `[auto]` for it evaluating; `[manual]` for "the VPN still works".
-
-## secret ownership audit
-Most `age.secrets` already set a tight `owner`/`mode`
-(`nextcloud:15-16`, `stalwart:31-32`, `wireguard:64`, `backup:42`,
-`nginx:77` at `0440`). Sweep the remainder that set neither — notably
-`attic-cache/default.nix:48` (`attic-netrc`, read by the nix daemon) and
-`samba/default.nix:20` (`smb-dk`) — and give each the narrowest owner it can
-have. `[auto]` — `nix eval` every `age.secrets.*.{owner,mode}` and diff against
-the consuming unit's user.
-
-## one key is every credential in the fleet
-`id_priv` is simultaneously the sole agenix recipient (`common/common.nix:60`,
-`secrets/secrets.nix`), the user's login key on all three hosts
-(`common.nix:70`, `keys/id_priv.pub`), and the forced-command key that lets
-hestia pull olympus's entire mail store (`mail-backup/default.nix:33,224`).
-That is deliberate and documented — the backup channel "grants nothing
-`id_priv` did not already have" — but it means one compromised private key
-opens every secret in the repo *and* every host, with no revocation short of
-re-encrypting every `.age`.
-
-Worth deciding rather than drifting: keep it (single-user fleet, the key never
-leaves the machines) and write that down as a decision, or split at least the
-agenix recipient from the login key so a stolen laptop key does not decrypt
-olympus's mail secrets. Related: nothing rotates the host keys either.
-`[auto]` for the mechanics of a split (`secrets.nix` recipients, `agenix -r`,
-`nix flake check`); `[manual]` for the decision itself.
-
----
 
 # Bugs
 
@@ -182,14 +132,7 @@ Not reproducible by reading the config — the bar is a swaybar with
 `hidden_state hide` / `mode dock` (`sway/kanshi.nix:57-60`), so a suspect is the
 mode being lost across a VT switch rather than the bar dying. Next step is
 `swaymsg -t get_bar_config` before and after, plus the sway log.
-`[manual]` to reproduce; `[auto]` once it is a config change.
-
-### nextcloud mail: no attachment previews, everything marked important
-Both are server-side Nextcloud Mail app settings, not in this flake. Nothing to
-verify here; either accept as out of scope or note the Nextcloud app version
-that changes it. `[manual]`
-
----
+`[manual]` 
 
 # Desktop & UX
 
@@ -205,15 +148,6 @@ nvim ships a terminal-only `.desktop` entry, so this wants a small
 `text/plain` and the handful that follow it (`text/markdown`, `application/json`,
 `text/x-shellscript`, `text/x-nix`). `[auto]` — `xdg-mime query default
 text/plain` and an actual `xdg-open` after a switch.
-
-## shared shell history across the three hosts
-Nothing exists today (no `history` setting anywhere in `home-manager/`). Fish's
-history is a plain file, so the naive version is a symlink into `~/sync` — which
-loses writes when two hosts are up at once, the same conflict problem that
-killed KeePassXC-over-nextcloud. Better shapes: `atuin` (self-hostable sync
-server; olympus already has the nginx/SSO/agenix plumbing, same argument as
-Vaultwarden) or a periodic merge job. `[auto]` for the service running;
-`[manual]` for "history from hermes shows up on hestia".
 
 ## bar: pin ghostty's font to the bar's
 The bar renders with `pango:FiraCode Nerd Font Propo` (`sway/kanshi.nix:57`);
