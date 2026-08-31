@@ -354,10 +354,41 @@ in
             }
           ];
         };
+        # Standing backup failure (common/modules/backup). That module's alert
+        # hook drops one stamp per failed unit into this directory and the
+        # unit's next success removes it, so a non-empty directory *is* the
+        # alarm — nothing here talks to restic, and nothing needs root. The
+        # block is empty while everything is healthy; middle-click opens the
+        # journal of the first failing unit. Path is the system side's literal;
+        # keep the two in step.
+        backupAlert = {
+          block = "custom";
+          shell = "sh";
+          interval = 60;
+          json = true;
+          command = ''
+            failed=$(ls -1 /var/lib/backup-alerts 2>/dev/null | tr '\n' ' ')
+            if [ -z "$failed" ]; then
+              printf '{"text": ""}'
+            else
+              printf '{"text": "%s %s", "state": "Critical"}' "${wrapIcon "󰁯"}" "$failed"
+            fi
+          '';
+          click = [
+            {
+              button = "middle";
+              cmd = ''
+                unit=$(ls -1 /var/lib/backup-alerts 2>/dev/null | head -1)
+                [ -n "$unit" ] && ghostty -e ${unitStatusView}/bin/unit-status-view "$unit.service"
+              '';
+            }
+          ];
+        };
         common = [
           net
         ]
         ++ lib.optional host.capabilities.onDemandSshServer sshServer
+        ++ lib.optional (host.backup.pull != [ ]) backupAlert
         ++ [
           diskSpace
           memory

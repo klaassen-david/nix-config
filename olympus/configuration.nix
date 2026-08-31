@@ -15,6 +15,7 @@
     ../common/modules/stalwart
     ../common/modules/wg-easy
     ../common/modules/attic
+    # serves the mail store to hestia's restic repo (keyed on stalwart)
     ../common/modules/mail-backup
   ];
 
@@ -24,8 +25,6 @@
     stateVersion = "25.05";
     # wildcard cert renewed by ACME/dns-01 (../common/modules/acme)
     tls.acme = true;
-    # hestia pulls the mail store from here; see ../common/modules/mail-backup
-    backup.mail.serve = true;
   };
 
   boot.loader.grub.enable = true;

@@ -2,6 +2,7 @@
   config,
   lib,
   pkgs,
+  backupRepo,
   ...
 }:
 
@@ -20,10 +21,11 @@
 # invalidate old snapshots. The alternative — copying accounts.sqlite3 + blobs/
 # by hand — is coupled to today's store layout for no gain.
 #
-# The channel is one forced-command ssh key with exactly two verbs:
+# The channel is one forced-command ssh key. Verbs are named `<service>-<verb>`
+# so a second service can be added to the same key without renaming these:
 #
-#   ssh root@olympus export   ->  tar of a fresh dump on stdout
-#   ssh root@olympus import   ->  tar on stdin replaces the live store
+#   ssh root@olympus stalwart-export   ->  tar of a fresh dump on stdout
+#   ssh root@olympus stalwart-import   ->  tar on stdin replaces the live store
 #
 # sshd runs `mail-backup-channel` no matter what the client asks for, so that
 # key cannot get a shell, forward a port, or read anything else; the client's
@@ -32,13 +34,19 @@
 # recipient for the whole repo — it decrypts the mail passwords and the TLS key
 # — so a key that can only dump mail adds no privilege it did not already have.
 #
-# `import` is destructive by nature. It never deletes: the live store is renamed
-# to /var/lib/stalwart/data.bak-<timestamp> first, and put back if the import
-# fails. Clean those out by hand once a restore is confirmed good.
+# Which side a host takes is not configured twice: the serving end keys on
+# services.stalwart (only the host with the store can dump it), the pulling end
+# on "mail" appearing in host.backup.pull.
+#
+# `stalwart-import` is destructive by nature. It never deletes: the live store
+# is renamed to /var/lib/stalwart/data.bak-<timestamp> first, and put back if
+# the import fails. Clean those out by hand once a restore is confirmed good.
 
 let
-  mailCfg = config.host.backup.mail;
-  resticCfg = config.host.backup.restic;
+  # the repository, its snapshot flags and the failure alert all come from
+  # ../backup; this module only moves the bytes
+  inherit (backupRepo) env alertHook retention;
+  mail = backupRepo.sources.mail;
 
   # olympus's public ssh endpoint and host key. Both are public data and live
   # inline here like the wireguard peer pubkeys — pinning the key keeps the
@@ -80,14 +88,14 @@ let
       chmod 0700 "$work"
 
       case "''${SSH_ORIGINAL_COMMAND:-}" in
-        export)
+        stalwart-export)
           # stalwart reports progress on stdout — keep it out of the tar stream
           runuser -u stalwart -- stalwart --config ${storeConfig} --export "$work" >&2
           # normalised metadata so an unchanged dump dedups against the last one
           tar -C "$work" --sort=name --owner=0 --group=0 --numeric-owner --mtime=@0 -cf - .
           ;;
 
-        import)
+        stalwart-import)
           tar -C "$work" -xf -
           chown -R stalwart:stalwart "$work"
 
@@ -109,7 +117,7 @@ let
           ;;
 
         *)
-          echo "mail-backup: only 'export' and 'import' are accepted" >&2
+          echo "mail-backup: only 'stalwart-export' and 'stalwart-import' are accepted" >&2
           exit 1
           ;;
       esac
@@ -122,12 +130,6 @@ let
 
   ssh = "ssh -i /home/dk/.ssh/id_priv -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${knownHosts} -o ConnectTimeout=15";
 
-  resticEnv = ''
-    export RESTIC_REPOSITORY=${resticCfg.repository}
-    export RESTIC_PASSWORD_FILE=${config.age.secrets.restic-repo-pass.path or ""}
-    export RESTIC_CACHE_DIR=${resticCfg.cacheDir}
-  '';
-
   backupScript = pkgs.writeShellApplication {
     name = "mail-backup-run";
     runtimeInputs = [
@@ -137,7 +139,7 @@ let
       pkgs.gnutar
     ];
     text = ''
-      ${resticEnv}
+      ${env}
 
       # first run of any job in the fleet creates the repository
       restic cat config >/dev/null 2>&1 || restic init
@@ -148,7 +150,7 @@ let
       # 30 min after boot the link is normally up, but a laptop-ish tower can
       # still be offline or olympus mid-reboot; retry before calling it a failure
       attempt=1
-      until ${ssh} -o BatchMode=yes ${remote} export > "$work/mail-export.tar"; do
+      until ${ssh} -o BatchMode=yes ${remote} stalwart-export > "$work/mail-export.tar"; do
         if [ "$attempt" -ge 3 ]; then
           echo "olympus unreachable after $attempt attempts" >&2
           exit 1
@@ -160,11 +162,14 @@ let
       # a stream truncated by a dropped connection must never become a snapshot
       tar -tf "$work/mail-export.tar" >/dev/null
 
-      restic backup --stdin --stdin-filename mail-export.tar \
-        --host olympus --tag mail < "$work/mail-export.tar"
+      # --retry-lock: restic-check (../backup) takes the repository lock
+      # exclusively and both can be triggered by the same boot; waiting for it
+      # is correct, failing the backup over it would be a false alarm.
+      restic backup --retry-lock=30m --stdin --stdin-filename mail-export.tar \
+        ${mail.flags} < "$work/mail-export.tar"
 
-      restic forget --host olympus --tag mail --group-by host,tags \
-        ${lib.concatStringsSep " " resticCfg.retention} --prune
+      restic forget --retry-lock=30m ${mail.flags} --group-by host,tags \
+        ${lib.concatStringsSep " " retention} --prune
     '';
   };
 
@@ -176,7 +181,7 @@ let
       pkgs.coreutils
     ];
     text = ''
-      ${resticEnv}
+      ${env}
 
       snapshot="latest"
       confirmed=""
@@ -193,27 +198,29 @@ let
         echo "stalwart is stopped for the import and the current store is renamed to"
         echo "${dataDir}.bak-<timestamp> — nothing is deleted."
         echo
-        restic snapshots --host olympus --tag mail
+        restic snapshots ${mail.flags}
         echo
         echo "Re-run with --yes to proceed."
         exit 1
       fi
 
-      restic dump "$snapshot" /mail-export.tar | ${ssh} ${remote} import
+      restic dump "$snapshot" /mail-export.tar | ${ssh} ${remote} stalwart-import
     '';
   };
 in
 {
+  # for `backupRepo` (the repository, its snapshot flags, the alert hook);
+  # import-deduped, so olympus pulling it in through here as well as hestia
+  # importing it directly is fine
+  imports = [ ../backup ];
+
   config = lib.mkMerge [
     # --- olympus: expose the channel -------------------------------------
-    (lib.mkIf mailCfg.serve {
-      assertions = [
-        {
-          assertion = config.services.stalwart.enable;
-          message = "host.backup.mail.serve needs services.stalwart (common/modules/stalwart)";
-        }
-      ];
-
+    # Keyed on running stalwart, not on a per-host flag: the host with the mail
+    # store is the only one that can serve a dump of it, and a flag there could
+    # only ever be set to match. Importing this module on a mail host is the
+    # opt-in.
+    (lib.mkIf config.services.stalwart.enable {
       users.users.root.openssh.authorizedKeys.keys = [
         ''command="${lib.getExe channel}",restrict ${lib.fileContents ../../keys/id_priv.pub}''
       ];
@@ -228,25 +235,24 @@ in
     })
 
     # --- hestia: pull on a timer + the restore CLI ------------------------
-    (lib.mkIf mailCfg.pull {
-      assertions = [
-        {
-          assertion = resticCfg.enable;
-          message = "host.backup.mail.pull needs host.backup.restic.enable on the same host (common/modules/backup)";
-        }
-      ];
-
+    (lib.mkIf (lib.elem "mail" config.host.backup.pull) {
       environment.systemPackages = [ restoreScript ];
 
-      systemd.services.mail-backup = {
-        description = "Back up olympus's mail store into the restic repository";
-        after = [ "network-online.target" ];
-        wants = [ "network-online.target" ];
-        serviceConfig = {
-          Type = "oneshot";
-          ExecStart = lib.getExe backupScript;
-        };
-      };
+      # alertHook: a failed pull is announced and flags itself until a later run
+      # succeeds. How long a gap between successes is tolerated is ../backup's
+      # call (sources.mail.maxAgeDays), since it is the check that notices.
+      systemd.services.mail-backup = lib.mkMerge [
+        alertHook
+        {
+          description = "Back up olympus's mail store into the restic repository";
+          after = [ "network-online.target" ];
+          wants = [ "network-online.target" ];
+          serviceConfig = {
+            Type = "oneshot";
+            ExecStart = lib.getExe backupScript;
+          };
+        }
+      ];
 
       # OnBootSec is the requirement; OnUnitActiveSec keeps a machine that stays
       # up for weeks from going that long without a backup. Not Persistent= —

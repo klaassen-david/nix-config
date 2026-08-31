@@ -20,11 +20,9 @@
     gpu = "nvidia";
     display.primary = "DP-3";
     capabilities.samba = true;
-    # owns the fleet restic repo and pulls olympus's mail into it 30 min after boot
-    backup = {
-      restic.enable = true;
-      mail.pull = true;
-    };
+    # owns the fleet restic repo; ../common/modules/backup pulls each listed
+    # source into it and verifies the result on a weekly timer
+    backup.pull = [ "mail" ];
     # 510M ESP only fits ~2 kernel+initrd pairs (initrd ~198M each); the
     # default of 10 overflows /boot/efi and breaks the systemd-boot install.
     keepGenerations = 2;

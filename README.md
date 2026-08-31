@@ -1,9 +1,11 @@
 # nix-config — open items
 
 Audited against the tree on **2026-08-31** (at `c70ff62`). Every item below was
-re-checked; line references are valid at that commit. Items that had been fixed
-in the meantime moved to *Closed* at the bottom rather than being deleted, so a
-re-read does not re-propose them.
+re-checked; line references are valid at that commit, and the ones pointing into
+`common/modules/backup`, `common/modules/mail-backup` and `common/host.nix` were
+re-checked again after those files were rewritten later the same day (see
+*Closed*). Items that had been fixed in the meantime moved to *Closed* at the
+bottom rather than being deleted, so a re-read does not re-propose them.
 
 **Legend** — the marker says whether *Claude can confirm a fix on its own*:
 
@@ -57,49 +59,33 @@ See *Theming*.
 
 Ranked by value-to-effort. Everything here is expanded in its own section.
 
-1. **backup integrity** — the restic repo has no scheduled `check` and
-   `mail-backup` failures are silent. A backup nobody verifies is a guess.
-2. **Vaultwarden** — olympus already has the nginx/SSO/agenix plumbing; real
+1. **Vaultwarden** — olympus already has the nginx/SSO/agenix plumbing; real
    sync semantics beat `.kdbx` conflict copies.
-3. **stylix** — `host.theme` is already scaffolded for it and currently dead.
+2. **stylix** — `host.theme` is already scaffolded for it and currently dead.
+3. **offsite copy of the restic repo** — the repository is now verified and
+   alerts on failure, but it is still a single copy on one desktop.
 
 ---
 
 # Reliability & alerting
 
-## `restic check` never runs
-`common/modules/backup/default.nix:20` names `restic-repo check` as the
-counterweight to the whole fleet sharing one repository — but nothing schedules
-it. Only `restic forget --prune` runs, inside the mail job
-(`mail-backup/default.nix:166-167`). Silent repo corruption is exactly the
-failure mode a single shared repo has, and it would be found at restore time.
-
-Add a weekly `restic-check` timer on hestia (`check --read-data-subset=…` to
-keep it cheap). `[auto]`
-
-## mail-backup failure is silent
-`systemd.services.mail-backup` (`mail-backup/default.nix:241`) has no
-`OnFailure=`. If the ssh channel, the export, or the repo write fails, the unit
-goes `failed` on a headless-ish desktop and nothing says so. The bar already has
-the machinery for this (`service_status` blocks, D-Bus driven, see
-`sway/i3status-rust.nix:315`) — a failed-unit indicator there, or an
-`OnFailure=` unit that sends mail, closes it. `[auto]`
-
 ## the backup is a single copy on one desktop
 `/var/backup/restic` lives only on hestia. A house fire, a disk failure, or a
 mistaken `rm` takes olympus's mail *and* its only backup. The repo password is
 already documented as needing to survive losing hestia
-(`backup/default.nix:25-30`) — the repo itself deserves the same. Options: a
+(`backup/default.nix:54-59`) — the repo itself deserves the same. Options: a
 second `restic copy` target (external disk, or a rented S3/B2 bucket), or a
 `restic-repo copy` cron to a drive that is normally unplugged. `[manual]` (the
 copy job is `[auto]`-checkable; "is the offsite copy actually offsite" is not).
 
 ## host/disk alerting
-No uptime, disk-usage, or service-failure alerting on olympus at all. A
-`systemd` generator-level `OnFailure=` on the important units
-(stalwart, nextcloud, nginx, oauth2-proxy) plus a disk-usage timer is the
-minimum. `[auto]` for the units existing; `[manual]` for the notification
-arriving.
+No uptime, disk-usage, or service-failure alerting on olympus at all. The
+backup jobs now have a pattern to copy (`backup-alert@` + the stamp directory
+the bar polls, `common/modules/backup`), but it lives on hestia and covers
+backup units only. olympus needs the same `OnFailure=` on the important units
+(stalwart, nextcloud, nginx, oauth2-proxy) plus a disk-usage timer, and — being
+headless — a transport that is not a desktop notification. `[auto]` for the
+units existing; `[manual]` for the notification arriving.
 
 ---
 
@@ -154,7 +140,7 @@ the consuming unit's user.
 `id_priv` is simultaneously the sole agenix recipient (`common/common.nix:60`,
 `secrets/secrets.nix`), the user's login key on all three hosts
 (`common.nix:70`, `keys/id_priv.pub`), and the forced-command key that lets
-hestia pull olympus's entire mail store (`mail-backup/default.nix:31,123`).
+hestia pull olympus's entire mail store (`mail-backup/default.nix:33,224`).
 That is deliberate and documented — the backup channel "grants nothing
 `id_priv` did not already have" — but it means one compromised private key
 opens every secret in the repo *and* every host, with no revocation short of
@@ -513,11 +499,41 @@ is the only `[manual]` part.
 
 Kept so they are not re-proposed.
 
+- **backup verification & alerting** (was priority 1) — done 2026-08-31, the two
+  follow-ups left open by **backup for olympus** below. `restic-check.service` +
+  weekly timer (`Persistent`, 30 min jitter, idle I/O) runs on the repository
+  owner and fails on either way a backup lies: `restic check
+  --read-data-subset=10%` for rot (deliberately *not* `--with-cache` — trusting
+  the local metadata cache is what would hide a damaged index; the whole repo is
+  re-read over ~10 runs), and a snapshot-age test for abandonment, since a repo
+  nothing writes to any more passes `check` forever. Every backup unit carries
+  the module's `alertHook`, so a failure runs `backup-alert@%n.service`
+  (journal + critical desktop notification + a stamp under
+  `/var/lib/backup-alerts`) and the unit's next success clears the stamp; a new
+  `custom` block in `sway/i3status-rust.nix` shows the standing failures and
+  middle-clicks into the failing unit's journal. The stamp is the part that
+  survives a failure nobody was logged in for. No off switch — it comes with
+  the module. `restic backup`/`forget` gained `--retry-lock=30m` so a long
+  check cannot turn into a false backup failure. Verified: both freshness
+  branches against a scratch repo, the notification path on hestia's session.
+  *Remaining follow-up: the repo is still a single copy — see Reliability.*
+- **`host.backup` was configuring the module** — the struct is down to
+  `backup.pull = [ "mail" ]` (a list of source names; non-empty ⇒ this host owns
+  the repository). Repository path, cache dir, retention, check schedule, alert
+  directory and each source's snapshot flags/max age live in
+  `common/modules/backup`, which exports them as the `backupRepo` module arg —
+  there is one repo in the fleet, so nothing had anything to vary against, and
+  `mail-backup` no longer repeats the restic env block or the
+  `--host olympus --tag mail` literals. `backup.serve` is gone with it: the
+  serving end keys on `services.stalwart.enable`, because only the host with the
+  store can dump it. The channel's verbs are now `stalwart-export` /
+  `stalwart-import` (`<service>-<verb>`, so a second service can share the key)
+  — a wire protocol between the hosts, so **switch olympus before hestia**.
 - **backup for olympus** (was priority 1) — done: `common/modules/backup` owns
   the restic repo on hestia and `common/modules/mail-backup` pulls the stalwart
   store into it over a forced-command ssh channel, with `mail-restore` for the
-  way back. *Open follow-ups moved to Reliability: no scheduled `check`, no
-  failure notification, single copy.*
+  way back. *Open follow-up: the repository is a single copy on one desktop;
+  scheduled `check` and failure alerting landed — see the entry above.*
 - **`nixos-hardware`'s `framework-16-7040-amd`** — adopted (`flake.nix:101`).
 - **`services.power-profiles-daemon`** — now enabled (via that module) *and*
   driven: `sway/i3status-rust.nix` reconciles the profile across AC and lid
