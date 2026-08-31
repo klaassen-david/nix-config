@@ -51,7 +51,7 @@ One oauth2-proxy + one Nextcloud OAuth2 client gates all `*.dklaassen.de` vhosts
 - Add a secret = append its filename to the `files` list in `secrets.nix`, then create `secrets/<name>.age`.
 - Secret *content* is the raw value, single line (a WireGuard private key is just the base64 string — no `[Interface]`/`PrivateKey =`).
 - **The user encrypts secrets themselves** (`cd secrets && agenix -e <name>.age`). Do not run the encryption for them. **Secret plaintext must never enter the model's context** — no bare `agenix -d`, `cat`, `head`, `od`, or piping into a file that then gets read. Decrypting *into an aggregate* is fine, because nothing sensitive comes back: `agenix -d <name>.age | wc -lc`, `| cksum`, `| grep -c`. Model configs around `privateKeyFile`/`configFile`/`age.secrets.<n>.path` references rather than inlining values. Public keys (e.g. WireGuard peer pubkeys, oauth2 `clientID`) are not secret and live in plain `.nix`.
-- `nix flake check` does **not** decrypt anything — it only evals/builds. It passes even when `.age` files are missing or undecryptable. A real decryptability check needs `agenix -d`, which requires the flake devshell for `agenix` on PATH: `nix develop --command sh -c 'cd secrets && agenix -d <name>.age | wc -lc'` — exit 0 proves it decrypts, and the counts catch a stray trailing newline or a wrong length.
+- `nix flake check` does **not** decrypt anything — it only evals/builds and lints. It passes even when `.age` files are missing or undecryptable. A real decryptability check needs `agenix -d`, which requires the flake devshell for `agenix` on PATH: `nix develop --command sh -c 'cd secrets && agenix -d <name>.age | wc -lc'` — exit 0 proves it decrypts, and the counts catch a stray trailing newline or a wrong length.
 - **New `.age` files must be `git add -N`'d** (intent-to-add) or the flake won't copy them into the store and activation can't decrypt them — failure is silent until runtime (see *Verifying changes*). **Whenever the user creates a new secret, remind them to `git add -N secrets/<name>.age`.**
 
 ## WireGuard
@@ -83,11 +83,15 @@ One oauth2-proxy + one Nextcloud OAuth2 client gates all `*.dklaassen.de` vhosts
 ## Commands
 
 ```sh
-nix flake check                        # eval + build every host's toplevel (run before deploy)
-nix develop                            # devShell with `agenix` on PATH
+nix flake check                        # eval + build every host's toplevel, + statix lint (run before deploy)
+nix develop                            # devShell with `agenix` + `statix` on PATH
 nh os switch                           # local rebuild+switch (front-end; programs.nh, auto closure diff)
 nixos-rebuild switch --flake .#<host>  # explicit per-host
 ```
+
+`checks.statix` lints the whole tree and fails the flake check on any lint. `statix.toml` lists the
+lints this repo declines: `repeated_keys` (its rewrite buries the option path the NixOS docs name)
+and `empty_pattern` (`{ ... }:` is the module header idiom).
 
 - GC is `nh.clean` (keeps `host.keepGenerations` gens + 30d). Do **not** also enable `nix.gc.automatic` — running both is rejected.
 

@@ -142,7 +142,7 @@ in
           "0.0.0.0/0"
           "::/0"
         ];
-        endpoint = endpoint;
+        inherit endpoint;
         persistentKeepalive = 25;
       }
     ];

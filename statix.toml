@@ -1,0 +1,6 @@
+# repeated_keys: flags `services.a.enable` next to `services.b.enable`. Collapsing
+#   those into one nested attrset is the opposite of how NixOS modules are written
+#   everywhere else, and it buries the option path the docs name.
+# empty_pattern: wants `_:` for `{ ... }:`. The latter is the module header idiom
+#   and stays correct when the file later needs `pkgs`/`lib`.
+disabled = ["repeated_keys", "empty_pattern"]

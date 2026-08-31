@@ -109,12 +109,27 @@
         };
       };
       devShells.x86_64-linux.default = nixpkgs-unstable.legacyPackages.x86_64-linux.mkShell {
-        packages = [ agenix.packages.x86_64-linux.agenix ];
+        packages = [
+          agenix.packages.x86_64-linux.agenix
+          nixpkgs-unstable.legacyPackages.x86_64-linux.statix
+        ];
       };
 
-      # `nix flake check` builds every host's toplevel — catches eval/build breakage before deploy
-      checks.x86_64-linux = nixpkgs-unstable.lib.mapAttrs (
-        _: cfg: cfg.config.system.build.toplevel
-      ) self.nixosConfigurations;
+      # `nix flake check` builds every host's toplevel — catches eval/build breakage
+      # before deploy — and lints the tree with statix.
+      checks.x86_64-linux =
+        let
+          pkgs = nixpkgs-unstable.legacyPackages.x86_64-linux;
+        in
+        nixpkgs-unstable.lib.mapAttrs (_: cfg: cfg.config.system.build.toplevel) self.nixosConfigurations
+        // {
+          # statix exits 1 on any lint; statix.toml (cwd-relative, hence the cd)
+          # lists the ones this repo declines to follow.
+          statix = pkgs.runCommand "statix-check" { nativeBuildInputs = [ pkgs.statix ]; } ''
+            cd ${self}
+            statix check
+            touch $out
+          '';
+        };
     };
 }

@@ -108,7 +108,7 @@ in
 
       lookup.default = {
         hostname = mailHostname;
-        domain = domain;
+        inherit domain;
       };
 
       session.auth = {

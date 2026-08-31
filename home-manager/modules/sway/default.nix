@@ -49,7 +49,7 @@
       in
       {
         terminal = "ghostty";
-        modifier = modifier;
+        inherit modifier;
         menu = "tofi-run | xargs swaymsg exec --";
         startup = [
           { command = "zen-beta"; }

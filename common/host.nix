@@ -278,7 +278,7 @@ in
     # forward the evaluated struct to home-manager modules as the `host` arg
     # (the flake no longer passes the hostname string, so this is the sole `host`)
     home-manager.extraSpecialArgs = {
-      host = config.host;
+      inherit (config) host;
     };
   };
 }
