@@ -528,14 +528,21 @@ Kept so they are not re-proposed.
 - **setuid `framework_tool`** — replaced by `common/modules/charge-limit`, a
   udev rule that group-owns the battery's `charge_control_end_threshold`, so no
   setuid EC tool is on the system.
-- **cert-expiry alerting** (was priority 1) — superseded by the real fix:
-  `common/modules/acme` renews the cert with lego against IONOS' ACME endpoint
-  over HTTP-01, gated by `host.tls.acme`. Nothing watches an expiry date any
-  more because nothing is hand-rotated;
+- **cert-expiry alerting** (was priority 1) — superseded by the real fix, live
+  since 2026-08-30: `common/modules/acme` renews the wildcard with lego over
+  dns-01, gated by `host.tls.acme` (true on olympus). `*.dklaassen.de` + apex,
+  served by every vhost and by stalwart's SMTP/IMAP, which the cert's
+  `reloadServices` restarts on renewal. Nothing watches an expiry date any more
+  because nothing is hand-rotated;
   `systemctl status acme-order-renew-dklaassen.de.service` is the health check.
-  The wildcard is gone — dns-01 would need a zone API key we do not have — so
-  the cert carries a SAN list derived from the nginx vhost names instead. The
-  static `ssl-fullchain.age` / `ssl-key.age` pair stays as the rollback for a
-  failed issuance and can be retired once ACME has renewed once.
+  The CA is Let's Encrypt, not IONOS: their endpoint is DV-only and issues
+  solely against a purchased, unassigned certificate, which this account does
+  not have and a panel reissue did not produce — the module header records both
+  refusal strings and the single-use EAB behaviour so it is not retried. The
+  IONOS API key is still used, as the *zone* credential lego needs to write the
+  challenge TXT. *Open follow-up: `ssl-fullchain.age` / `ssl-key.age` are now
+  dead weight kept only as the `host.tls.acme = false` rollback, and can be
+  dropped from `secrets.nix` and `common/modules/nginx` once a renewal has run
+  unattended.*
 - **`documentation.nixos.enable = false` on olympus** — dropped from the list.
 - **stable channel for olympus** — decided against; see *Decisions on record*.
