@@ -322,88 +322,63 @@ is the only `[manual]` part.
 
 # Code hygiene
 
-## dead code & unused scaffolding
-- **Commented-out code** scattered: `home.nix:13,15` (tmux/zellij),
-  `desktop/default.nix:26` (`# lutris`), `sway/default.nix:37-39` (nvidia env
-  vars), `sway/default.nix:86-88` (pre-swayosd `pactl` keybinds),
-  `common.nix:85` (`# xkb.variant = "dvorak"`), `ghostty/default.nix:10,14`,
-  `flake.nix:6,13,17-19`. Decide keep-vs-delete per site; the nvidia and
-  zen-browser ones carry information and are worth converting to prose
-  comments rather than deleting. `[auto]`
+Swept 2026-09-07 — everything `[auto]`-fixable landed as a series of small
+commits (see *Closed*); what remains is what survived the sweep.
 
 ## duplication & single-source-of-truth
-- **Keyboard layout in three places, two disagreeing**: `common.nix:84`
-  `xkb.layout = "gb"`, `home.nix:28` `home.keyboard.layout = "gb"`, and
-  `sway/default.nix:60` `xkb_layout = "gb,de,us"`. The sway one is the real
-  desktop behaviour; the other two are the console/XWayland fallback. A
-  `host.keyboard.{layout,variant,options}` triple on the struct, with sway
-  deriving its multi-layout list from it, would leave one authority.
-  `[auto]` — the three evaluated values can be diffed.
 - **`"dk"` / `/home/dk`** hardcoded in ~10 spots (`common.nix`, `home.nix`,
   `samba`, `calendar`, `nextcloud-sync`, `sway`). Acceptable for a single-user
   fleet, but there is no shared constant; `host.user` would be the obvious one,
   and it is what the wallpaper/logs paths in sway would consume too. `[auto]`
 
-## nix idiom
-- **`lib.mkForce` where nothing forces**: `hestia/configuration.nix:95` sets
-  `networking.networkmanager.dns = lib.mkForce "none"`, but no other module in
-  the flake defines that option (`common/modules/wifi/default.nix:28-35` sets
-  only `enable` and `wifi.*`), so the `mkForce` overrides nothing but the
-  nixpkgs default and a plain assignment would do. The general rule the
-  original note was reaching for still holds: set shared values with
-  `lib.mkDefault` in the bases so hosts override cleanly without reaching for
-  `mkForce`. `[auto]` — drop the `mkForce` and `nix flake check`; a real
-  conflict fails loudly with "The option … has conflicting definitions".
-- **narrow `allowUnfree`**: `common/common.nix:56` sets
-  `nixpkgs.config.allowUnfree = true` for everything, and
-  `home-manager/modules/nvim/default.nix:19` sets it again for nixvim's own
-  nixpkgs. Replacing the global with an `allowUnfreePredicate` listing the
-  actual packages (nvidia, steam, the Framework firmware blob, zen-browser…)
-  documents *why* unfree is needed and turns a surprise unfree dependency into
-  a build error instead of a silent pull. `[auto]` — `nix flake check` fails on
-  anything unfree not in the list, which is precisely the point.
-
 ## cosmetic / minor
-- **Unused module arguments**: `olympus/configuration.nix:3-4` declares `lib`
-  and `pkgs` and uses neither; `hermes/configuration.nix:3` declares an unused
-  `lib`; `common/common.nix:2` declares an unused `config` (`nixpkgs.config` at
-  `:56` is an attribute path, not the argument). `[auto]`
-- **`sway/default.nix:194`** `programs.i3status.enable = false` — already the
-  default, and misleading next to `programs.i3status-rust` being the thing
-  actually in use. `[auto]`
-- **`sway/default.nix:20`** `checkConfig = false` with no comment explaining
-  why validation is off. Either restore the check or write the one-line reason.
-  `[auto]` — flipping it back either builds or does not.
-- **`home.stateVersion = "24.11"`** (`home.nix:23`) trails the hosts' `25.05`.
-  Independent by design, but worth a comment saying so, since the whole point
-  of the host struct is one authoritative version. `[auto]`
-- **fish nits** (`home-manager/modules/fish/default.nix`): `l` (`:39-41`) and
-  `ll` (`:42-44`) are byte-identical (`eza -l $argv`); `mkcd` (`:50-52`) breaks
-  on multiple args (`mkdir -p $argv && cd $argv`); `cat`→`bat` (`:46`) and
-  `ls`→`eza` (`:33`) are *functions*, so they shadow the real binaries in every
-  interactive shell, including in scripts sourced from one. `[auto]`
-- **`hardware.enableAllFirmware = true`** (`hermes:56`) pulls the full unfree
-  firmware set. `enableRedistributableFirmware` — already implied by the
-  nixos-hardware framework module now in use — is usually enough; diff the
-  closures before keeping both. `[auto]`
-- **`vulkan-tools`** sits in `hardware.graphics.extraPackages`
-  (`hestia:72`) — that list is for driver libs loaded into every GL/Vulkan
-  client, not CLI tools. It is *also* already in
-  `home-manager/modules/desktop/default.nix:29`, so the hestia entry is
-  redundant as well as misplaced. `[auto]`
+- **fish shadows real binaries**: `cat`→`bat` and `ls`→`eza`
+  (`home-manager/modules/fish/default.nix`) are *functions*, so they shadow
+  the binaries in every interactive shell, including in scripts sourced from
+  one. Every fix changes daily UX (abbrs expand visibly, `command` guards
+  complicate the bodies), so this is a decision, not a mechanical fix; the
+  mechanical neighbours (duplicate `l`, `mkcd`) are done.
 - **`udiskie.tray = "auto"; # FIXME does not show`**
   (`desktop/default.nix:74`) — an unresolved FIXME shipped as config. `"auto"`
   hides the icon when nothing is mounted; if the intent is always-visible it
   wants `"always"`, and if the tray itself is missing it wants a status-notifier
   host in the bar. `[manual]` to confirm the icon appears.
-- **Trailing whitespace**: `sway/default.nix:132`,
-  `nvim/plugins/lsp.nix:167`. `[auto]`
 
 ---
 
 # Closed since the 2026-06 / 2026-07 reviews
 
 Kept so they are not re-proposed.
+
+- **code-hygiene sweep (2026-09-07)** — the section's `[auto]` items landed as
+  small commits: commented-out code deleted (tmux/zellij imports, pactl
+  keybinds, dvorak variant, ghostty leftovers, the 25.05 flake input) or
+  turned into prose (sway's nvidia env fallbacks, the unfollowed-inputs note
+  in `flake.nix`); `# lutris` resolved by installing lutris on hestia; unused
+  module args dropped (olympus, hermes, common); `programs.i3status.enable`
+  dropped; `home.stateVersion` divergence commented; fish `l`/`ll` dedup and a
+  multi-arg-safe `mkcd`; `hardware.enableAllFirmware` dropped on hermes (the
+  redistributable set was already on via nixos-hardware; the delta was only
+  broadcom/b43/facetimehd/xone blobs, none of them this machine); hestia's
+  misplaced `vulkan-tools` removed; trailing whitespace gone.
+- **`checkConfig = false` now says why** — restoring the check was tried and
+  fails: `sway -C` initializes a renderer and the build sandbox has no DRM FD
+  to make one. The one-line reason is in the module.
+- **keyboard layout single-sourced** — `host.keyboard.{layout,variant,options}`
+  on the struct holds sway's comma lists; console/XWayland and `home.keyboard`
+  derive the first entry, so the extra layouts (and dvorak) exist only inside
+  sway. hestia overrides to `us,gb,de` / `dvorak,,`: dvorak active once sway
+  starts, console plain us.
+- **the `mkForce` on hestia's `networkmanager.dns` was real** — the review
+  claim was wrong: `services.resolved.enable` makes `resolved.nix` define the
+  option, so a plain assignment fails the eval with conflicting definitions
+  (verified). The `mkForce` stays, now with a comment naming its opponent.
+- **`allowUnfree` narrowed** — the global `true` is now an
+  `allowUnfreePredicate` listing the nine names actually consulted (traced
+  with a temporary `builtins.trace` predicate across all three hosts' evals):
+  nvidia-x11 / nvidia-kernel-modules / nvidia-settings, steam /
+  steam-unwrapped / steamcmd, unrar, claude-code, corefonts. nixvim's own
+  nixpkgs instance is narrowed to `barbar.nvim` (JSON license).
 
 - **sway execs wrote to a directory nothing creates** — `wl-gammarelay-rs`'s
   `2>> /home/dk/logs/...` redirect is gone (`sway/default.nix:134`); nothing
