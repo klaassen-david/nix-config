@@ -90,7 +90,13 @@ Ranked by value-to-effort. Each expands in its own section below.
 
 ## Desktop & UX
 
-- [ ] **nvim as the default editor for text files** `[auto]`
+- [x] **nvim as the default editor for text files** `[auto]`
+  *Closed 2026-09-07 (`cb7f930`, `desktop/default.nix`):
+  `xdg.desktopEntries.nvim-ghostty` (`ghostty -e nvim %F`; not named
+  `nvim.desktop` to avoid colliding with neovim's own entry in the profile)
+  mapped from the five types. Verified after switch: `xdg-mime query default
+  text/plain` → `nvim-ghostty.desktop` (all five types), and `xdg-open` on a
+  .txt opened nvim in ghostty.*
   `$EDITOR` is already nvim (`nvim/default.nix` sets
   `programs.nixvim.defaultEditor = true`). Missing is the *graphical* half:
   `desktop/default.nix:44-67` maps `xdg.mimeApps` for mail, LibreOffice and
