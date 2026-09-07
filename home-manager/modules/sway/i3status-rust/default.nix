@@ -26,7 +26,7 @@ let
       }
       // helpers
       // {
-        inherit (powerProfile) manualFile;
+        inherit (powerProfile) manualFile updateSignal;
       }
     );
 

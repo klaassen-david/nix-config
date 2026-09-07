@@ -42,6 +42,15 @@ rec {
   # (the reader), so they never drift.
   manualFile = ''"''${XDG_STATE_HOME:-$HOME/.local/state}/power-profile/manual"'';
 
+  # The bar block repaints on SIGRTMIN+<updateSignal> (`signal` in
+  # ./blocks/power-profiles.nix) rather than re-running its pipeline on a tick, so
+  # `refresh` is how anything that changes the profile out of band tells it. One
+  # expression for the subscriber and the sender. pkill exits 1 when no bar is
+  # running -- the login-time reconcile below runs before the bar exists -- which
+  # would otherwise fail the unit.
+  updateSignal = 4;
+  refresh = "${pkgs.procps}/bin/pkill -SIGRTMIN+${toString updateSignal} i3status-rs || true";
+
   # The one place the profile rule lives: lid closed *and no external display* ->
   # power-saver (wins the closed+charging overlap), else on AC -> performance,
   # else the last manual value. A closed lid while docked to an external screen is
@@ -67,7 +76,10 @@ rec {
       [ -n "$target" ] || target=$("$ppctl" get)
     fi
 
-    [ "$("$ppctl" get)" = "$target" ] || "$ppctl" set "$target"
+    [ "$("$ppctl" get)" = "$target" ] || {
+      "$ppctl" set "$target"
+      ${refresh}
+    }
   '';
 
   # Reconcile at login, then on AC edges only. upower --monitor is noisy (battery

@@ -152,20 +152,6 @@ coincidence of that fallback. Setting
 face, and any glyph that renders in one is then guaranteed in the other.
 `[auto]` — `ghostty +show-face` reports the resolved face.
 
-## bar: `powerProfiles` still polls once a second
-`i3status-rust.nix:278` runs `interval = 1`, spawning a shell pipeline every
-second forever — on the laptop, on battery — to read a value that only changes
-when something explicitly sets it. Use i3status-rust's `signal = N`: raise the
-interval to 30s+ and end the click handler (and
-`power-profile-reconcile`, `:78`) with `pkill -SIGRTMIN+N i3status-rs` so the
-block repaints immediately after the only events that change it.
-`[auto]` — the interval is in the generated TOML, and the repaint-on-signal is
-observable from the block's own output.
-
-*(The same finding for `chargeLimit` is closed — it is `interval = 60` at
-`:254` now. The `cpu` block's `interval = 1` at `:211` is a genuine meter and
-should stay.)*
-
 ## bar: reuse the status viewer for the wg-quick tunnels
 `unit-status-view` takes the unit as an argument — its own header already says
 the tunnels can reuse it verbatim (`unit-status-view.nix:29-30`) — and the
@@ -465,7 +451,14 @@ Kept so they are not re-proposed.
   transitions and remembers a manual override.
 - **hestia sway crashing via libseat** — no longer reported.
 - **`chargeLimit` polling every second** — now `interval = 60`
-  (`i3status-rust.nix:254`).
+  (`i3status-rust/blocks/charge-limit.nix:31`).
+- **`powerProfiles` polling every second** — now signal-driven: the block
+  subscribes with `signal` (`i3status-rust/blocks/power-profiles.nix`) and
+  `power-profile-reconcile` raises SIGRTMIN+4 after it changes the profile
+  (`refresh` in `i3status-rust/power-profile.nix`); the click repaints itself
+  via `sync` + `update`. `interval = 60` is left only as a backstop for a bare
+  `powerprofilesctl set`. The `cpu` block's `interval = 1` is a genuine meter
+  and stays.
 - **setuid `framework_tool`** — replaced by `common/modules/charge-limit`, a
   udev rule that group-owns the battery's `charge_control_end_threshold`, so no
   setuid EC tool is on the system.
