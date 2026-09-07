@@ -346,9 +346,6 @@ is the only `[manual]` part.
 # Code hygiene
 
 ## dead code & unused scaffolding
-- **`home-manager/modules/tmux` and `.../zellij`** exist on disk but their
-  imports are commented out (`home.nix:13,15`). Delete the directories or
-  re-enable them. `[auto]`
 - **Commented-out code** scattered: `home.nix:13,15` (tmux/zellij),
   `desktop/default.nix:26` (`# lutris`), `sway/default.nix:37-39` (nvidia env
   vars), `sway/default.nix:86-88` (pre-swayosd `pactl` keybinds),
@@ -356,8 +353,6 @@ is the only `[manual]` part.
   `flake.nix:6,13,17-19`. Decide keep-vs-delete per site; the nvidia and
   zen-browser ones carry information and are worth converting to prose
   comments rather than deleting. `[auto]`
-- **`host.theme.*`** — covered under *Theming*; no longer "delete if stylix
-  isn't imminent", since stylix is now decided.
 
 ## duplication & single-source-of-truth
 - **Keyboard layout in three places, two disagreeing**: `common.nix:84`
