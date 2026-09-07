@@ -1,6 +1,5 @@
 {
   config,
-  lib,
   pkgs,
   ...
 }:
@@ -93,7 +92,7 @@
     dhcpcd.enable = false;
     networkmanager = {
       enable = true;
-      dns = lib.mkForce "none";
+      dns = "none";
     };
   };
   services.resolved.enable = true;
