@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 
 {
   imports = [
@@ -16,7 +16,8 @@
   programs.nixvim = {
     enable = true;
     defaultEditor = true;
-    nixpkgs.config.allowUnfree = true;
+    # barbar.nvim carries the JSON license, which nixpkgs counts as unfree
+    nixpkgs.config.allowUnfreePredicate = pkg: lib.getName pkg == "barbar.nvim";
 
     globals = {
       mapleader = " ";
