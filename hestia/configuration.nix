@@ -1,5 +1,6 @@
 {
   config,
+  lib,
   pkgs,
   ...
 }:
@@ -91,7 +92,8 @@
     dhcpcd.enable = false;
     networkmanager = {
       enable = true;
-      dns = "none";
+      # mkForce beats resolved.nix, which sets this to "systemd-resolved"
+      dns = lib.mkForce "none";
     };
   };
   services.resolved.enable = true;
