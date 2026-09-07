@@ -111,9 +111,21 @@ Checklist for a change that adds a secret:
 5. `nix flake check` — eval/build every host.
 6. `nh os switch`, then `systemctl status <unit>` for any service that consumes the secret.
 
-## Deploying — known gotcha
+## Deploy protocol
 
-Verify decryptability and a console/recovery path before rebooting a remote host; nothing in the base touches sshd or the WAN interface, but the SSO/oauth2-proxy units may be degraded until the Nextcloud client is wired up.
+- `nix flake check` green before any switch.
+- Cross-host ordering: when the mail-backup ssh channel verbs change, **switch olympus before hestia** — they are a wire protocol (see *Backups*).
+- Remote hosts: verify secret decryptability and a console/recovery path before rebooting; nothing in the base touches sshd or the WAN interface, but the SSO/oauth2-proxy units may be degraded until the Nextcloud client is wired up.
+- Snapshot a ref (a tag, or note the SHA) before any risky git operation (rebase, reset, history rewrite).
+
+## Decision & backlog tracking
+
+- `TODO.md` is the backlog; `DECISIONS.md` is an index of settled questions, one line per ruling, linking into `decisions/<topic-slug>.md` (rationale, rejected alternatives, a *revisit if* condition). The index line carries the ruling itself, so most lookups end there.
+- **Capture rule**: when the user rules on something — in chat, mid-task, anywhere — write `decisions/<slug>.md` and its index line before moving on, provenance-tagged `[USER <date>]`. Agent-verified findings that settle a question (e.g. overturning an audit claim) get `[AGENT <date>]` entries.
+- **Read rule**: before proposing or reverting behaviour in an area, scan the `DECISIONS.md` index; open a linked file only when the rationale or revisit-condition matters.
+- A ruling that changes is amended **in place** — old ruling stays in the file as history — so one file is always the current answer to one question.
+- Closing a `TODO.md` item: check it off in place with date, commit, and the command that verified it; don't delete it.
+- Don't duplicate what the repo already records: a constraint that lives in a module header stays there — a decision file is for rulings that span files or would otherwise be re-litigated from chat.
 
 ## Style
 
