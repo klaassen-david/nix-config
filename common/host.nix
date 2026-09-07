@@ -133,6 +133,18 @@ in
       description = ''primary output connector ("mainDisplay"), e.g. "DP-3" or "eDP-1"; null on headless hosts'';
     };
 
+    # Which browser links open in, and which one sway starts at login
+    # (home-manager/modules/browser). Both browsers stay installed either way;
+    # this only moves the default.
+    browser = mkOption {
+      type = types.nullOr (types.enum [
+        "zen"
+        "firefox"
+      ]);
+      default = if config.host.role == "vps" then null else "zen";
+      description = "default web browser; drives the xdg http/html handler and the sway startup entry";
+    };
+
     theme = {
       base16 = mkOption {
         type = types.str;
@@ -272,6 +284,12 @@ in
           (config.host.role == "laptop" || config.host.role == "tower")
           -> config.host.display.primary != null;
         message = "host.display.primary must be set for laptop/tower roles";
+      }
+      {
+        assertion =
+          (config.host.role == "laptop" || config.host.role == "tower")
+          -> config.host.browser != null;
+        message = "host.browser must be set for laptop/tower roles";
       }
     ];
 

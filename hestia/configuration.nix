@@ -19,6 +19,7 @@
     stateVersion = "25.05";
     gpu = "nvidia";
     display.primary = "DP-3";
+    browser = "firefox";
     capabilities.samba = true;
     # owns the fleet restic repo; ../common/modules/backup pulls each listed
     # source into it and verifies the result on a weekly timer

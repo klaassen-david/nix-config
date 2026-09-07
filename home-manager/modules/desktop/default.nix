@@ -3,10 +3,9 @@
 {
   imports = [
     ../sway
-    ../firefox
+    ../browser
     ../zathura
     ../kdeconnect
-    ../zen-browser
     ../nextcloud-sync
     ../calendar
   ];

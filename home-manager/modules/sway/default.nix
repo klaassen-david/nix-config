@@ -2,11 +2,13 @@
   host,
   pkgs,
   lib,
+  defaultBrowser,
   ...
 }:
 
 {
   imports = [
+    ../browser # defaultBrowser: which browser the startup entry launches
     ./kanshi.nix
     ./i3status-rust
   ];
@@ -52,7 +54,7 @@
         inherit modifier;
         menu = "tofi-run | xargs swaymsg exec --";
         startup = [
-          { command = "zen-beta"; }
+          { inherit (defaultBrowser) command; }
         ];
 
         input = {
