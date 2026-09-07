@@ -20,6 +20,12 @@
     gpu = "nvidia";
     display.primary = "DP-3";
     browser = "firefox";
+    # dvorak first = active once sway starts; the console fallback takes only
+    # the bare first layout, so it stays plain us
+    keyboard = {
+      layout = "us,gb,de";
+      variant = "dvorak,,";
+    };
     capabilities.samba = true;
     # owns the fleet restic repo; ../common/modules/backup pulls each listed
     # source into it and verifies the result on a weekly timer
