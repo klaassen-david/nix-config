@@ -129,7 +129,7 @@
               XDG_CURRENT_DESKTOP=sway \
               WAYLAND_DISPLAY
 
-          exec mpvpaper ${host.display.primary} /home/dk/wallpaper/current --mpv-options "loop" 
+          exec mpvpaper ${host.display.primary} /home/dk/wallpaper/current --mpv-options "loop"
 
           exec wl-gammarelay-rs run
 

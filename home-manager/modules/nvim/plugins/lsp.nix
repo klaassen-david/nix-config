@@ -164,7 +164,7 @@
                       arguments = { vim.api.nvim_buf_get_name(0) },
                   }, { bufnr = bufnr })
               end, { desc = "[T]inymist [P]in", noremap = true })
-              
+
               vim.keymap.set("n", "<leader>tu", function()
                   client:exec_cmd({
                       title = "unpin",
