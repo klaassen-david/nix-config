@@ -19,6 +19,7 @@
     stateVersion = "25.05";
     gpu = "nvidia";
     display.primary = "DP-3";
+    display.startupWorkspace = 2;
     browser = "firefox";
     # dvorak first = active once sway starts; the console fallback takes only
     # the bare first layout, so it stays plain us

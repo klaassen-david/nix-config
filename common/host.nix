@@ -133,6 +133,12 @@ in
       description = ''primary output connector ("mainDisplay"), e.g. "DP-3" or "eDP-1"; null on headless hosts'';
     };
 
+    display.startupWorkspace = mkOption {
+      type = types.nullOr types.ints.positive;
+      default = null;
+      description = "workspace to focus once sway starts; null keeps sway's default";
+    };
+
     # Which browser links open in, and which one sway starts at login
     # (home-manager/modules/browser). Both browsers stay installed either way;
     # this only moves the default.

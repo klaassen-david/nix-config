@@ -55,9 +55,13 @@
         terminal = "ghostty";
         inherit modifier;
         menu = "tofi-run | xargs swaymsg exec --";
-        startup = [
-          { inherit (defaultBrowser) command; }
-        ];
+        startup =
+          [
+            { inherit (defaultBrowser) command; }
+          ]
+          ++ lib.optional (host.display.startupWorkspace != null) {
+            command = "swaymsg workspace number ${toString host.display.startupWorkspace}";
+          };
 
         input = {
           "type:keyboard" = {
