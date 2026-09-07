@@ -1,6 +1,6 @@
 # unit-status-view — read-only, live `systemctl status <unit>` in neovim
 # =====================================================================
-# The bar's service blocks (see ./i3status-rust.nix) can say *whether* a unit is
+# The bar's service blocks (see ./i3status-rust) can say *whether* a unit is
 # running; when it is not, the interesting part is *why*, which is what
 # `systemctl status` prints. Middle-clicking such a block opens this in a
 # terminal window.

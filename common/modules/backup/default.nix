@@ -43,8 +43,8 @@
 # Failures are never left to the journal alone. Every backup unit carries
 # `alertHook`, so a failure runs backup-alert@ — desktop notification plus a
 # stamp file under alertDir, which the next successful run of that unit
-# removes. The stamp is what survives a failure nobody was logged in for; the
-# sway bar polls that directory (home-manager/modules/sway/i3status-rust.nix).
+# removes. The stamp is what survives a failure nobody was logged in for --
+# nothing polls it, so `ls /var/lib/backup-alerts` is the standing record.
 # This is not optional and has no off switch: an alert you can disable per host
 # is how a repository goes quietly stale.
 #
@@ -200,7 +200,7 @@ in
       systemd.tmpfiles.rules = [
         # 0700 root: snapshot contents are as sensitive as the mail they hold
         "d ${repository} 0700 root root -"
-        # unit names and timestamps only — readable so the bar can poll it
+        # unit names and timestamps only — readable without root
         "d ${alertDir} 0755 root root -"
       ];
 

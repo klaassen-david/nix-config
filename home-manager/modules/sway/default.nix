@@ -8,7 +8,7 @@
 {
   imports = [
     ./kanshi.nix
-    ./i3status-rust.nix
+    ./i3status-rust
   ];
 
   wayland.windowManager.sway = {
