@@ -32,6 +32,8 @@
     debug.crashCapture = true;
   };
 
+  environment.systemPackages = [ pkgs.lutris ];
+
   # games library on the second NVMe — mount by UUID so it survives the
   # nvme0/nvme1 enumeration swap; nofail keeps boot going if the disk is absent.
   fileSystems."/mnt/games" = {
