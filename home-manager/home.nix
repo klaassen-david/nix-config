@@ -10,9 +10,7 @@
     ./modules/nvim
     ./modules/fish
     ./modules/ghostty
-    # ./modules/tmux
     ./modules/yazi
-    # ./modules/zellij
     ./modules/git
     ./modules/bash
     ./modules/claude
@@ -20,6 +18,7 @@
     ./modules/ssh
   ];
 
+  # deliberately trails host.stateVersion (25.05): HM state predates the hosts'
   home.stateVersion = "24.11";
   programs.home-manager.enable = true;
 
