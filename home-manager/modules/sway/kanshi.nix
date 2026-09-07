@@ -77,6 +77,21 @@ in
     "bar ${barId} {\n" + common + "\n}"
   );
 
+  # `swaymsg reload` (run by HM's onChange whenever the sway config changes, or by
+  # $mod+Shift+c) resets outputs to the sway config's defaults, wiping the layout
+  # kanshi applied over IPC — and kanshi, still considering its profile applied,
+  # never re-applies. exec_always runs on every reload: restart kanshi afterwards
+  # so the profile is applied again. Re-import this compositor's env first, so the
+  # restart also recovers when a stray nested sway left the user manager pointing
+  # at a dead wayland socket (kanshi would otherwise crash-loop into its start
+  # limit with "failed to connect to display").
+  wayland.windowManager.sway.config.startup = [
+    {
+      command = "systemctl --user import-environment WAYLAND_DISPLAY SWAYSOCK DISPLAY && systemctl --user restart kanshi.service";
+      always = true;
+    }
+  ];
+
   services.kanshi = {
     enable = true;
     systemdTarget = "sway-session.target";
