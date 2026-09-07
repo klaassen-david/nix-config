@@ -52,7 +52,6 @@
   services.xserver.videoDrivers = [ "amdgpu" ];
 
   # bluetooth
-  hardware.enableAllFirmware = true;
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = true;
