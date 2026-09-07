@@ -36,9 +36,10 @@
               export WLR_RENDERER=vulkan
               export WLR_NO_HARDWARE_CURSORS=1
               export NIXOS_OZONE_WL=1
-              # export LD_LIBRARY_PATH=/run/opengl-driver/lib
-              # export VK_ICD_FILENAMES=/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.x86_64.json
-              # export WLR_DRM_DEVICES=/dev/dri/by-path/pci-0000:2b:00.0-card
+              # If the vulkan renderer stops finding the nvidia ICD or picks the
+              # wrong card, the historical fixes were pointing LD_LIBRARY_PATH /
+              # VK_ICD_FILENAMES at /run/opengl-driver and pinning WLR_DRM_DEVICES
+              # to the nvidia card's /dev/dri/by-path node.
             ''
           else
             "";
