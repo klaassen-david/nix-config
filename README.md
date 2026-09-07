@@ -109,15 +109,6 @@ come up. `[auto]` for it evaluating; `[manual]` for "the VPN still works".
 
 ## confirmed in the tree
 
-### sway execs write to a directory nothing creates
-`sway/default.nix:134`: `exec wl-gammarelay-rs run 2>> /home/dk/logs/wl-gammarelay-rs`
-— no tmpfiles or `home.file` rule creates `/home/dk/logs`. If it is absent the
-redirect fails and gammarelay never starts, silently taking the
-`Ctrl/Shift+XF86MonBrightness*` keybindings (`:99-105`) with it. Fix by creating
-the dir via `home.file."logs/.keep"`, or by dropping the redirect and letting
-the output land in the journal. `[auto]` — the exec's exit status and the
-`rs.wl-gammarelay` D-Bus name are both checkable after a switch.
-
 ### the wallpaper path is hand-placed and hardcoded
 `sway/default.nix:132`: `exec mpvpaper ${host.display.primary} /home/dk/wallpaper/current`
 depends on a file no module puts there, and hardcodes a path while
@@ -428,6 +419,11 @@ is the only `[manual]` part.
 
 Kept so they are not re-proposed.
 
+- **sway execs wrote to a directory nothing creates** — `wl-gammarelay-rs`'s
+  `2>> /home/dk/logs/...` redirect is gone (`sway/default.nix:134`); nothing
+  declarative ever created `/home/dk/logs`, so on a host where it is absent the
+  exec fails and the `Ctrl/Shift+XF86MonBrightness*` bindings die with it.
+  stderr now lands in the sway log like every other exec.
 - **backup verification & alerting** (was priority 1) — done 2026-08-31, the two
   follow-ups left open by **backup for olympus** below. `restic-check.service` +
   weekly timer (`Persistent`, 30 min jitter, idle I/O) runs on the repository

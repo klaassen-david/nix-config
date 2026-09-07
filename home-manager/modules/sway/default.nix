@@ -131,7 +131,7 @@
 
           exec mpvpaper ${host.display.primary} /home/dk/wallpaper/current --mpv-options "loop" 
 
-          exec wl-gammarelay-rs run 2>> /home/dk/logs/wl-gammarelay-rs
+          exec wl-gammarelay-rs run
 
           exec swaync
         '';
