@@ -19,6 +19,7 @@
     wrapperFeatures.gtk = true;
     swaynag.enable = true;
     extraOptions = lib.optional (host.gpu == "nvidia") "--unsupported-gpu";
+    # sway -C needs a renderer, and the build sandbox has no DRM FD to make one
     checkConfig = false;
     extraSessionCommands =
       let
