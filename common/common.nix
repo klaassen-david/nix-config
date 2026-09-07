@@ -54,7 +54,21 @@
   services.fstrim.enable = true;
   zramSwap.enable = true;
 
-  nixpkgs.config.allowUnfree = true;
+  # unfree is opt-in per package: a new unfree dependency fails the eval
+  # loudly instead of slipping in silently
+  nixpkgs.config.allowUnfreePredicate =
+    pkg:
+    builtins.elem (lib.getName pkg) [
+      "nvidia-x11"
+      "nvidia-kernel-modules"
+      "nvidia-settings"
+      "steam"
+      "steam-unwrapped"
+      "steamcmd"
+      "unrar"
+      "claude-code"
+      "corefonts"
+    ];
 
   # decrypt agenix secrets with the shared user key (present on every host),
   # so a single recipient (id_priv) in secrets.nix covers all machines.
