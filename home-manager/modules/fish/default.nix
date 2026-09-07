@@ -36,9 +36,6 @@
       la = {
         body = "eza -la $argv";
       };
-      l = {
-        body = "eza -l $argv";
-      };
       ll = {
         body = "eza -l $argv";
       };
@@ -48,7 +45,7 @@
       };
 
       mkcd = {
-        body = "mkdir -p $argv && cd $argv";
+        body = "mkdir -p $argv && cd $argv[-1]";
       };
     };
   };
