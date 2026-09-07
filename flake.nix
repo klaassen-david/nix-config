@@ -3,20 +3,19 @@
 
   inputs = {
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
-    # nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     home-manager = {
       url = "github:nix-community/home-manager/master";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
+    # nixvim and zen-browser deliberately do not follow nixpkgs-unstable, so
+    # each drags its own nixpkgs into the lock (zen-browser needs libgbm from
+    # unstable). Re-testing `inputs.nixpkgs.follows` for both is an open README
+    # item ("inputs that do not follow nixpkgs").
     nixvim = {
       url = "github:nix-community/nixvim";
-      # inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
     zen-browser = {
       url = "github:0xc000022070/zen-browser-flake";
-      # # IMPORTANT: we're using "libgbm" and is only available in unstable so ensure
-      # # to have it up-to-date or simply don't specify the nixpkgs input
-      # inputs.nixpkgs.follows = "nixpkgs";
     };
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
     disko = {
