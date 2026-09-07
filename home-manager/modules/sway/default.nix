@@ -61,9 +61,9 @@
 
         input = {
           "type:keyboard" = {
-            xkb_layout = "gb,de,us";
-            xkb_variant = ",,dvorak";
-            xkb_options = "grp:win_space_toggle,caps:escape_shifted_capslock";
+            xkb_layout = host.keyboard.layout;
+            xkb_variant = host.keyboard.variant;
+            xkb_options = host.keyboard.options;
             repeat_rate = "45";
             repeat_delay = "500";
           };

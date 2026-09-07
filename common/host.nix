@@ -145,6 +145,27 @@ in
       description = "default web browser; drives the xdg http/html handler and the sway startup entry";
     };
 
+    # One authority for the xkb setup. The comma lists are sway's native format
+    # and go in verbatim; single-layout consumers (console/XWayland via
+    # services.xserver.xkb, home.keyboard) take the first entry.
+    keyboard = {
+      layout = mkOption {
+        type = types.str;
+        default = "gb,de,us";
+        description = "xkb layout list, comma-separated";
+      };
+      variant = mkOption {
+        type = types.str;
+        default = ",,dvorak";
+        description = "xkb variant per layout, comma-separated, empty entries allowed";
+      };
+      options = mkOption {
+        type = types.str;
+        default = "grp:win_space_toggle,caps:escape_shifted_capslock";
+        description = "xkb options list";
+      };
+    };
+
     theme = {
       base16 = mkOption {
         type = types.str;

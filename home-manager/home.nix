@@ -1,6 +1,8 @@
 {
   pkgs,
+  lib,
   inputs,
+  host,
   ...
 }:
 
@@ -24,7 +26,7 @@
 
   home.username = "dk";
   home.homeDirectory = "/home/dk";
-  home.keyboard.layout = "gb";
+  home.keyboard.layout = lib.head (lib.splitString "," host.keyboard.layout);
 
   home.packages = with pkgs; [
     # rust implementations

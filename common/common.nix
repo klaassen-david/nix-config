@@ -1,4 +1,6 @@
 {
+  config,
+  lib,
   pkgs,
   ...
 }:
@@ -77,10 +79,10 @@
   time.timeZone = "Europe/Berlin";
   i18n.defaultLocale = "en_US.UTF-8";
 
-  # gb keyboard layout
+  # console/XWayland fallback: first entry of host.keyboard (sway gets the full list)
   console.useXkbConfig = true;
   services.xserver = {
-    xkb.layout = "gb";
+    xkb.layout = lib.head (lib.splitString "," config.host.keyboard.layout);
   };
 
   environment.systemPackages = with pkgs; [
