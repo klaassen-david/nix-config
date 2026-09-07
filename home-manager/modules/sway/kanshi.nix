@@ -93,11 +93,10 @@ in
           {
             criteria = "Samsung Electric Company U32J59x HNMXC00245";
             position = "3840,0";
-            scale = 1.5;
           }
           {
             criteria = "Infotronic America, Inc. INFOTRONIC  0x00000F4E";
-            position = "6400,240";
+            position = "7680,960";
           }
         ];
         profile.exec = mkExec {
