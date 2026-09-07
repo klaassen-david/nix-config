@@ -39,9 +39,34 @@
   # this every GTK app (ghostty included) ignores the middle button.
   dconf.settings."org/gnome/desktop/interface".gtk-enable-primary-paste = true;
 
+  # nvim's own .desktop entry is Terminal=true, which xdg-open can't launch
+  # from a graphical context — wrap it in a ghostty invocation instead.
+  xdg.desktopEntries.nvim-ghostty = {
+    name = "Neovim (ghostty)";
+    genericName = "Text Editor";
+    exec = "ghostty -e nvim %F";
+    terminal = false;
+    icon = "nvim";
+    categories = [ "Utility" "TextEditor" ];
+    mimeType = [
+      "text/plain"
+      "text/markdown"
+      "application/json"
+      "text/x-shellscript"
+      "text/x-nix"
+    ];
+  };
+
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {
+      # editor (terminal nvim via the ghostty wrapper entry above)
+      "text/plain" = "nvim-ghostty.desktop";
+      "text/markdown" = "nvim-ghostty.desktop";
+      "application/json" = "nvim-ghostty.desktop";
+      "text/x-shellscript" = "nvim-ghostty.desktop";
+      "text/x-nix" = "nvim-ghostty.desktop";
+
       # mail
       "x-scheme-handler/mailto" = "thunderbird.desktop";
       "message/rfc822" = "thunderbird.desktop";
