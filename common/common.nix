@@ -1,5 +1,4 @@
 {
-  config,
   pkgs,
   ...
 }:
@@ -82,7 +81,6 @@
   console.useXkbConfig = true;
   services.xserver = {
     xkb.layout = "gb";
-    # xkb.variant = "dvorak";
   };
 
   environment.systemPackages = with pkgs; [
