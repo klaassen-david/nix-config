@@ -69,7 +69,6 @@
         vulkan-validation-layers
         vulkan-extension-layer
         vulkan-loader
-        vulkan-tools
         nvidia-vaapi-driver
         gamescope-wsi
       ];
