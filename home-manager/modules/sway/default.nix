@@ -191,8 +191,6 @@
   xdg.configFile."mpvpaper/pauselist".text = "";
   xdg.configFile."mpvpaper/stoplist".text = "";
 
-  programs.i3status.enable = false;
-
   services.swaync = {
     enable = true;
   };
