@@ -43,6 +43,9 @@
     settings = {
       UseDns = false;
       PasswordAuthentication = false;
+      # NixOS defaults this to true; with UsePAM that re-offers a password
+      # prompt over keyboard-interactive despite PasswordAuthentication = false.
+      KbdInteractiveAuthentication = false;
       AllowUsers = [ "dk" ];
       PermitRootLogin = "no";
     };
