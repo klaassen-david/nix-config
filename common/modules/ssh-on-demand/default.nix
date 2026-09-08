@@ -44,6 +44,8 @@ lib.mkIf config.host.capabilities.onDemandSshServer {
     settings = {
       UseDns = false;
       PasswordAuthentication = true;
+      # redundant here (passwords are allowed anyway), off for one auth path
+      KbdInteractiveAuthentication = false;
       AllowUsers = [ "dk" ];
       PermitRootLogin = "no";
     };
