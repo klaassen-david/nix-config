@@ -24,3 +24,6 @@ changes (old ruling stays in the file as history).
 - [hestia-gpu-lockups](decisions/hestia-gpu-lockups.md) — the hard freezes are
   Xid 79 (GPU off the PCIe bus), not a game or config fault; transient power
   delivery is the leading cause, under test via a 280 W cap [AGENT 2026-09-08]
+- [dk-password](decisions/dk-password.md) — per-host passwords set with
+  `passwd`; `initialHashedPassword` stays as the bootstrap value, agenix
+  `hashedPasswordFile` rejected (would unify the fleet) [USER 2026-09-08]
