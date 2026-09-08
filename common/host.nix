@@ -34,7 +34,7 @@ in
     keepGenerations = mkOption {
       type = types.ints.positive;
       default = 10;
-      description = "system generations to retain; caps bootloader entries and the nh clean keep-policy";
+      description = "system generations to retain; caps bootloader entries";
     };
 
     capabilities = {
