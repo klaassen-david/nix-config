@@ -15,7 +15,7 @@ Inputs track `nixpkgs-unstable` + `home-manager/master`. Unfree allowed.
 - `flake.nix` — `mkHost { host, hostModules?, hmModules? }` builds each `nixosConfigurations.<host>`. `specialArgs` passes `inputs` and `secretsPath = ./secrets`. `checks` builds every host's `system.build.toplevel`.
 - `common/` — shared base:
   - `host.nix` — defines the `host.*` options struct (see below) and `imports`-ed everywhere via `common.nix`.
-  - `common.nix` — base for *all* hosts (nix settings, user `dk`, agenix identity, fish, nh, `services.fstrim` + `zramSwap` fleet-wide). Imports `host.nix` + `modules/wireguard`.
+  - `common.nix` — base for *all* hosts (nix settings, user `dk`, agenix identity, fish, `services.fstrim` + `zramSwap` fleet-wide). Imports `host.nix` + `modules/wireguard`.
   - `headless.nix` — server base; imports `common.nix` + `modules/nginx`. Holds `control.dklaassen.de`, sshd, fail2ban.
   - `desktop.nix` — desktop base; imports `common.nix`. Sway/greetd, audio, steam, printing.
   - `modules/{nginx,nextcloud,stalwart,wg-easy,wireguard}/default.nix` — service modules.
@@ -85,7 +85,6 @@ One oauth2-proxy + one Nextcloud OAuth2 client gates all `*.dklaassen.de` vhosts
 ```sh
 nix flake check                        # eval + build every host's toplevel, + statix lint (run before deploy)
 nix develop                            # devShell with `agenix` + `statix` on PATH
-nh os switch                           # local rebuild+switch (front-end; programs.nh, auto closure diff)
 nixos-rebuild switch --flake .#<host>  # explicit per-host
 ```
 
@@ -93,7 +92,7 @@ nixos-rebuild switch --flake .#<host>  # explicit per-host
 lints this repo declines: `repeated_keys` (its rewrite buries the option path the NixOS docs name)
 and `empty_pattern` (`{ ... }:` is the module header idiom).
 
-- GC is `nh.clean` (keeps `host.keepGenerations` gens + 30d). Do **not** also enable `nix.gc.automatic` — running both is rejected.
+- No automatic GC is configured (`nix.gc.automatic` is off fleet-wide); `host.keepGenerations` only caps bootloader entries. Collect by hand: `sudo nix-collect-garbage --delete-older-than 30d`.
 
 ## Verifying changes
 
@@ -111,7 +110,7 @@ Checklist for a change that adds a secret:
 3. `git add -N secrets/<name>.age` (and any new `.nix` modules) so the flake copies them into the store. **Remind the user of this step.**
 4. Verify: the `.age` file exists and is tracked — `git ls-files --error-unmatch secrets/<name>.age` — and decrypts to the expected shape, via an aggregate that reveals nothing: `nix develop --command sh -c 'cd secrets && agenix -d <name>.age | wc -lc'` (expect 0 newlines for a single-line value).
 5. `nix flake check` — eval/build every host.
-6. `nh os switch`, then `systemctl status <unit>` for any service that consumes the secret.
+6. `sudo nixos-rebuild switch --flake .#<host>`, then `systemctl status <unit>` for any service that consumes the secret.
 
 ## Deploy protocol
 

@@ -15,5 +15,5 @@ it.
 
 ```sh
 nix flake check   # eval + build every host's toplevel, statix lint
-nh os switch      # local rebuild + switch
+sudo nixos-rebuild switch --flake .#<host>   # rebuild + switch
 ```
