@@ -21,7 +21,6 @@ let
     "wg-tukl.age"
     "smb-dk.age"
     "restic-repo-pass.age"
-    "dk-password-hash.age"
   ];
 in
 builtins.listToAttrs (
