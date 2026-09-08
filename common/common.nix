@@ -54,6 +54,17 @@
   services.fstrim.enable = true;
   zramSwap.enable = true;
 
+  # Cap core dumps. A GPU fault aborts every GL client at once, and on hestia
+  # 2026-09-07 systemd-coredump met that storm by writing 17 GB and holding 8.8 GB
+  # RSS while the box was already failing. Fleet-wide because an uncapped dump is
+  # a disk hazard on the vps for the same reason. Dumps stay enabled: the java
+  # backtrace is what identified that fault.
+  systemd.coredump.settings.Coredump = {
+    ProcessSizeMax = "2G";
+    ExternalSizeMax = "2G";
+    MaxUse = "2G";
+  };
+
   # unfree is opt-in per package: a new unfree dependency fails the eval
   # loudly instead of slipping in silently
   nixpkgs.config.allowUnfreePredicate =
