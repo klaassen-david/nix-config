@@ -102,6 +102,16 @@ in
       description = "primary GPU vendor; selects videoDrivers, graphics extraPackages, kernel modules";
     };
 
+    # Applied at boot by common/modules/nvidia-power-limit. Capping below the
+    # card's factory limit trades a few percent of performance for smaller
+    # transient spikes; null leaves whatever the card ships with.
+    gpuPowerLimitWatts = mkOption {
+      type = types.nullOr types.ints.positive;
+      default = null;
+      example = 280;
+      description = "Nvidia board power limit to apply at boot, in watts; null keeps the card default";
+    };
+
     # Units that dk may start/stop without sudo or a password. Unlike the rest of
     # the struct this is not set per host: each module appends the units it owns
     # (wireguard its wg-quick clients, ssh-on-demand its sshd), and
@@ -305,6 +315,10 @@ in
       {
         assertion = !(config.host.role == "vps" && config.host.gpu != "none");
         message = ''host.role = "vps" implies host.gpu = "none"'';
+      }
+      {
+        assertion = config.host.gpuPowerLimitWatts != null -> config.host.gpu == "nvidia";
+        message = ''host.gpuPowerLimitWatts needs host.gpu = "nvidia" (common/modules/nvidia-power-limit applies it)'';
       }
       {
         assertion =

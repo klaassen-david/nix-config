@@ -29,6 +29,8 @@
     ./modules/fingerprint
     # self-gates on host.capabilities.chargeLimit: unprivileged battery charge limit
     ./modules/charge-limit
+    # self-gates on host.gpuPowerLimitWatts (nvidia hosts only): caps board power
+    ./modules/nvidia-power-limit
   ];
 
   nix.settings.experimental-features = [
