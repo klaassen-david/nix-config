@@ -18,6 +18,10 @@
     role = "tower";
     stateVersion = "25.05";
     gpu = "nvidia";
+    # 370 W factory limit on a 750 W PSU that also feeds a 3900X. Capped to shrink
+    # the Ampere transients suspected behind the recurring Xid 79 lockups; this is
+    # a diagnostic, not a settled value. See decisions/hestia-gpu-lockups.md.
+    gpuPowerLimitWatts = 280;
     display.primary = "DP-3";
     display.startupWorkspace = 2;
     browser = "firefox";
