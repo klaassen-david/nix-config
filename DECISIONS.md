@@ -21,3 +21,6 @@ changes (old ruling stays in the file as history).
 - [sway-checkconfig](decisions/sway-checkconfig.md) — `checkConfig = false`
   stays; the build sandbox has no DRM FD for `sway -C`'s renderer
   [AGENT 2026-09-07]
+- [hestia-gpu-lockups](decisions/hestia-gpu-lockups.md) — the hard freezes are
+  Xid 79 (GPU off the PCIe bus), not a game or config fault; transient power
+  delivery is the leading cause, under test via a 280 W cap [AGENT 2026-09-08]
