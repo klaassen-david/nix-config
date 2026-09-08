@@ -93,7 +93,10 @@
   users.users.dk = {
     isNormalUser = true;
     shell = pkgs.fish;
-    initialHashedPassword = "$y$j9T$cnJaTuoqcS9wMqEV..0Ie0$/jU6CWhP4O4PUqKD.YprPkcbDVnfkc90XjarzlO6kh9";
+    # bootstrap only: applied when the user is first created, then replaced on
+    # every host with `passwd` (each host has its own). Public in git, which is
+    # fine for a hash no live host uses; see decisions/dk-password.md
+    initialHashedPassword ="$y$j9T$cnJaTuoqcS9wMqEV..0Ie0$/jU6CWhP4O4PUqKD.YprPkcbDVnfkc90XjarzlO6kh9";
     home = "/home/dk";
     openssh.authorizedKeys.keyFiles = [ ./keys/id_priv.pub ];
     extraGroups = [
