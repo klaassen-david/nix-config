@@ -2,7 +2,6 @@
   config,
   lib,
   pkgs,
-  secretsPath,
   ...
 }:
 
@@ -88,22 +87,13 @@
   # so a single recipient (id_priv) in secrets.nix covers all machines.
   age.identityPaths = [ "/home/dk/.ssh/id_priv" ];
 
-  # One line, the output of `mkpasswd -m yescrypt`. Read by the users activation
-  # script as root, so the 0400 root default stands.
-  # A missing file only warns and leaves the password as-is; a malformed one sets
-  # an unusable password — sudo lockout, so switch hestia before olympus.
-  # users.mutableUsers is true here, and unlike initialHashedPassword a
-  # hashedPasswordFile is re-applied on every activation: `passwd` no longer
-  # sticks, this secret is the only source.
-  age.secrets.dk-password-hash.file = "${secretsPath}/dk-password-hash.age";
-
   # only groups that exist on every host; the ones a service creates are added
   # where that service is enabled (networkmanager/gamemode in desktop.nix, seat
   # with seatd on hestia, bluetooth on hermes)
   users.users.dk = {
     isNormalUser = true;
     shell = pkgs.fish;
-    hashedPasswordFile = config.age.secrets.dk-password-hash.path;
+    initialHashedPassword = "$y$j9T$cnJaTuoqcS9wMqEV..0Ie0$/jU6CWhP4O4PUqKD.YprPkcbDVnfkc90XjarzlO6kh9";
     home = "/home/dk";
     openssh.authorizedKeys.keyFiles = [ ./keys/id_priv.pub ];
     extraGroups = [
