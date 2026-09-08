@@ -74,6 +74,16 @@ Ranked by value-to-effort. Each expands in its own section below.
 
 ## Bugs
 
+- [ ] **hestia hard lockups — does the 280 W GPU cap hold?** `[manual]`
+  13× Xid 79 ("GPU has fallen off the bus") between 2026-06-21 and 2026-09-07,
+  across unrelated workloads; diagnosed as transient power delivery on a 750 W
+  PSU feeding a 370 W 3080 + 3900X. `host.gpuPowerLimitWatts = 280` is the test
+  (`common/modules/nvidia-power-limit`). Needs a month of normal gaming to call.
+  Clean ⇒ keep the cap or replace the PSU and lift it; still crashing ⇒ the card
+  or the BIOS (still launch `A.00`, 2020-05-15). Rationale and rejected causes in
+  [decisions/hestia-gpu-lockups.md](decisions/hestia-gpu-lockups.md).
+  Verify the cap is live: `nvidia-smi -q -d POWER | grep 'Current Power Limit'`.
+
 - [ ] **the wallpaper path is hand-placed and hardcoded** (confirmed in tree)
   `sway/default.nix:132`: `exec mpvpaper ${host.display.primary}
   /home/dk/wallpaper/current` depends on a file no module puts there, and
