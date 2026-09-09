@@ -27,3 +27,7 @@ changes (old ruling stays in the file as history).
 - [dk-password](decisions/dk-password.md) — per-host passwords set with
   `passwd`; `initialHashedPassword` stays as the bootstrap value, agenix
   `hashedPasswordFile` rejected (would unify the fleet) [USER 2026-09-08]
+- [nextcloud-sync-excludes](decisions/nextcloud-sync-excludes.md) — `excludeFile`
+  drops `target`/`.lake`/`.claude`; artifacts filled olympus's disk, and the
+  excludes must land *after* the server-side cleanup, never before
+  [USER 2026-09-10]

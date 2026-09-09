@@ -20,8 +20,18 @@ let
   # when it matches a *directory* the sync never descends — so `.git` drops the
   # whole subtree (same mechanism the client's own defaults use for .Trashes,
   # .stversions, .Spotlight-V100, …). It also catches a submodule's `.git` file.
+  #
+  # target/.lake/.claude are build output and agent worktrees. Leaving them out of
+  # this list once filled olympus's disk — ~60G, 456k of the 467k journal entries
+  # — until redis could no longer write its RDB snapshot and Nextcloud returned
+  # ServiceUnavailable on every DAV request (2026-09-09). They regenerate from
+  # `cargo build` / `lake build`. `target` is a bare name, so it also drops any
+  # *file* named `target` at any depth; none exists in ~/sync today.
   excludeFile = pkgs.writeText "nextcloud-cmd-exclude.lst" ''
     .git
+    target
+    .lake
+    .claude
   '';
 
   # flock so the timer and the file-watcher can never run two sync engines at
