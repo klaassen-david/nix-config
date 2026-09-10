@@ -31,3 +31,7 @@ changes (old ruling stays in the file as history).
   drops `target`/`.lake`/`.claude`; artifacts filled olympus's disk, and the
   excludes must land *after* the server-side cleanup, never before
   [USER 2026-09-10]
+- [hermes-cpu-clock-lock](decisions/hermes-cpu-clock-lock.md) — the 544 MHz
+  lock-until-reboot is Framework's open BIOS 4.05 bug, tripped by a failing
+  charger PD negotiation; cpufreq is wide open, so no repo change can fix it
+  [AGENT 2026-09-10]
