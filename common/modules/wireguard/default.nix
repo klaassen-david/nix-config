@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgs,
   secretsPath,
   ...
 }:
@@ -57,6 +58,29 @@ let
   selfName = config.host.hostName;
   self = nodes.${selfName};
   isServer = config.host.role == "vps";
+
+  # ssh over the tunnel. While `olympus` is up, `ssh hestia` must resolve to the
+  # peer's tunnel address — its LAN name is unreachable from anywhere else, and
+  # a full tunnel puts the client "anywhere else" even at home. Every node in the
+  # registry gets an entry, self included, so the file is the same everywhere.
+  # The `.local` aliases are deliberately left alone as the LAN fast path for
+  # bulk transfers: via the tunnel every byte detours through olympus at ~45 ms
+  # RTT. Identity/auth still come from the home-manager block in ~/.ssh/config —
+  # ssh takes the first value it obtains and Include is first, so that block has
+  # to name all three hosts (see home-manager/modules/ssh).
+  sshTunnelConfig = pkgs.writeText "ssh-config-olympus" (
+    lib.concatStrings (
+      lib.mapAttrsToList (name: node: ''
+        Host ${name}
+          HostName ${node.ip}
+      '') nodes
+    )
+  );
+  # `programs.ssh.includes` in home-manager/modules/ssh pulls this path in; a
+  # missing include is a debug message to ssh, not an error, so the tunnel-down
+  # state is simply the file's absence.
+  sshUser = config.users.users.dk;
+  sshLocalConfig = "${sshUser.home}/.ssh/config.local";
 in
 {
   age.secrets."wg-${selfName}" = {
@@ -146,6 +170,8 @@ in
         persistentKeepalive = 25;
       }
     ];
+    postUp = "${pkgs.coreutils}/bin/install -m 0600 -o ${sshUser.name} -g ${sshUser.group} ${sshTunnelConfig} ${sshLocalConfig}";
+    preDown = "${pkgs.coreutils}/bin/rm -f ${sshLocalConfig}";
   };
 
   # both client tunnels are hand-dialled, so let wheel flip them without sudo

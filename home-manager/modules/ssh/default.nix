@@ -4,12 +4,14 @@
   programs.ssh = {
     enable = true;
 
+    # written by wg-quick's PostUp and removed by PreDown (common/modules/wireguard):
+    # peer HostNames on the tunnel while `olympus` is up, absent while it is down.
     includes = [ "config.local" ];
 
     enableDefaultConfig = false;
 
     settings = {
-      "dklaassen.de hestia hestia.local hermes hermes.local" = {
+      "dklaassen.de olympus hestia hestia.local hermes hermes.local" = {
         PreferredAuthentications = "publickey,password";
         IdentityFile = "~/.ssh/id_priv";
         IdentitiesOnly = true;
