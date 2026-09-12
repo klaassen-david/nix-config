@@ -5,6 +5,7 @@
     ./plugins/nvim-cmp.nix
     ./plugins/lsp.nix
     ./plugins/lean.nix
+    ./plugins/markdown.nix
   ];
 
   home.packages = with pkgs; [
