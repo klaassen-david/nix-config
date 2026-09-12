@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, inputs, ... }:
 # Markdown stack, one concern each:
 #   render-markdown  in-buffer prettifying (headings, code blocks, tables, checkboxes)
 #   nabla            ASCII-art rendering of the LaTeX equation under the cursor
@@ -6,7 +6,14 @@
 #   mkdnflow         links, tables, lists, to-dos, section folding
 #   otter            LSP inside fenced code blocks
 #
-# Four things are not self-evident:
+# Five things are not self-evident:
+# - render-markdown comes from a fork (`inputs.render-markdown-nvim`, branch
+#   `wrapped-cells`), which adds `pipe_table.cell = "wrapped"`: columns sized to the
+#   window with cell contents wrapped, instead of rows running off the edge. The row
+#   under the cursor keeps its source on screen at the rendered row's height, so
+#   hovering moves nothing. `render_modes` includes `i` for the same reason -- without
+#   it the whole buffer un-renders on insert and every row jumps.
+
 # - image.nvim's kitty backend needs a terminal that speaks the graphics protocol.
 #   ghostty does; zellij does not, so images disappear when nvim runs inside it.
 # - render-markdown's latex module shells out to `utftex` or `latex2text`. nixpkgs has
@@ -24,13 +31,24 @@
     plugins = {
       render-markdown = {
         enable = true;
+        package = pkgs.vimUtils.buildVimPlugin {
+          name = "render-markdown.nvim";
+          src = inputs.render-markdown-nvim;
+        };
         settings = {
+          render_modes = [
+            "n"
+            "c"
+            "t"
+            "i"
+          ];
           heading.border = true;
           code = {
             width = "block";
             left_pad = 2;
             right_pad = 2;
           };
+          pipe_table.cell = "wrapped";
           signs.enabled = false;
         };
       };

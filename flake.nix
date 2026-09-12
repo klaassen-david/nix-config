@@ -31,6 +31,11 @@
       url = "github:coder/claudecode.nvim";
       flake = false;
     };
+    # Fork of the nixpkgs plugin, for `pipe_table.cell = "wrapped"`
+    render-markdown-nvim = {
+      url = "github:klaassen-david/render-markdown.nvim/wrapped-cells";
+      flake = false;
+    };
   };
 
   outputs =

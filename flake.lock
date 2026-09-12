@@ -265,6 +265,23 @@
         "type": "github"
       }
     },
+    "render-markdown-nvim": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1789231237,
+        "narHash": "sha256-nZKng7R2USxFDOVo2jhuYPAS2TNUGarpFBPiniynbQE=",
+        "owner": "klaassen-david",
+        "repo": "render-markdown.nvim",
+        "rev": "ea28deb54a7a13dd5329b6f58724cb3f1e6397cc",
+        "type": "github"
+      },
+      "original": {
+        "owner": "klaassen-david",
+        "ref": "wrapped-cells",
+        "repo": "render-markdown.nvim",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "agenix": "agenix",
@@ -274,6 +291,7 @@
         "nixos-hardware": "nixos-hardware",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "nixvim": "nixvim",
+        "render-markdown-nvim": "render-markdown-nvim",
         "zen-browser": "zen-browser"
       }
     },
