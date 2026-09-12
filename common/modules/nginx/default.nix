@@ -273,8 +273,8 @@ in
   # ---------------------------------------------------------------------------
   # Persist journals to disk so you can audit fail2ban hits and service errors
   # across reboots.
-  services.journald.extraConfig = ''
-    Storage=persistent
-    SystemMaxUse=500M
-  '';
+  services.journald.settings.Journal = {
+    Storage = "persistent";
+    SystemMaxUse = "500M";
+  };
 }
