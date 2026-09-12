@@ -268,11 +268,11 @@
     "render-markdown-nvim": {
       "flake": false,
       "locked": {
-        "lastModified": 1789231237,
-        "narHash": "sha256-nZKng7R2USxFDOVo2jhuYPAS2TNUGarpFBPiniynbQE=",
+        "lastModified": 1789236355,
+        "narHash": "sha256-pXLN99aC+OAyJGLQUA6ykJmJf4kyt7jFS6KdHX2twos=",
         "owner": "klaassen-david",
         "repo": "render-markdown.nvim",
-        "rev": "ea28deb54a7a13dd5329b6f58724cb3f1e6397cc",
+        "rev": "cf24a767ef23d36e75d8155a0bf737d2b50735d2",
         "type": "github"
       },
       "original": {
