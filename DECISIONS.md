@@ -38,3 +38,7 @@ changes (old ruling stays in the file as history).
 - [nvim-markdown-stack](decisions/nvim-markdown-stack.md) — render-markdown +
   nabla + image.nvim + mkdnflow + otter; bullets.vim rejected (subsumed by
   mkdnflow, and its `<CR>` map shadows cmp's confirm) [USER 2026-09-12]
+- [render-markdown-fork](decisions/render-markdown-fork.md) — render-markdown is
+  built from the `wrapped-cells` branch of the personal fork for
+  `pipe_table.cell = "wrapped"`; nixpkgs' copy has no wrapped tables
+  [USER 2026-09-12]
