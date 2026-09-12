@@ -35,3 +35,6 @@ changes (old ruling stays in the file as history).
   lock-until-reboot is Framework's open BIOS 4.05 bug, tripped by a failing
   charger PD negotiation; cpufreq is wide open, so no repo change can fix it
   [AGENT 2026-09-10]
+- [nvim-markdown-stack](decisions/nvim-markdown-stack.md) — render-markdown +
+  nabla + image.nvim + mkdnflow + otter; bullets.vim rejected (subsumed by
+  mkdnflow, and its `<CR>` map shadows cmp's confirm) [USER 2026-09-12]
