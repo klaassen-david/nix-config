@@ -38,17 +38,24 @@ in
 {
   config = lib.mkIf cfg {
     # bound the dmesg written per pstore record — protects EFI NVRAM from large or
-    # repeated dumps; the last 32 KiB of kmsg is plenty of tail for a post-mortem.
-    boot.kernelParams = [ "pstore.kmsg_bytes=32768" ];
+    # repeated dumps. pstore keeps the *tail*, so this is sized to fit the part that
+    # matters: the all-CPU backtrace below plus the panic itself.
+    boot.kernelParams = [ "pstore.kmsg_bytes=65536" ];
 
     boot.kernel.sysctl = {
       # GPU hang → clients stuck in D-state on a fence; fire faster than the 120s
       # default and panic so it dumps. A wedged fence never clears, so halving the
-      # default still catches it — but 30s did not: a global sync(2) draining a
-      # multi-GB dirty set to a near-full DRAM-less SSD legitimately blocks that
-      # long (2026-09-12, Proton's os.sync() behind a Steam shader-cache write).
+      # default still catches it, while 30s produced a false positive: 2026-09-12,
+      # a global sync(2) from Proton's os.sync() blocked in wb_wait_for_completion.
+      # Not a slow disk — that drive sustains 1.3 GB/s and only ~650 MiB across
+      # 2252 files was dirty fleet-wide. Writeback was blocked on something never
+      # identified, which is what all_cpu_backtrace below is here to catch.
       "kernel.hung_task_panic" = 1;
       "kernel.hung_task_timeout_secs" = 60;
+      # dump every CPU's stack before panicking. check_hung_task() panics on the
+      # *first* blocked task, so the default (0) captures the victim waiting on
+      # writeback and nothing about the kworker/jbd2 thread failing to complete it.
+      "kernel.hung_task_all_cpu_backtrace" = 1;
       # CPU soft/hard lockup → panic (softlockup detection rides the NMI watchdog,
       # already on by default).
       "kernel.softlockup_panic" = 1;
@@ -57,13 +64,6 @@ in
       "kernel.panic_on_oops" = 1;
       # after a panic + pstore dump, reboot in 30s so the host self-recovers.
       "kernel.panic" = 30;
-
-      # cap the dirty set so sync(2) never has GBs to drain. The *_ratio defaults
-      # (20%/10%) scale with RAM, which on a 32 GB box is ~6 GB — minutes of
-      # writeback on a slow disk, i.e. a hung_task false positive. Setting the
-      # _bytes knobs zeroes their _ratio counterparts; that is the intent.
-      "vm.dirty_bytes" = 1073741824; # 1 GiB
-      "vm.dirty_background_bytes" = 268435456; # 256 MiB
     };
 
     # arm the SP5100 TCO hardware watchdog: systemd pets /dev/watchdog while alive,
