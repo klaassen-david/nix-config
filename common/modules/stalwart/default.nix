@@ -114,7 +114,6 @@ in
         resource = "file://${config.services.stalwart.package.webadmin}/webadmin.zip";
         path = "/var/cache/stalwart";
       };
-      spam-filter.resource = "file://${config.services.stalwart.package}/etc/stalwart/spamfilter.toml";
 
       server = {
         hostname = mailHostname;
