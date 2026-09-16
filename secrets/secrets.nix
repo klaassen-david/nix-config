@@ -7,6 +7,7 @@ let
     "stalwart-admin-pass.age"
     "stalwart-dk-pass.age"
     "stalwart-nextcloud-pass.age"
+    "stalwart-dkim-rsa.age"
     "nextcloud-admin-pass.age"
     "nextcloud-general.age"
     "nextcloud-cmd.age"

@@ -14,6 +14,7 @@ let
   adminAddr = "127.0.0.1";
   adminPort = 8418;
   adminBind = "${adminAddr}:${toString adminPort}";
+  dkimSelector = "202609r";
 
   # Stalwart credential path helper
   cred = name: "%{file:/run/credentials/stalwart.service/${name}}%";
@@ -42,6 +43,12 @@ in
       owner = "stalwart";
       mode = "0400";
     };
+    # PEM, so multi-line: `openssl genrsa 2048`.
+    stalwart-dkim-rsa = {
+      file = "${secretsPath}/stalwart-dkim-rsa.age";
+      owner = "stalwart";
+      mode = "0400";
+    };
   };
 
   # ---------------------------------------------------------------------------
@@ -57,6 +64,7 @@ in
       admin-pass = config.age.secrets.stalwart-admin-pass.path;
       dk-pass = config.age.secrets.stalwart-dk-pass.path;
       nextcloud-pass = config.age.secrets.stalwart-nextcloud-pass.path;
+      dkim-rsa = config.age.secrets.stalwart-dkim-rsa.path;
     };
 
     settings = {
@@ -86,6 +94,8 @@ in
         "lookup.default.*"
         "session.auth.*"
         "session.rcpt.directory"
+        "auth.dkim.sign.*"
+        "signature.*"
       ];
 
       # The web admin's Logs view only reads a file tracer's directory; the
@@ -173,6 +183,23 @@ in
       };
 
       session.rcpt.directory = "'db'";
+
+      # DNS: TXT `${dkimSelector}._domainkey` = `v=DKIM1; k=rsa; p=<pubkey>`, from
+      # `agenix -d stalwart-dkim-rsa.age | openssl rsa -pubout -outform der | base64 -w0`.
+      signature."rsa-${domain}" = {
+        algorithm = "rsa-sha256";
+        inherit domain;
+        selector = dkimSelector;
+        private-key = cred "dkim-rsa";
+        canonicalization = "relaxed/relaxed";
+      };
+      auth.dkim.sign = [
+        {
+          "if" = "sender_domain == '${domain}'";
+          "then" = "'rsa-${domain}'";
+        }
+        { "else" = false; }
+      ];
 
       directory."db" = {
         type = "internal";
