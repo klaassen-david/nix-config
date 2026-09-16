@@ -60,7 +60,45 @@ in
     };
 
     settings = {
-      global.tracing.level = "info";
+      # Keys set here always shadow the web admin's database copy (local wins),
+      # so declare them local: an edit in the UI then fails instead of being
+      # silently ignored. Replaces Stalwart's default list, which is repeated.
+      config.local-keys = [
+        "store.*"
+        "directory.*"
+        "tracer.*"
+        "!server.blocked-ip.*"
+        "!server.allowed-ip.*"
+        "server.*"
+        "certificate.*"
+        "authentication.fallback-admin.*"
+        "cluster.*"
+        "storage.data"
+        "storage.blob"
+        "storage.lookup"
+        "storage.fts"
+        "storage.directory"
+        "enterprise.license-key"
+        # set by this module or the nixpkgs one
+        "webadmin.*"
+        "spam-filter.resource"
+        "resolver.*"
+        "lookup.default.*"
+        "session.auth.*"
+        "session.rcpt.directory"
+      ];
+
+      # The web admin's Logs view only reads a file tracer's directory; the
+      # journal tracer the nixpkgs module sets up is invisible to it.
+      tracer.log = {
+        type = "log";
+        level = "info";
+        path = "/var/log/stalwart";
+        prefix = "stalwart.log";
+        rotate = "daily";
+        ansi = false;
+        enable = true;
+      };
 
       webadmin = {
         resource = "file://${config.services.stalwart.package.webadmin}/webadmin.zip";
@@ -112,7 +150,7 @@ in
       };
 
       session.auth = {
-        mechanisms = "[plain, login, scram-sha-256, scram-sha-512]";
+        mechanisms = "[plain, login]"; # Stalwart has no SCRAM
         directory = "'db'";
       };
 
@@ -165,6 +203,17 @@ in
       };
     };
   };
+
+  # resolver.type = "system" reads resolv.conf once at startup; before DHCP it
+  # is empty and pyzor/ASN lookups fail for the whole run.
+  systemd.services.stalwart = {
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" ];
+    # ProtectSystem=strict needs LogsDirectory for tracer.log to write.
+    serviceConfig.LogsDirectory = "stalwart";
+  };
+  # Stalwart rotates logs but never prunes them.
+  systemd.tmpfiles.rules = [ "e /var/log/stalwart - - - 14d" ];
 
   # ---------------------------------------------------------------------------
   # nginx — proxy web admin UI
