@@ -31,6 +31,11 @@
       url = "github:coder/claudecode.nvim";
       flake = false;
     };
+    # Fork carrying a uv2nix flake
+    claude-swap = {
+      url = "github:klaassen-david/claude-swap?ref=dk/main";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
     # Fork of the nixpkgs plugin, for `pipe_table.cell = "wrapped"`
     render-markdown-nvim = {
       url = "github:klaassen-david/render-markdown.nvim/wrapped-cells";

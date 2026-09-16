@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, inputs, ... }:
 
 # Tooling for claude-code sessions. Everything here is on PATH for dk on every
 # host, so an agent invocation finds the same toolbox regardless of machine.
@@ -12,6 +12,7 @@
 {
   home.packages = with pkgs; [
     claude-code
+    inputs.claude-swap.packages.${pkgs.stdenv.hostPlatform.system}.claude-swap # cswap
 
     python3
     jq
