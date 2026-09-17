@@ -22,7 +22,8 @@
 #   markdown server), so a FileType autocmd does it instead. It surfaces the servers
 #   already configured in ./lsp.nix (nixd, pyright, lua_ls, clangd, …) inside fences.
 # - mkdnflow's table-align maps default to <leader>a{l,r,c}, colliding with the Claude
-#   maps in ../default.nix; moved under <leader>t. Every other mkdnflow map is
+#   maps in ../default.nix; moved under <leader>t. `-` (MkdnDecreaseHeading) is dropped
+#   so Oil's global map wins; `g-` still decreases. Every other mkdnflow map is
 #   buffer-local to markdown, so the rest of the config is unaffected.
 {
   programs.nixvim = {
@@ -63,6 +64,7 @@
       mkdnflow = {
         enable = true;
         settings.mappings = {
+          MkdnDecreaseHeading = false;
           MkdnTableAlignLeft = [
             "n"
             "<leader>tl"
