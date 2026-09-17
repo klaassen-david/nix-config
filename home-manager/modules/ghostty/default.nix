@@ -14,4 +14,14 @@
       ];
     };
   };
+
+  # Every surface gets its own transient scope (linux-cgroup = single-instance),
+  # and DefaultOOMPolicy=stop tears the whole scope down when the kernel
+  # OOM-kills one process in it — losing the terminal because claude-code grew.
+  # systemd searches the dash-truncated prefix dir, so this covers every
+  # app-ghostty-surface-transient-<pid>.scope.
+  xdg.configFile."systemd/user/app-ghostty-surface-transient-.scope.d/oom.conf".text = ''
+    [Scope]
+    OOMPolicy=continue
+  '';
 }
