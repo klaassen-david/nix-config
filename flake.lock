@@ -33,11 +33,11 @@
         "uv2nix": "uv2nix"
       },
       "locked": {
-        "lastModified": 1789547027,
-        "narHash": "sha256-Eg6IeJtF4YU1IDfdyJwHEeCPOS/aztAMttwdZTE7ufo=",
+        "lastModified": 1789857798,
+        "narHash": "sha256-yFPU09s1ygH70+bhQ8W6zCqQCemiZ94RwEaQRrHxluw=",
         "owner": "klaassen-david",
         "repo": "claude-swap",
-        "rev": "8ec8faa0acd33d87b33678e9ff3bccf9c6886e38",
+        "rev": "84fa093a7bf78f0ffd8ac525c5eb3cf165041e89",
         "type": "github"
       },
       "original": {
