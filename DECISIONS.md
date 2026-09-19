@@ -42,3 +42,7 @@ changes (old ruling stays in the file as history).
   built from the `wrapped-cells` branch of the personal fork for
   `pipe_table.cell = "wrapped"`; nixpkgs' copy has no wrapped tables
   [USER 2026-09-12]
+- [cswap-auto-policy](decisions/cswap-auto-policy.md) — never a disabled
+  profile; slot 1 (rptu) drained first; leave at 95 % (rptu) / 98 % (others) on
+  any limit; the two Max accounts rebalance onto the most remaining weekly
+  quota [USER 2026-09-20]
