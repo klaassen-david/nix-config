@@ -44,5 +44,5 @@ changes (old ruling stays in the file as history).
   [USER 2026-09-12]
 - [cswap-auto-policy](decisions/cswap-auto-policy.md) — never a disabled
   profile; slot 1 (rptu) drained first; leave at 95 % (rptu) / 98 % (others) on
-  any limit; the two Max accounts rebalance onto the most remaining weekly
-  quota [USER 2026-09-20]
+  any limit; the two Max accounts sit on the soonest-resetting week and drain it
+  before it resets [USER 2026-09-21]
