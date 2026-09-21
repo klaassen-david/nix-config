@@ -52,7 +52,20 @@ setting nowhere, so any value there was inert.
 by the binding window, so a Max account with a spent 5h window but a full week
 could be left idle while the other one drains its week).
 
-**Revisit if**: a fourth account joins, or rptu is re-enabled — at three or more
-candidates the no-return bar can hold the engine off the soonest-resetting
-account, because its release legs are headroom- and binding-reset-shaped and
-the unbarred retry only fires when the barred ranking comes back empty.
+**Fixed in the fork** [AGENT 2026-09-21]: the no-return bar held the engine off
+the soonest-resetting account. None of its release legs was "the peer's weekly
+window resets sooner" — the axis this policy ranks on — and a departure recorded
+at full headroom clamps the headroom leg (`h >= min(leftHeadroom + 3, 100)`) at
+an unreachable 100, leaving only a collapse of the active account's own headroom.
+Observed: sitting on slot 2 (resets Sep 27) while slot 3 (resets Sep 23, 23
+points spare) stayed barred by a `drain-return` departure recorded 2026-09-19
+with `leftHeadroom: 100.0`; the tick reported `already-consuming-soonest`, which
+is what an empty ranking looks like from outside. `claude-swap` 2f1bb16 adds a
+fourth release leg on the weekly axis — no margin, because the ordering flips
+only on a rollover, after which the ranking's own filter refuses the return.
+A manual `cswap switch` also clears a stuck bar: `lastSwitchTo` stops matching
+the active account.
+
+**Revisit if**: a fourth account joins, or rptu is re-enabled — `drain-return`
+off a freshly reset account is what records the baseline above, so the gap
+resurfaces there.
