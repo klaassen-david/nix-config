@@ -1,5 +1,6 @@
 {
   config,
+  lib,
   pkgs,
   inputs,
   ...
@@ -16,10 +17,39 @@
 
 let
   cswap = inputs.claude-swap.packages.${pkgs.stdenv.hostPlatform.system}.claude-swap;
+
+  # `claude` runs the latest upstream release rather than the nixpkgs pin: the
+  # version + checksum are fetched at launch and fed to nixpkgs-unstable's
+  # claude-code via its `manifest` override. A binary on PATH, so sh, nvim's
+  # claudecode and every other caller get it too. If the lookup or build fails
+  # (offline, bad release), it falls back to the flake-pinned claude-code.
+  claude = pkgs.writeShellApplication {
+    name = "claude";
+    runtimeInputs = [
+      pkgs.curl
+      pkgs.jq
+    ];
+    text = ''
+      fallback() {
+        echo "claude: $1; using pinned ${pkgs.claude-code.version}" >&2
+        shift
+        exec ${lib.getExe pkgs.claude-code} "$@"
+      }
+      base=https://downloads.claude.ai/claude-code-releases
+      v=$(curl -fsS "$base/latest") || fallback "version lookup failed" "$@"
+      c=$(curl -fsS "$base/$v/manifest.zst.json" | jq -er '.platforms."linux-x64".checksum') ||
+        fallback "manifest lookup for $v failed" "$@"
+      out=$(NIXPKGS_ALLOW_UNFREE=1 nix build --no-link --print-out-paths --impure --expr "
+        (builtins.getFlake \"github:NixOS/nixpkgs/nixos-unstable\").legacyPackages.x86_64-linux.claude-code.override {
+          manifest = { version = \"$v\"; platforms.\"linux-x64\" = { binary = \"claude.zst\"; checksum = \"$c\"; }; };
+        }") || fallback "building $v failed" "$@"
+      exec "$out/bin/claude" "$@"
+    '';
+  };
 in
 {
   home.packages = with pkgs; [
-    claude-code
+    claude
     cswap
 
     python3
