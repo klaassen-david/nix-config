@@ -46,3 +46,6 @@ changes (old ruling stays in the file as history).
   profile; slot 1 (rptu) drained first; leave at 95 % (rptu) / 98 % (others) on
   any limit; the two Max accounts sit on the soonest-resetting week and drain it
   before it resets [USER 2026-09-21]
+- [pimsync-failure-alert](decisions/pimsync-failure-alert.md) — `pimsync-sync`
+  conflicts (exit 3) raise a critical desktop notification; other failures
+  stay in the journal [USER 2026-09-29]
