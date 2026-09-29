@@ -50,7 +50,7 @@
             right_pad = 2;
           };
           pipe_table.cell = "wrapped";
-          signs.enabled = false;
+          sign.enabled = false;
         };
       };
 
