@@ -1,4 +1,5 @@
 {
+  lib,
   pkgs,
   config,
   ...
@@ -109,10 +110,45 @@ in
     Unit = {
       Description = "Sync Nextcloud calendars/contacts via pimsync";
       After = [ "agenix.service" ];
+      OnFailure = [ "pimsync-sync-alert.service" ];
     };
     Service = {
       Type = "oneshot";
       ExecStart = "${pkgs.pimsync}/bin/pimsync sync";
+    };
+  };
+
+  # Exit 3 = unresolved conflict: the item stops syncing until resolved by hand.
+  # Other failures (offline laptop) retry on the next tick, so they stay in the
+  # journal. Fixed replace-id: one notification, not one per 5-minute run.
+  systemd.user.services.pimsync-sync-alert = {
+    Unit.Description = "Notify about pimsync conflicts";
+    Service = {
+      Type = "oneshot";
+      ExecStart = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "pimsync-sync-alert";
+          runtimeInputs = [
+            pkgs.coreutils
+            pkgs.gnugrep
+            pkgs.gnused
+            pkgs.libnotify
+            pkgs.systemd
+          ];
+          text = ''
+            [ "''${MONITOR_EXIT_STATUS:-}" = 3 ] || exit 0
+            items=""
+            for uid in $(journalctl --user _SYSTEMD_INVOCATION_ID="$MONITOR_INVOCATION_ID" -o cat \
+              | sed -n 's/^-> Item \(.*\): conflict$/\1/p'); do
+              file=$(grep -rlF "UID:$uid" ${config.accounts.calendar.basePath} ${config.accounts.contact.basePath} | head -1 || true)
+              title=$([ -n "$file" ] && sed -n 's/^\(SUMMARY\|FN\):\([^\r]*\)\r\?$/\2/p' "$file" | head -1 || true)
+              items+=$'\n'"''${title:-?} ($uid)"
+            done
+            notify-send -u critical -r 58741 -a pimsync \
+              "pimsync: sync conflict" "Stalled until resolved:$items"
+          '';
+        }
+      );
     };
   };
 
