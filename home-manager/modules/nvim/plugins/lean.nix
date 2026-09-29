@@ -46,7 +46,7 @@
           function(event)
             local map = function(keys, cmd, desc)
               vim.keymap.set('n', keys, '<cmd>' .. cmd .. '<CR>', {
-                buffer = event.buf,
+                buf = event.buf,
                 desc = 'Lean: ' .. desc,
               })
             end

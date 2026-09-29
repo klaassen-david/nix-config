@@ -195,13 +195,25 @@
           {
             mode = "n";
             key = "<Right>d";
-            action.__raw = "vim.diagnostic.goto_next";
+            action.__raw = ''
+              function()
+                vim.diagnostic.jump({ count = 1, on_jump = function(_, bufnr)
+                  vim.diagnostic.open_float({ bufnr = bufnr, scope = "cursor", focus = false })
+                end })
+              end
+            '';
             options.desc = "[->] [D]iagnostic";
           }
           {
             mode = "n";
             key = "<Left>d";
-            action.__raw = "vim.diagnostic.goto_prev";
+            action.__raw = ''
+              function()
+                vim.diagnostic.jump({ count = -1, on_jump = function(_, bufnr)
+                  vim.diagnostic.open_float({ bufnr = bufnr, scope = "cursor", focus = false })
+                end })
+              end
+            '';
             options.desc = "[<-] [D]iagnostic";
           }
 
@@ -312,7 +324,7 @@
         -- In this case, we create a function that lets us more easily define mappings specific
         -- for LSP related items. It sets the mode, buffer and description for us each time.
         local map = function(keys, func, desc)
-          vim.keymap.set('n', keys, func, { buffer = bufnr, desc = 'LSP: ' .. desc })
+          vim.keymap.set('n', keys, func, { buf = bufnr, desc = 'LSP: ' .. desc })
         end
 
         -- The following two autocommands are used to highlight references of the
@@ -323,13 +335,13 @@
         if client and client:supports_method(vim.lsp.protocol.Methods.textDocument_documentHighlight) then
           local highlight_augroup = vim.api.nvim_create_augroup('kickstart-lsp-highlight', { clear = false })
           vim.api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
-            buffer = bufnr,
+            buf = bufnr,
             group = highlight_augroup,
             callback = vim.lsp.buf.document_highlight,
           })
 
           vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI' }, {
-            buffer = bufnr,
+            buf = bufnr,
             group = highlight_augroup,
             callback = vim.lsp.buf.clear_references,
           })
@@ -338,7 +350,7 @@
             group = vim.api.nvim_create_augroup('kickstart-lsp-detach', { clear = true }),
             callback = function(event2)
               vim.lsp.buf.clear_references()
-              vim.api.nvim_clear_autocmds { group = 'kickstart-lsp-highlight', buffer = event2.buf }
+              vim.api.nvim_clear_autocmds { group = 'kickstart-lsp-highlight', buf = event2.buf }
             end,
           })
         end
