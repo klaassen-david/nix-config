@@ -18,8 +18,10 @@
 #   ghostty does; zellij does not, so images disappear when nvim runs inside it.
 # - render-markdown's latex module shells out to `utftex` or `latex2text`. nixpkgs has
 #   only the latter, in python3Packages.pylatexenc. Without it, math is left as source.
-# - otter activates from `lsp.onAttach`, which never fires in a markdown buffer (no
-#   markdown server), so a FileType autocmd does it instead. It surfaces the servers
+# - otter is activated by a FileType autocmd, not nixvim's `autoActivate` (which hooks
+#   every LspAttach: it fires in non-markdown buffers, never in markdown ones -- no
+#   markdown server -- and re-enters on otter's own clients). The autocmd skips
+#   non-file buffers: LSP hover floats are markdown too. It surfaces the servers
 #   already configured in ./lsp.nix (nixd, pyright, lua_ls, clangd, …) inside fences.
 # - mkdnflow's table-align maps default to <leader>a{l,r,c}, colliding with the Claude
 #   maps in ../default.nix; moved under <leader>t. `-` (MkdnDecreaseHeading) is dropped
@@ -80,7 +82,10 @@
         };
       };
 
-      otter.enable = true;
+      otter = {
+        enable = true;
+        autoActivate = false;
+      };
     };
 
     keymaps = [
@@ -100,10 +105,12 @@
       {
         event = [ "FileType" ];
         pattern = [ "markdown" ];
-        desc = "Attach otter (no markdown LSP means no LspAttach to hook)";
+        desc = "Attach otter to markdown files";
         callback.__raw = ''
-          function()
-            require('otter').activate()
+          function(args)
+            if vim.bo[args.buf].buftype == "" then
+              require('otter').activate()
+            end
           end
         '';
       }
