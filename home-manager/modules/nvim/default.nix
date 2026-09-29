@@ -212,6 +212,7 @@
           diff
           latex
           ocaml
+          typst # image.nvim's typst integration (on by default) needs this parser
         ];
         settings = {
           highlight.enable = true;
