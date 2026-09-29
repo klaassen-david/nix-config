@@ -18,6 +18,8 @@
       }
     ];
 
+    shellAliases."ostt-claude" = "/home/dk/code/ostt3/tools/ostt-claude";
+
     functions = {
       nvims = {
         body = "nvim -S $argv";
