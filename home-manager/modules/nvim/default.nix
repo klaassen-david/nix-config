@@ -1,5 +1,8 @@
 { pkgs, lib, ... }:
 
+let
+  codelldb = "${pkgs.vscode-extensions.vadimcn.vscode-lldb}/share/vscode/extensions/vadimcn.vscode-lldb";
+in
 {
   imports = [
     ./plugins/nvim-cmp.nix
@@ -240,11 +243,20 @@
       dap.enable = true;
       dap-lldb = {
         enable = true;
-        settings.codelldb_path = "${pkgs.vscode-extensions.vadimcn.vscode-lldb.outPath}/share/vscode/extensions/vadimcn.vscode-lldb/adapter/codelldb";
+        settings.codelldb_path = "${codelldb}/adapter/codelldb";
       };
       dap-ui.enable = true;
       lazydev.enable = true;
-      rustaceanvim.enable = true;
+      rustaceanvim = {
+        enable = true;
+        # autodetection only looks on PATH and in mason; codelldb is neither here
+        settings.dap.adapter.__raw = ''
+          require('rustaceanvim.config').get_codelldb_adapter(
+            "${codelldb}/adapter/codelldb",
+            "${codelldb}/lldb/lib/liblldb.so"
+          )
+        '';
+      };
       undotree.enable = true;
       mini-ai.enable = true;
       barbar.enable = true;
