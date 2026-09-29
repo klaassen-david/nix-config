@@ -267,11 +267,13 @@ in
         command = "mks!|wqa";
       };
       OpenPdf = {
-        command = ''
-          local filepath = vim.api.nvim_buf_get_name(0)
-          if filepath:match("%.typ$") then
-            local pdf_path = filepath:gsub("%.typ$", ".pdf")
-            vim.system({ "xdg-open", pdf_path })
+        command.__raw = ''
+          function()
+            local filepath = vim.api.nvim_buf_get_name(0)
+            if filepath:match("%.typ$") then
+              local pdf_path = filepath:gsub("%.typ$", ".pdf")
+              vim.system({ "xdg-open", pdf_path })
+            end
           end
         '';
       };
