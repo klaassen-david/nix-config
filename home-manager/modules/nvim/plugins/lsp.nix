@@ -235,6 +235,8 @@
             action.__raw = "require('telescope.builtin').lsp_references";
             options = {
               desc = "LSP: [G]oto [R]eferences";
+              # shadows nvim's gr* defaults in LSP buffers; the maps here cover them
+              nowait = true;
             };
           }
           # Jump to the implementation of the word under your cursor.
