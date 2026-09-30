@@ -147,8 +147,6 @@
               XDG_CURRENT_DESKTOP=sway \
               WAYLAND_DISPLAY
 
-          exec wl-gammarelay-rs run
-
           exec swaync
         '';
         # workspace->output pinning moved to kanshi profile exec (topology-dependent);
@@ -216,6 +214,23 @@
     };
     Service = {
       ExecStart = ''${lib.getExe config.programs.mpvpaper.package} ${host.display.primary} ${host.theme.wallpaper} --mpv-options "loop"'';
+      Restart = "on-failure";
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
+
+  # the Ctrl/Shift+brightness keybindings call it over the session bus
+  systemd.user.services.wl-gammarelay = {
+    Unit = {
+      Description = "Display temperature and brightness over D-Bus";
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" ];
+      ConditionEnvironment = "WAYLAND_DISPLAY";
+    };
+    Service = {
+      Type = "dbus";
+      BusName = "rs.wl-gammarelay";
+      ExecStart = "${lib.getExe pkgs.wl-gammarelay-rs} run";
       Restart = "on-failure";
     };
     Install.WantedBy = [ "graphical-session.target" ];
