@@ -8,6 +8,7 @@
     ./hardware-configuration.nix
     ../common/desktop.nix
     ../common/modules/power-log
+    ../common/modules/hibernate-console
   ];
 
   powerManagement.enable = true;
