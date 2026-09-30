@@ -1,4 +1,5 @@
 {
+  config,
   host,
   pkgs,
   lib,
@@ -73,9 +74,6 @@
           ]
           ++ lib.optional (host.display.startupWorkspace != null) {
             command = "swaymsg workspace number ${toString host.display.startupWorkspace}";
-          }
-          ++ lib.optional (host.theme.wallpaper != null) {
-            command = ''${appScope} mpvpaper ${host.display.primary} ${host.theme.wallpaper} --mpv-options "loop"'';
           };
 
         input = {
@@ -208,6 +206,20 @@
   programs.mpvpaper.enable = host.theme.wallpaper != null;
   xdg.configFile."mpvpaper/pauselist" = lib.mkIf (host.theme.wallpaper != null) { text = ""; };
   xdg.configFile."mpvpaper/stoplist" = lib.mkIf (host.theme.wallpaper != null) { text = ""; };
+  # a service, not a startup exec, so a switch starts/stops it with the wallpaper
+  systemd.user.services.mpvpaper = lib.mkIf (host.theme.wallpaper != null) {
+    Unit = {
+      Description = "Video wallpaper on ${host.display.primary}";
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" ];
+      ConditionEnvironment = "WAYLAND_DISPLAY";
+    };
+    Service = {
+      ExecStart = ''${lib.getExe config.programs.mpvpaper.package} ${host.display.primary} ${host.theme.wallpaper} --mpv-options "loop"'';
+      Restart = "on-failure";
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
 
   services.swaync = {
     enable = true;
