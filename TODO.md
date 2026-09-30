@@ -217,11 +217,11 @@ transitions. What is left, roughly by impact:
   `resume=`/`resume_offset=`: with systemd initrd on EFI, systemd-sleep stores
   device + offset in the `HibernateLocation` EFI variable and the initrd
   resumes from it [AGENT 2026-09-30, systemd 261 man pages].
-  **Next, by hand after switching**: `swapon --show` (swapfile prio 1), then
-  `systemctl hibernate` and power on — the session must come back and
-  `journalctl -b -g hibernate` show the resume. If it cold-boots instead, fall
-  back to `boot.resumeDevice = config.fileSystems."/".device` +
-  `resume_offset=<first physical_offset of sudo filefrag -v /var/lib/swapfile>`.
+  [USER 2026-09-30] Hibernate + resume works via the EFI variable (no
+  `resume_offset` needed); the first test woke on a keypress (ACPI S4), now
+  `HibernateMode = "shutdown"`, with progress on tty12 (hibernate-console).
+  **Retest after switching**: `systemctl hibernate` → tty12 shows progress,
+  the power LED goes off, a keypress does nothing, the power button resumes.
   Only then: `systemctl suspend` → `suspend-then-hibernate` at
   `common/modules/wifi/default.nix:88` (and its comments/description), plus
   `systemd.sleep.settings.Sleep.HibernateDelaySec = "2h"` on hermes. Keep the
