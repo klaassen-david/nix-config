@@ -139,6 +139,9 @@
             statix check
             touch $out
           '';
+
+          # VM test of the wireguard mesh (KVM: `nix build .#checks.x86_64-linux.vpn -L`)
+          vpn = import ./tests/vpn.nix { inherit pkgs inputs; };
         };
     };
 }
