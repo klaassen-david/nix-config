@@ -50,20 +50,32 @@
     config =
       let
         modifier = "Mod1";
+        # Own app-<name>-*.scope per launch, so power logging can attribute by cgroup
+        appScope = lib.getExe (
+          pkgs.writeShellApplication {
+            name = "app-scope";
+            runtimeInputs = [ pkgs.systemd ];
+            text = ''
+              name=$(systemd-escape -- "$(basename -- "$1")")
+              exec systemd-run --user --scope --collect --quiet --slice=app.slice \
+                --unit="app-$name-$$-$RANDOM" -- "$@"
+            '';
+          }
+        );
       in
       {
         terminal = "ghostty";
         inherit modifier;
-        menu = "tofi-run | xargs swaymsg exec --";
+        menu = "tofi-run | xargs swaymsg exec -- ${appScope}";
         startup =
           [
-            { inherit (defaultBrowser) command; }
+            { command = "${appScope} ${defaultBrowser.command}"; }
           ]
           ++ lib.optional (host.display.startupWorkspace != null) {
             command = "swaymsg workspace number ${toString host.display.startupWorkspace}";
           }
           ++ lib.optional (host.theme.wallpaper != null) {
-            command = ''mpvpaper ${host.display.primary} ${host.theme.wallpaper} --mpv-options "loop"'';
+            command = ''${appScope} mpvpaper ${host.display.primary} ${host.theme.wallpaper} --mpv-options "loop"'';
           };
 
         input = {
