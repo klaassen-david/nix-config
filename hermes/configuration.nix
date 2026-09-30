@@ -45,6 +45,18 @@
     efi.canTouchEfiVariables = true;
   };
 
+  # Hibernation swapfile (decisions/hibernate-swapfile.md). No resume=/resume_offset=:
+  # systemd-sleep records device+offset in the HibernateLocation EFI variable and the
+  # initrd resumes from it. Priority 1: hibernate picks the highest-priority non-zram
+  # swap (beats the 8.8 GiB partition at -2); zram (5) still fills first.
+  swapDevices = [
+    {
+      device = "/var/lib/swapfile";
+      size = 32 * 1024;
+      priority = 1;
+    }
+  ];
+
   boot.kernelModules = [ "ryzen_smu" ];
   boot.initrd.kernelModules = [ "amdgpu" ];
   hardware = {
