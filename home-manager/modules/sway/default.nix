@@ -146,8 +146,6 @@
               SWAYSOCK \
               XDG_CURRENT_DESKTOP=sway \
               WAYLAND_DISPLAY
-
-          exec swaync
         '';
         # workspace->output pinning moved to kanshi profile exec (topology-dependent);
         # lid handling stays here (laptop input behavior, not display topology)
