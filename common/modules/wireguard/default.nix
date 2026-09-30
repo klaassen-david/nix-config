@@ -12,7 +12,7 @@
 # Hub-and-spoke: olympus (the VPS) is the server; hermes and hestia keep an
 # always-on split tunnel to it on the `olympus` interface — only the mesh
 # supernet goes through it, everything else stays direct. Full-tunnel egress
-# is a separate, opt-in layer (own units, later steps). The desktops also carry
+# is a separate, opt-in layer (the `vpn-egress-*` units). The desktops also carry
 # a second, independent on-demand tunnel `tukl` (the TU Kaiserslautern VPN; see
 # bottom of file).
 #
@@ -74,6 +74,115 @@ let
   selfName = config.host.hostName;
   self = nodes.${selfName};
   isServer = self.hub;
+
+  # Egress units on this host; each conflicts with all the others and with tukl.
+  egressUnits = [ "vpn-egress-olympus" ];
+
+  # Egress table 2100 is consulted by rules 5200/5300 while the unit is active.
+  # `extra` are addresses added to `olympus` for the unit's lifetime.
+  egressScripts =
+    {
+      src4,
+      src6,
+      extra ? [ ],
+    }:
+    let
+      each =
+        f:
+        lib.concatMapStringsSep "\n" f [
+          "-4"
+          "-6"
+        ];
+      addrFlags = a: lib.optionalString (lib.hasInfix ":" a) "-6 ";
+      nodad = a: lib.optionalString (lib.hasInfix ":" a) " nodad";
+    in
+    {
+      start = pkgs.writeShellScript "vpn-egress-start" ''
+        ${lib.concatMapStringsSep "\n" (
+          a: "${ip} ${addrFlags a}addr replace ${a} dev olympus${nodad a}"
+        ) extra}
+        ${ip} route replace default dev olympus src ${src4} table 2100
+        ${ip} -6 route replace default dev olympus src ${src6} table 2100
+        ${each (f: ''
+          ${ip} ${f} rule del pref 5200 || true
+          ${ip} ${f} rule add pref 5200 lookup main suppress_prefixlength 0
+          ${ip} ${f} rule del pref 5300 || true
+          ${ip} ${f} rule add pref 5300 lookup 2100
+        '')}
+      '';
+      stop = pkgs.writeShellScript "vpn-egress-stop" ''
+        ${each (f: ''
+          ${ip} ${f} rule del pref 5200 || true
+          ${ip} ${f} rule del pref 5300 || true
+          ${ip} ${f} route flush table 2100 || true
+        '')}
+        ${lib.concatMapStringsSep "\n" (a: "${ip} ${addrFlags a}addr del ${a} dev olympus || true") extra}
+      '';
+    };
+
+  egressUnit =
+    name: args:
+    let
+      scripts = egressScripts args;
+    in
+    {
+      bindsTo = [ "wireguard-olympus.service" ];
+      after = [ "wireguard-olympus.service" ];
+      partOf = [ "wireguard-olympus.service" ];
+      conflicts =
+        map (n: "${n}.service") (lib.filter (n: n != name) egressUnits)
+        ++ lib.optional (self.tukl != null) "wg-quick-tukl.service";
+      wants = [ "vpn-egress-watch@${name}.service" ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = scripts.start;
+        ExecStop = scripts.stop;
+      };
+    };
+
+  # Pings through the egress table (the unit's rules are active) and shouts when
+  # the exit stops forwarding; the tunnel then drops traffic instead of leaking it.
+  egressWatch = pkgs.writeShellApplication {
+    name = "vpn-egress-watch";
+    runtimeInputs = [
+      pkgs.iputils
+      pkgs.util-linux
+      pkgs.coreutils
+    ];
+    text = ''
+      unit=$1
+      fails=0
+      down=0
+
+      notify() {
+        bus="/run/user/$(id -u dk)/bus"
+        if [ -S "$bus" ]; then
+          runuser -u dk -- env "DBUS_SESSION_BUS_ADDRESS=unix:path=$bus" \
+            ${pkgs.libnotify}/bin/notify-send -u "$1" -a vpn "$2" "$3" || true
+        fi
+      }
+
+      while true; do
+        if ping -c1 -W5 -n ${cfg.probe} >/dev/null 2>&1; then
+          fails=0
+          if [ "$down" = 1 ]; then
+            down=0
+            echo "$unit: reachable again"
+            notify normal "VPN exit back" "$unit: internet reachable again"
+          fi
+        else
+          fails=$((fails + 1))
+          if [ "$fails" -ge 2 ] && [ "$down" = 0 ]; then
+            down=1
+            echo "$unit: no internet through the exit — traffic is dropped"
+            notify critical "VPN exit down" "$unit: no internet, traffic is dropped — systemctl stop $unit to go direct"
+          fi
+        fi
+        sleep 15
+      done
+    '';
+  };
 
   # ssh over the tunnel. While `olympus` is up, `ssh hestia` must resolve to the
   # peer's tunnel address — its LAN name is unreachable from anywhere else, and
@@ -221,6 +330,12 @@ in
       default = "ens6";
       description = "Hub WAN interface (NAT external interface).";
     };
+    probe = lib.mkOption {
+      internal = true;
+      type = lib.types.str;
+      default = "1.1.1.1";
+      description = "Address the egress watchdog pings through the exit.";
+    };
     privateKeyFile = lib.mkOption {
       internal = true;
       type = lib.types.str;
@@ -319,13 +434,42 @@ in
     # allowedIPsAsRoutes = false keeps the default route off the interface, and
     # postSetup routes just the mesh supernet through it. fwMark + rule 5000 keep
     # the encrypted socket on the underlay, out of any full tunnel (tukl included).
-    # Full-tunnel egress via olympus comes as separate units in later steps.
     # Toggle with `systemctl stop|start wireguard-olympus` (no sudo: userManagedUnits).
 
     # the mesh is flipped by hand, so let wheel do it without sudo
     host.userManagedUnits = lib.optionals (!isServer) (
-      [ "wireguard-olympus.service" ] ++ lib.optional (self.tukl != null) "wg-quick-tukl.service"
+      [
+        "wireguard-olympus.service"
+        "vpn-egress-olympus.service"
+      ]
+      ++ lib.optional (self.tukl != null) "wg-quick-tukl.service"
     );
+
+    # ---------------------------------------------------------------------------
+    # Egress — opt-in full tunnel
+    # ---------------------------------------------------------------------------
+    # "Direct" means no egress unit is active. Starting one routes everything but
+    # the mesh through the exit (rules 5200/5300, table 2100); units conflict with
+    # each other and with wg-quick-tukl, so at most one is up. The watcher makes a
+    # dead exit loud: traffic is dropped, never silently sent direct.
+    #   systemctl start vpn-egress-olympus   (stop to go direct)
+    systemd.services = lib.mkIf (!isServer) {
+      vpn-egress-olympus = egressUnit "vpn-egress-olympus" {
+        src4 = self.ip;
+        src6 = self.ip6;
+      };
+      "vpn-egress-watch@" = {
+        bindsTo = [ "%i.service" ];
+        after = [ "%i.service" ];
+        serviceConfig = {
+          Type = "simple";
+          ExecStart = "${egressWatch}/bin/vpn-egress-watch %i";
+        };
+      };
+      wg-quick-tukl = lib.mkIf (self.tukl != null) {
+        wants = [ "vpn-egress-watch@wg-quick-tukl.service" ];
+      };
+    };
 
     # keep NetworkManager off the mesh and (later) GRE ifaces on the desktops
     networking.networkmanager.unmanaged = lib.mkIf (!isServer) [

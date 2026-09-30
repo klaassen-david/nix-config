@@ -89,6 +89,7 @@ let
         nodes = lib.mkForce registry;
         endpoint = "203.0.113.10:51820";
         uplink = "eth1";
+        probe = "198.51.100.1";
         privateKeyFile = "/etc/vpn-test.key";
       };
       environment.etc."vpn-test.key" = {
@@ -240,5 +241,45 @@ pkgs.testers.runNixOSTest {
         hermes.succeed("test -e /home/dk/.ssh/config.local")
         hermes.succeed("ip rule show | grep 5000")
         hermes.wait_until_succeeds("ping -6 -c1 -W2 fdaa:e184:83f::1")
+
+    curl = "curl -s --max-time 5 http://198.51.100.1/"
+
+    with subtest("egress via olympus: hermes exits from the hub, stop goes direct"):
+        hermes.succeed("systemctl start vpn-egress-olympus.service")
+        out = hermes.succeed(curl).strip()
+        assert out == "203.0.113.10", f"expected egress via olympus, got {out!r}"
+        hermes.succeed("ip rule show | grep 5200")
+        hermes.succeed("ip rule show | grep 5300")
+        hermes.succeed("ping -c1 -W2 10.100.0.2")
+        hermes.succeed("ping -6 -c1 -W2 fdaa:e184:83f::1")
+        hermes.succeed("systemctl stop vpn-egress-olympus.service")
+        out = hermes.succeed(curl).strip()
+        assert out == "203.0.113.30", f"expected direct egress, got {out!r}"
+        hermes.fail("ip rule show | grep -E '^(5200|5300):'")
+        hermes.fail("ip -6 rule show | grep -E '^(5200|5300):'")
+
+    with subtest("egress is bound to the mesh"):
+        hermes.succeed("systemctl start vpn-egress-olympus.service")
+        hermes.succeed("systemctl stop wireguard-olympus.service")
+        hermes.fail("systemctl is-active vpn-egress-olympus.service")
+        out = hermes.succeed(curl).strip()
+        assert out == "203.0.113.30", f"expected direct egress, got {out!r}"
+        hermes.succeed("systemctl start vpn-egress-olympus.service")
+        hermes.succeed("systemctl is-active wireguard-olympus.service")
+        hermes.wait_until_succeeds("ping -c1 -W2 10.100.0.1")
+        out = hermes.succeed(curl).strip()
+        assert out == "203.0.113.10", f"expected egress via olympus, got {out!r}"
+
+    with subtest("watcher: a dead exit drops traffic, never falls back to direct"):
+        watch = "vpn-egress-watch@vpn-egress-olympus.service"
+        hermes.wait_for_unit(watch)
+        olympus.succeed("iptables -I FORWARD -i olympus -j DROP")
+        hermes.wait_until_succeeds(f"journalctl -u '{watch}' | grep 'traffic is dropped'", timeout=120)
+        hermes.fail(curl)
+        olympus.succeed("iptables -D FORWARD -i olympus -j DROP")
+        hermes.wait_until_succeeds(f"journalctl -u '{watch}' | grep 'reachable again'", timeout=120)
+        out = hermes.succeed(curl).strip()
+        assert out == "203.0.113.10", f"expected egress via olympus, got {out!r}"
+        hermes.succeed("systemctl stop vpn-egress-olympus.service")
   '';
 }
