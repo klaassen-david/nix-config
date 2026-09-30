@@ -49,3 +49,10 @@ changes (old ruling stays in the file as history).
 - [pimsync-failure-alert](decisions/pimsync-failure-alert.md) — `pimsync-sync`
   conflicts (exit 3) raise a critical desktop notification; other failures
   stay in the journal [USER 2026-09-29]
+- [wallpaper-per-host](decisions/wallpaper-per-host.md) — mpvpaper plays
+  `host.theme.wallpaper`; null starts no mpvpaper (hermes) [USER 2026-09-30]
+- [power-log-scope](decisions/power-log-scope.md) — the power logger runs on
+  hermes only [USER 2026-09-30]
+- [hibernate-swapfile](decisions/hibernate-swapfile.md) — hermes hibernates
+  into a 32 GiB swapfile on `/`, for suspend-then-hibernate on lid close —
+  never while an external display is connected [USER 2026-09-30]
