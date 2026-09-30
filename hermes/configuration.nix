@@ -56,6 +56,9 @@
       priority = 1;
     }
   ];
+  # Power off fully after writing the image: the default `platform` (ACPI S4)
+  # leaves wake sources armed, and a keypress resumed it.
+  systemd.sleep.settings.Sleep.HibernateMode = "shutdown";
 
   boot.kernelModules = [ "ryzen_smu" ];
   boot.initrd.kernelModules = [ "amdgpu" ];
