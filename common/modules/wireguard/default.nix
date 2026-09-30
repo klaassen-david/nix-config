@@ -12,7 +12,8 @@
 # Hub-and-spoke: olympus (the VPS) is the server; hermes and hestia keep an
 # always-on split tunnel to it on the `olympus` interface — only the mesh
 # supernet goes through it, everything else stays direct. Full-tunnel egress
-# is a separate, opt-in layer (the `vpn-egress-*` units). The desktops also carry
+# is a separate, opt-in layer (the `vpn-egress-*` units), via olympus or via the
+# other host acting as an exit (see Exits below). The desktops also carry
 # a second, independent on-demand tunnel `tukl` (the TU Kaiserslautern VPN; see
 # bottom of file).
 #
@@ -31,19 +32,22 @@
 #     each host's public key in place of the REPLACE_ME_* placeholders.
 
 let
-  subnet = "10.100.0";
+  base4 = "10.100";
+  subnet = "${base4}.0";
   # ULA (RFC 4193, randomly generated). The tunnel is dual-stack so a client with
   # native IPv6 does not silently blackhole AAAA traffic into a v4-only tunnel.
   # Egress caveat on networking.nat below.
-  subnet6 = "fdaa:e184:83f::";
+  base6 = "fdaa:e184:83f";
+  subnet6 = "${base6}::";
   port = 51820;
   cfg = config.vpn;
 
   # Registry entries plus the addresses derived from `octet`.
   nodes = lib.mapAttrs (
-    _: node:
+    name: node:
     node
     // {
+      inherit name;
       ip = "${subnet}.${toString node.octet}";
       ip6 = "${subnet6}${toString node.octet}";
     }
@@ -74,14 +78,181 @@ let
   selfName = config.host.hostName;
   self = nodes.${selfName};
   isServer = self.hub;
+  hub = lib.findFirst (n: n.hub) null (lib.attrValues nodes);
+
+  # Exits in octet order; `x` below is an exit, `n` any node.
+  exits = lib.sort (a: b: a.octet < b.octet) (lib.filter (n: n.exit) (lib.attrValues nodes));
+  otherExits = lib.filter (x: x.name != selfName) exits;
+  # Source addresses node `n` uses when it egresses through exit `x`, and the
+  # range the hub maps to `x` (x.octet + 10 in the third v4 octet / fourth v6 group).
+  exitNet = x: toString (10 + x.octet);
+  src4 = x: n: "${base4}.${exitNet x}.${toString n.octet}";
+  src6 = x: n: "${base6}:${exitNet x}::${toString n.octet}";
+  range4 = x: "${base4}.${exitNet x}.0/24";
+  range6 = x: "${base6}:${exitNet x}::/64";
 
   # Egress units on this host; each conflicts with all the others and with tukl.
-  egressUnits = [ "vpn-egress-olympus" ];
+  egressUnits = [ "vpn-egress-olympus" ] ++ map (x: "vpn-egress-${x.name}") otherExits;
+
+  # GRE mtu: mesh mtu 1420 minus 24 bytes of GRE
+  greMtu = "1396";
+  # Idempotent rule add/delete; `ruleAdd` applies one spec to both families.
+  ruleAddIn = f: spec: ''
+    ${ip} ${f} rule del ${spec} || true
+    ${ip} ${f} rule add ${spec}
+  '';
+  ruleAdd = spec: ruleAddIn "-4" spec + ruleAddIn "-6" spec;
+  ruleDel =
+    spec:
+    lib.concatMapStringsSep "\n" (f: "${ip} ${f} rule del ${spec} || true") [
+      "-4"
+      "-6"
+    ];
+  routeDefault =
+    dev: table:
+    lib.concatMapStringsSep "\n"
+      (f: "${ip} ${f} route replace default dev ${dev} table ${toString table}")
+      [
+        "-4"
+        "-6"
+      ];
+  greAdd = dev: local: remote: ''
+    ${ip} link del ${dev} 2>/dev/null || true
+    ${ip} link add ${dev} type gre local ${local} remote ${remote} ttl 64
+    ${ip} link set ${dev} mtu ${greMtu} up
+  '';
+
+  # Hub: one GRE link per exit, its own table, and a rule sending the exit's
+  # source range into it. Rule 2000 lets the mesh routes (prefix > 0) win first.
+  hubSetup = ''
+    ${ruleAdd "pref 2000 lookup main suppress_prefixlength 0"}
+    ${lib.concatMapStringsSep "\n" (x: ''
+      ${greAdd "vpn-${x.name}" self.ip x.ip}
+      ${routeDefault "vpn-${x.name}" (2000 + x.octet)}
+      ${ruleAddIn "-4" "pref ${toString (3000 + x.octet)} from ${range4 x} lookup ${toString (2000 + x.octet)}"}
+      ${ruleAddIn "-6" "pref ${toString (3000 + x.octet)} from ${range6 x} lookup ${toString (2000 + x.octet)}"}
+    '') exits}
+  '';
+  hubShutdown = ''
+    ${ruleDel "pref 2000"}
+    ${lib.concatMapStringsSep "\n" (x: ''
+      ${ruleDel "pref ${toString (3000 + x.octet)}"}
+      ${ip} link del vpn-${x.name} || true
+    '') exits}
+  '';
+
+  # Exit: GRE back to the hub; connection-marked replies return through it (4900),
+  # and forwarded exit traffic bypasses the host's own egress (4950).
+  exitSetup = ''
+    ${greAdd "vpn-exit" self.ip hub.ip}
+    ${routeDefault "vpn-exit" 2300}
+    ${ruleAdd "pref 4900 fwmark 0x2000/0x2000 lookup 2300"}
+    ${ruleAdd "pref 4950 iif vpn-exit lookup main"}
+  '';
+  exitShutdown = ''
+    ${ruleDel "pref 4900"}
+    ${ruleDel "pref 4950"}
+    ${ip} link del vpn-exit || true
+  '';
+
+  nft = "${pkgs.nftables}/bin/nft";
+  # Atomic (re)load: empty declaration, delete, real table — the gate is never open.
+  nftReload =
+    table: ruleset:
+    pkgs.writeText "${table}.nft" ''
+      table inet ${table} {}
+      delete table inet ${table}
+      ${ruleset}
+    '';
+  nftUnit = file: {
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${nft} -f ${file}";
+    };
+  };
+
+  hubRuleset = nftReload "vpn-hub" ''
+    table inet vpn-hub {
+      chain forward {
+        type filter hook forward priority filter; policy accept;
+        oifname "vpn-*" tcp flags syn tcp option maxseg size set rt mtu
+      }
+    }
+  '';
+
+  meshIfaces = ''{ "olympus", "vpn-exit" }'';
+  exitRuleset = nftReload "vpn-exit" ''
+    table inet vpn-exit {
+      set lan4 { type ipv4_addr; flags interval; auto-merge; }
+      set lan6 { type ipv6_addr; flags interval; auto-merge; }
+
+      chain prerouting {
+        type filter hook prerouting priority mangle; policy accept;
+        iifname "vpn-exit" ct mark set ct mark or 0x2000
+        iifname != "vpn-exit" ct mark & 0x2000 == 0x2000 meta mark set meta mark or 0x2000
+      }
+
+      chain input {
+        type filter hook input priority filter; policy accept;
+        iifname "vpn-exit" drop
+      }
+
+      chain forward {
+        type filter hook forward priority filter; policy accept;
+        oifname "vpn-exit" tcp flags syn tcp option maxseg size set rt mtu
+        iifname "vpn-exit" oifname ${meshIfaces} drop
+        iifname "vpn-exit" ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10, 169.254.0.0/16 } drop
+        iifname "vpn-exit" ip daddr @lan4 drop
+        iifname "vpn-exit" ip6 daddr { fc00::/7, fe80::/10 } drop
+        iifname "vpn-exit" ip6 daddr @lan6 drop
+        ${lib.optionalString (self.lan != null) ''iifname "olympus" ip daddr ${self.lan} accept''}
+        iifname "olympus" ct state new drop
+        iifname != ${meshIfaces} oifname ${meshIfaces} ct state new drop
+      }
+
+      chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
+        oifname != { "olympus", "vpn-exit", "lo" } ip saddr ${base4}.0.0/16 masquerade
+        oifname != { "olympus", "vpn-exit", "lo" } ip6 saddr { ${base6}::/48, ${cfg.phones.subnet6} } masquerade
+      }
+    }
+  '';
+
+  # Refills lan4/lan6 with every routed prefix behind a real link, so the exit can
+  # refuse its own LAN whatever network it is on.
+  languard = pkgs.writeShellApplication {
+    name = "vpn-languard";
+    runtimeInputs = [
+      pkgs.iproute2
+      pkgs.nftables
+      pkgs.jq
+      pkgs.coreutils
+    ];
+    text = ''
+      fill() {
+        local set=$1 elems
+        elems=$(sort -u | paste -sd, -)
+        echo "flush set inet vpn-exit $set"
+        if [ -n "$elems" ]; then echo "add element inet vpn-exit $set { $elems }"; fi
+      }
+      routes='.[] | select(.dst != "default" and .dev != null and (.dev | test("^(lo|olympus|vpn-.*)$") | not))'
+      {
+        ip -j route show table main | jq -r "$routes | .dst" | fill lan4
+        ip -j -6 route show table main \
+          | jq -r "$routes | select(.dst | test(\"^(fe[89ab][0-9a-f]:|ff)\"; \"i\") | not) | .dst" | fill lan6
+      } | nft -f -
+    '';
+  };
+
+  owner = "/run/vpn-egress";
 
   # Egress table 2100 is consulted by rules 5200/5300 while the unit is active.
   # `extra` are addresses added to `olympus` for the unit's lifetime.
   egressScripts =
     {
+      name,
       src4,
       src6,
       extra ? [ ],
@@ -98,6 +269,7 @@ let
     in
     {
       start = pkgs.writeShellScript "vpn-egress-start" ''
+        echo ${name} > ${owner}
         ${lib.concatMapStringsSep "\n" (
           a: "${ip} ${addrFlags a}addr replace ${a} dev olympus${nodad a}"
         ) extra}
@@ -110,12 +282,17 @@ let
           ${ip} ${f} rule add pref 5300 lookup 2100
         '')}
       '';
+      # Switching units starts the new one before this stop may run; only the
+      # current owner of the shared rules and table tears them down.
       stop = pkgs.writeShellScript "vpn-egress-stop" ''
-        ${each (f: ''
-          ${ip} ${f} rule del pref 5200 || true
-          ${ip} ${f} rule del pref 5300 || true
-          ${ip} ${f} route flush table 2100 || true
-        '')}
+        if [ "$(cat ${owner} 2>/dev/null)" = ${name} ]; then
+          ${each (f: ''
+            ${ip} ${f} rule del pref 5200 || true
+            ${ip} ${f} rule del pref 5300 || true
+            ${ip} ${f} route flush table 2100 || true
+          '')}
+          rm -f ${owner}
+        fi
         ${lib.concatMapStringsSep "\n" (a: "${ip} ${addrFlags a}addr del ${a} dev olympus || true") extra}
       '';
     };
@@ -123,7 +300,7 @@ let
   egressUnit =
     name: args:
     let
-      scripts = egressScripts args;
+      scripts = egressScripts (args // { inherit name; });
     in
     {
       bindsTo = [ "wireguard-olympus.service" ];
@@ -336,6 +513,12 @@ in
       default = "1.1.1.1";
       description = "Address the egress watchdog pings through the exit.";
     };
+    phones.subnet6 = lib.mkOption {
+      internal = true;
+      type = lib.types.str;
+      default = "fdcc:ad94:bacf:61a4::cafe:0/112";
+      description = "wg-easy phone v6 subnet; exits masquerade it like the mesh.";
+    };
     privateKeyFile = lib.mkOption {
       internal = true;
       type = lib.types.str;
@@ -367,8 +550,14 @@ in
           allowedIPs = [
             "${node.ip}/32"
             "${node.ip6}/128"
-          ];
+          ]
+          ++ lib.concatMap (x: [
+            "${src4 x node}/32"
+            "${src6 x node}/128"
+          ]) (lib.filter (x: x.name != node.name) exits);
         }) spokes;
+        postSetup = hubSetup;
+        postShutdown = hubShutdown;
       })
       (lib.mkIf (!isServer) {
         ips = [
@@ -397,10 +586,12 @@ in
           ${ip} route replace ${subnet}.0/16 dev olympus src ${self.ip}
           ${ip} -6 route replace ${subnet6}/48 dev olympus src ${self.ip6}
           ${underlayRules "add"}
+          ${lib.optionalString self.exit exitSetup}
           ${pkgs.coreutils}/bin/install -m 0600 -o ${sshUser.name} -g ${sshUser.group} ${sshTunnelConfig} ${sshLocalConfig}
         '';
         postShutdown = ''
           ${underlayRules "del"}
+          ${lib.optionalString self.exit exitShutdown}
           ${pkgs.coreutils}/bin/rm -f ${sshLocalConfig}
         '';
       })
@@ -426,6 +617,8 @@ in
     };
 
     networking.firewall.allowedUDPPorts = lib.mkIf isServer [ port ];
+    # GRE between the hub and the exits rides inside the mesh
+    networking.firewall.extraCommands = "iptables -A nixos-fw -i olympus -p gre -j nixos-fw-accept";
 
     # ---------------------------------------------------------------------------
     # HOSTS (hermes / hestia) — always-on split mesh
@@ -440,8 +633,8 @@ in
     host.userManagedUnits = lib.optionals (!isServer) (
       [
         "wireguard-olympus.service"
-        "vpn-egress-olympus.service"
       ]
+      ++ map (n: "${n}.service") egressUnits
       ++ lib.optional (self.tukl != null) "wg-quick-tukl.service"
     );
 
@@ -453,23 +646,84 @@ in
     # each other and with wg-quick-tukl, so at most one is up. The watcher makes a
     # dead exit loud: traffic is dropped, never silently sent direct.
     #   systemctl start vpn-egress-olympus   (stop to go direct)
-    systemd.services = lib.mkIf (!isServer) {
-      vpn-egress-olympus = egressUnit "vpn-egress-olympus" {
-        src4 = self.ip;
-        src6 = self.ip6;
-      };
-      "vpn-egress-watch@" = {
-        bindsTo = [ "%i.service" ];
-        after = [ "%i.service" ];
-        serviceConfig = {
-          Type = "simple";
-          ExecStart = "${egressWatch}/bin/vpn-egress-watch %i";
+    #   systemctl start vpn-egress-hestia    (through another host; see Exits)
+    systemd.services = lib.mkMerge [
+      (lib.mkIf (!isServer) (
+        {
+          vpn-egress-olympus = egressUnit "vpn-egress-olympus" {
+            src4 = self.ip;
+            src6 = self.ip6;
+          };
+          "vpn-egress-watch@" = {
+            bindsTo = [ "%i.service" ];
+            after = [ "%i.service" ];
+            serviceConfig = {
+              Type = "simple";
+              ExecStart = "${egressWatch}/bin/vpn-egress-watch %i";
+            };
+          };
+          wg-quick-tukl = lib.mkIf (self.tukl != null) {
+            wants = [ "vpn-egress-watch@wg-quick-tukl.service" ];
+          };
+        }
+        // lib.listToAttrs (
+          map (x: {
+            name = "vpn-egress-${x.name}";
+            value = egressUnit "vpn-egress-${x.name}" {
+              src4 = src4 x self;
+              src6 = src6 x self;
+              extra = [
+                "${src4 x self}/32"
+                "${src6 x self}/128"
+              ];
+            };
+          }) otherExits
+        )
+      ))
+      (lib.mkIf isServer { vpn-hub-nft = nftUnit hubRuleset; })
+      (lib.mkIf self.exit {
+        vpn-exit-nft = nftUnit exitRuleset // {
+          serviceConfig = (nftUnit exitRuleset).serviceConfig // {
+            ExecStartPost = "${languard}/bin/vpn-languard";
+          };
         };
-      };
-      wg-quick-tukl = lib.mkIf (self.tukl != null) {
-        wants = [ "vpn-egress-watch@wg-quick-tukl.service" ];
-      };
+      })
+    ];
+
+    # ---------------------------------------------------------------------------
+    # Exits — hosts that carry other hosts' full-tunnel traffic
+    # ---------------------------------------------------------------------------
+    # A host egressing "through hestia" sends from a per-exit source address
+    # (10.100.(10+x).o). The hub routes that range into a GRE link to the exit
+    # (rules 3000+x, tables 2000+x); the exit decapsulates on `vpn-exit`, masquerades
+    # out its own uplink, and returns replies through the same link (connection
+    # mark 0x2000, table 2300). GRE because a WireGuard peer can hold 0.0.0.0/0
+    # for only one interface: the hub cannot give every exit its own default route.
+    # An exit refuses its own LAN and private ranges (lan4/lan6, refilled by
+    # `vpn-languard`), its own services (input drop), and lets nothing start a
+    # connection into the mesh. Needs a loose/off rpfilter: strict drops the
+    # decapsulated traffic.
+    boot.kernel.sysctl = lib.mkIf self.exit {
+      # NetworkManager handles RAs in userspace here (accept_ra = 0 on the links),
+      # so forwarding does not cost the host its v6 default route.
+      "net.ipv4.conf.all.forwarding" = 1;
+      "net.ipv6.conf.all.forwarding" = 1;
+      # systemd applies its loose rp_filter default to each new link; that still
+      # drops the decapsulated packets (reverse lookups ignore the iif rules)
+      "net.ipv4.conf.vpn-exit.rp_filter" = 0;
     };
+    assertions = lib.optional self.exit {
+      assertion = config.networking.firewall.checkReversePath != true;
+      message = "vpn exits need networking.firewall.checkReversePath = false or \"loose\": strict rpfilter drops the GRE-decapsulated exit traffic.";
+    };
+    networking.networkmanager.dispatcherScripts =
+      lib.mkIf (self.exit && config.networking.networkmanager.enable)
+        [
+          {
+            source = pkgs.writeShellScript "vpn-languard-dispatch" "${languard}/bin/vpn-languard || true";
+            type = "basic";
+          }
+        ];
 
     # keep NetworkManager off the mesh and (later) GRE ifaces on the desktops
     networking.networkmanager.unmanaged = lib.mkIf (!isServer) [

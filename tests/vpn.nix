@@ -92,6 +92,10 @@ let
         probe = "198.51.100.1";
         privateKeyFile = "/etc/vpn-test.key";
       };
+      environment.systemPackages = [
+        pkgs.conntrack-tools
+        pkgs.nftables
+      ];
       environment.etc."vpn-test.key" = {
         text = keys.${name}.private;
         mode = "0400";
@@ -281,5 +285,37 @@ pkgs.testers.runNixOSTest {
         out = hermes.succeed(curl).strip()
         assert out == "203.0.113.10", f"expected egress via olympus, got {out!r}"
         hermes.succeed("systemctl stop vpn-egress-olympus.service")
+
+    with subtest("egress via hestia: exits from hestia's home NAT, refuses its LAN"):
+        hermes.succeed("systemctl start vpn-egress-hestia.service")
+        out = hermes.succeed(curl).strip()
+        assert out == "203.0.113.20", f"expected egress via hestia, got {out!r}"
+        hermes.fail("ping -c1 -W2 192.168.178.2")
+        hermes.succeed("systemctl start vpn-egress-olympus.service")
+        hermes.fail("systemctl is-active vpn-egress-hestia.service")
+        out = hermes.succeed(curl).strip()
+        assert out == "203.0.113.10", f"expected egress via olympus, got {out!r}"
+        hermes.succeed("systemctl stop vpn-egress-olympus.service")
+        hermes.fail("ip addr show dev olympus | grep 10.100.12.3")
+
+    with subtest("egress via hermes: hestia exits from hermes"):
+        hestia.succeed("systemctl start vpn-egress-hermes.service")
+        out = hestia.succeed(curl).strip()
+        assert out == "203.0.113.30", f"expected egress via hermes, got {out!r}"
+        hestia.succeed("systemctl stop vpn-egress-hermes.service")
+
+    with subtest("exit offline: traffic is dropped, never sent from another exit"):
+        watch = "vpn-egress-watch@vpn-egress-hestia.service"
+        hermes.succeed("systemctl start vpn-egress-hestia.service")
+        hermes.succeed(curl)
+        hestia.succeed("systemctl stop wireguard-olympus.service")
+        out = hermes.execute(curl)[1].strip()
+        assert out == "", f"expected a dropped connection, got {out!r}"
+        hermes.wait_until_succeeds(f"journalctl -u '{watch}' | grep 'traffic is dropped'", timeout=120)
+        hestia.succeed("systemctl start wireguard-olympus.service")
+        hermes.wait_until_succeeds(f"{curl} | grep -x 203.0.113.20", timeout=120)
+        hermes.succeed("systemctl stop vpn-egress-hestia.service")
+        out = hermes.succeed(curl).strip()
+        assert out == "203.0.113.30", f"expected direct egress, got {out!r}"
   '';
 }
