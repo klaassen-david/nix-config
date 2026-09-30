@@ -211,19 +211,60 @@ transitions. What is left, roughly by impact:
   the lid path ends in `systemctl suspend` (`common/modules/wifi/default.nix:88`),
   so a forgotten closed laptop drains for days. Switch to
   `systemctl suspend-then-hibernate` with `HibernateDelaySec` ~2h.
-  **Blocker to check first, on hermes**: hibernation needs `boot.resumeDevice`
-  and a swap device ≥ RAM. hermes has exactly one swap partition
-  (`hermes/hardware-configuration.nix:43-45`, by-uuid `cf70f01c…`) and no
-  `resumeDevice` anywhere in the flake; its size could not be checked from
-  hestia. `lsblk -b -o NAME,SIZE
-  /dev/disk/by-uuid/cf70f01c-2bcc-49f3-bdea-5584615d4e91` against `free -b`
-  decides whether this is a two-line change or a repartition.
+  Swap was too small for an image: partition 8.8 GiB vs 30.7 GiB RAM
+  [AGENT 2026-09-26]. Now a 32 GiB swapfile at priority 1
+  (`hermes/configuration.nix`, decisions/hibernate-swapfile.md) — no
+  `resume=`/`resume_offset=`: with systemd initrd on EFI, systemd-sleep stores
+  device + offset in the `HibernateLocation` EFI variable and the initrd
+  resumes from it [AGENT 2026-09-30, systemd 261 man pages].
+  **Next, by hand after switching**: `swapon --show` (swapfile prio 1), then
+  `systemctl hibernate` and power on — the session must come back and
+  `journalctl -b -g hibernate` show the resume. If it cold-boots instead, fall
+  back to `boot.resumeDevice = config.fileSystems."/".device` +
+  `resume_offset=<first physical_offset of sudo filefrag -v /var/lib/swapfile>`.
+  Only then: `systemctl suspend` → `suspend-then-hibernate` at
+  `common/modules/wifi/default.nix:88` (and its comments/description), plus
+  `systemd.sleep.settings.Sleep.HibernateDelaySec = "2h"` on hermes. Keep the
+  docked early-exit ahead of it (decisions/hibernate-swapfile.md).
+
+- [ ] **panel self-refresh (PSR) is disabled** `[manual]` hangs / static-screen drain
+  [AGENT 2026-09-26] hermes boots with `amdgpu.dcdebugmask=0x10`
+  (`DC_DISABLE_PSR`), set by nixos-hardware's `framework/16-inch/common/amd.nix`
+  as a workaround for PSR hangs
+  ([drm/amd#3647](https://gitlab.freedesktop.org/drm/amd/-/issues/3647)), not
+  by this repo. Retest on the current kernel (6.18): append
+  `amdgpu.dcdebugmask=0` (later cmdline values override), confirm with
+  `cat /sys/module/amdgpu/parameters/dcdebugmask`, run for a few days, revert
+  on the first freeze or slowdown.
 
 - [ ] **measurement & housekeeping** `[manual]`
   `powertop` for auditing (per-device tunables, wakeup offenders).
   `powerManagement.powertop.enable = true` auto-applies its tunables at boot,
   but that includes USB autosuspend, which bites input devices and BT dongles
   — prefer cherry-picking what it suggests.
+  [AGENT 2026-09-26] 60 s snapshot on hermes (`powertop --time=60 --html`),
+  desktop idle-ish with zen + ghostty open. No watt estimates (powertop wants
+  407 battery-only calibration runs first) — hence the planned logger.
+  - CPU is not the problem: package C3 residency 93.7%. Wakeups are led by
+    the tick (244/s), zen-beta (~250/s across processes), and the touchpad's
+    I²C controller (`AMDI0010:03` 88/s + `PIXA3854` 16/s, likely input during
+    the sample). `commit_work` at 729 ms/s is powertop counting a kworker
+    that sleeps on vblank; the real signal is 13.8 display commits/s at
+    "idle" — matters once PSR is back on (item above).
+  - Suggested tunables, sorted: wifi `power_save` → wifi item above.
+    `nmi_watchdog=1` → `boot.kernelParams = [ "nmi_watchdog=0" ]`, cheap,
+    `[auto]`. PCI runtime PM is `on` (disabled) for 27 devices incl. iGPU,
+    wifi, NVMe → runtime-togglable, so an A/B for the logger, not a guess.
+    Skip: keyboard-module USB autosuspend (the input-device bite above);
+    `snd_hda_intel.power_save` (already on, 10 s); `dirty_writeback` 5→15 s
+    (negligible on NVMe). Device wakeups are already all disabled.
+  - `mpvpaper` ran on hermes with no `~/wallpaper/current` to play. Now gated
+    on `host.theme.wallpaper` (decisions/wallpaper-per-host.md); hermes has none.
+  [AGENT 2026-09-30] The logger exists: `common/modules/power-log` (hermes
+  only). A/B a setting with `power-log mark <label>` … `power-log mark end`,
+  read with `power-report --by mark|gen|context`. Per-app attribution needs
+  apps in their own scope: sway's menu, browser and mpvpaper now launch via
+  `app-scope`.
 
 ## Performance & build
 
