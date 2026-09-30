@@ -222,10 +222,11 @@ transitions. What is left, roughly by impact:
   `HibernateMode = "shutdown"`, with progress on tty12 (hibernate-console).
   **Retest after switching**: `systemctl hibernate` → tty12 shows progress,
   the power LED goes off, a keypress does nothing, the power button resumes.
-  Only then: `systemctl suspend` → `suspend-then-hibernate` at
-  `common/modules/wifi/default.nix:88` (and its comments/description), plus
-  `systemd.sleep.settings.Sleep.HibernateDelaySec = "2h"` on hermes. Keep the
-  docked early-exit ahead of it (decisions/hibernate-swapfile.md).
+  [USER 2026-09-30] Lid close now runs `suspend-then-hibernate`,
+  `HibernateDelaySec = "1h"` (decisions/hibernate-swapfile.md); the docked
+  early-exit stays ahead of it. **Close when**: the retest above passes, and a
+  lid shut on battery for > 1 h comes back via the power button from
+  hibernation (`journalctl -b -g 'hibernat'` shows the switch; resume keeps the boot).
 
 - [ ] **panel self-refresh (PSR) is disabled** `[manual]` hangs / static-screen drain
   [AGENT 2026-09-26] hermes boots with `amdgpu.dcdebugmask=0x10`
