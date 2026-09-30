@@ -61,6 +61,9 @@
           ]
           ++ lib.optional (host.display.startupWorkspace != null) {
             command = "swaymsg workspace number ${toString host.display.startupWorkspace}";
+          }
+          ++ lib.optional (host.theme.wallpaper != null) {
+            command = ''mpvpaper ${host.display.primary} ${host.theme.wallpaper} --mpv-options "loop"'';
           };
 
         input = {
@@ -134,8 +137,6 @@
               XDG_CURRENT_DESKTOP=sway \
               WAYLAND_DISPLAY
 
-          exec mpvpaper ${host.display.primary} /home/dk/wallpaper/current --mpv-options "loop"
-
           exec wl-gammarelay-rs run
 
           exec swaync
@@ -192,9 +193,9 @@
   };
 
   programs.mpv.enable = true;
-  programs.mpvpaper.enable = true;
-  xdg.configFile."mpvpaper/pauselist".text = "";
-  xdg.configFile."mpvpaper/stoplist".text = "";
+  programs.mpvpaper.enable = host.theme.wallpaper != null;
+  xdg.configFile."mpvpaper/pauselist" = lib.mkIf (host.theme.wallpaper != null) { text = ""; };
+  xdg.configFile."mpvpaper/stoplist" = lib.mkIf (host.theme.wallpaper != null) { text = ""; };
 
   services.swaync = {
     enable = true;

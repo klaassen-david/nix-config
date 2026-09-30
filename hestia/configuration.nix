@@ -24,6 +24,7 @@
     gpuPowerLimitWatts = 280;
     display.primary = "DP-3";
     display.startupWorkspace = 2;
+    theme.wallpaper = "/home/dk/wallpaper/current";
     browser = "firefox";
     # dvorak first = active once sway starts; the console fallback takes only
     # the bare first layout, so it stays plain us

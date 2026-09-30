@@ -195,6 +195,7 @@ in
       wallpaper = mkOption {
         type = types.nullOr types.path;
         default = null;
+        description = "video/image mpvpaper loops on display.primary; null runs no mpvpaper";
       };
     };
 
