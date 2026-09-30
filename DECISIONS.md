@@ -55,4 +55,5 @@ changes (old ruling stays in the file as history).
   hermes only [USER 2026-09-30]
 - [hibernate-swapfile](decisions/hibernate-swapfile.md) — hermes hibernates
   into a 32 GiB swapfile on `/`, for suspend-then-hibernate on lid close —
-  never while an external display is connected [USER 2026-09-30]
+  never while an external display is connected; only the power button
+  resumes; no frozen screen while the image is written [USER 2026-09-30]
