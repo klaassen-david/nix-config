@@ -57,3 +57,9 @@ changes (old ruling stays in the file as history).
   into a 32 GiB swapfile on `/`; lid close suspends, hibernating after 1 h —
   never while an external display is connected; only the power button
   resumes; no frozen screen while the image is written [USER 2026-09-30]
+- [vpn](decisions/vpn.md) — egress per device: hosts toggle direct / olympus
+  / another host (relayed via olympus) / tukl (direct, own RPTU config) at
+  runtime over an always-on split mesh; phones stay on wg-easy, egress and host
+  reachability set per phone on olympus; home-LAN access is a separate
+  per-device switch, no remapping; a dead exit drops traffic
+  [USER 2026-09-30]
