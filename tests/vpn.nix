@@ -4,7 +4,7 @@
 #
 #   vlan 1 "internet" 203.0.113.0/24: internet .1 (+ 198.51.100.1/32 with a
 #       web server echoing the client address), olympus .10 (hub, uplink eth1),
-#       homerouter .20 (WAN side), hermes .30
+#       homerouter .20 (WAN side), hermes .30, phone .40 (wg-easy client)
 #   vlan 2 "home" 192.168.178.0/24: homerouter .2 (NAT), hestia .32
 { pkgs, inputs }:
 
@@ -24,6 +24,15 @@ let
     hermes = {
       private = "ADSmw32e6DfDiEIY1YkpR8N9sJY8T9d63ugCSNgycUs=";
       public = "dxcyErYkUyyxcXz0/iNnrSGwkCeZpVWmZB4IO0NeUy8=";
+    };
+    # olympus's wg0 (stands in for wg-easy) and the phone behind it
+    wg0 = {
+      private = "YArkoxRJvhzZVd/NikWOwfKPrGVxG6QsqyNOjuCkW3o=";
+      public = "kBVlb7b+x1pmOapkLhYfrAEYCVrfzAfnzcTOku5vGCQ=";
+    };
+    phone = {
+      private = "gOgzsSpI6t4e/zRuvcKKuQBpXo/ZV6/+OB1NiW/gPmE=";
+      public = "7W/c7L+NAPHXcm0Sat6vpfcV1rhA/dMe3d2qcq/IKDc=";
     };
   };
 
@@ -118,6 +127,57 @@ let
     };
 
   addr = address: prefixLength: { inherit address prefixLength; };
+
+  # wg-easy stand-in on olympus: plain wg0 plus the slice of its sqlite db that
+  # vpn-phone reads.
+  phone6 = "fdcc:ad94:bacf:61a4::cafe";
+  wgEasyStandIn =
+    { pkgs, ... }:
+    {
+      networking.wireguard.interfaces.wg0 = {
+        ips = [
+          "10.100.1.1/24"
+          "${phone6}:1/112"
+        ];
+        listenPort = 51821;
+        privateKey = keys.wg0.private;
+        peers = [
+          {
+            publicKey = keys.phone.public;
+            allowedIPs = [
+              "10.100.1.2/32"
+              "${phone6}:2/128"
+            ];
+          }
+        ];
+      };
+      environment.systemPackages = [ pkgs.sqlite ];
+      networking.nat.internalInterfaces = [ "wg0" ];
+      networking.firewall.allowedUDPPorts = [ 51821 ];
+
+      systemd.services.wg-easy-db = {
+        wantedBy = [ "multi-user.target" ];
+        before = [
+          "vpn-hub-nft.service"
+          "vpn-phones.service"
+        ];
+        path = [ pkgs.sqlite ];
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+        };
+        script = ''
+          mkdir -p /var/lib/wg-easy
+          # WAL like wg-easy's own db
+          sqlite3 /var/lib/wg-easy/wg-easy.db "
+            PRAGMA journal_mode = wal;
+            CREATE TABLE clients_table (public_key text, ipv4_address text, ipv6_address text,
+                                        name text, enabled integer, interface_id text);
+            INSERT INTO clients_table VALUES
+              ('${keys.phone.public}', '10.100.1.2', '${phone6}:2', 'phone1', 1, 'wg0');"
+        '';
+      };
+    };
 in
 pkgs.testers.runNixOSTest {
   name = "vpn";
@@ -184,6 +244,7 @@ pkgs.testers.runNixOSTest {
         address = "203.0.113.1";
         interface = "eth1";
       };
+      extra = wgEasyStandIn;
     };
 
     hestia = meshNode "hestia" {
@@ -195,6 +256,40 @@ pkgs.testers.runNixOSTest {
         interface = "eth1";
       };
     };
+
+    phone =
+      { ... }:
+      {
+        virtualisation.vlans = [ 1 ];
+        networking.useDHCP = lib.mkForce false;
+        networking.interfaces.eth1 = {
+          ipv4.addresses = lib.mkForce [ (addr "203.0.113.40" 24) ];
+          ipv6.addresses = lib.mkForce [ ];
+        };
+        networking.defaultGateway = lib.mkForce {
+          address = "203.0.113.1";
+          interface = "eth1";
+        };
+        networking.firewall.checkReversePath = false;
+        networking.wg-quick.interfaces.wg0 = {
+          address = [
+            "10.100.1.2/32"
+            "${phone6}:2/128"
+          ];
+          privateKey = keys.phone.private;
+          peers = [
+            {
+              publicKey = keys.wg0.public;
+              endpoint = "203.0.113.10:51821";
+              allowedIPs = [
+                "0.0.0.0/0"
+                "::/0"
+              ];
+              persistentKeepalive = 25;
+            }
+          ];
+        };
+      };
 
     hermes = meshNode "hermes" {
       role = "laptop";
@@ -211,7 +306,7 @@ pkgs.testers.runNixOSTest {
     start_all()
 
     hosts = [hermes, hestia]
-    for m in [internet, homerouter, olympus] + hosts:
+    for m in [internet, homerouter, olympus, phone] + hosts:
         m.wait_for_unit("multi-user.target")
     internet.wait_for_unit("nginx.service")
 
@@ -317,5 +412,65 @@ pkgs.testers.runNixOSTest {
         hermes.succeed("systemctl stop vpn-egress-hestia.service")
         out = hermes.succeed(curl).strip()
         assert out == "203.0.113.30", f"expected direct egress, got {out!r}"
+
+    with subtest("phone: exits via olympus by default, sees no mesh host"):
+        olympus.wait_for_unit("vpn-hub-nft.service")
+        phone.wait_for_unit("wg-quick-wg0.service")
+        phone.wait_until_succeeds("ping -c1 -W2 10.100.1.1")
+        out = phone.succeed(curl).strip()
+        assert out == "203.0.113.10", f"expected phone egress via olympus, got {out!r}"
+        phone.fail("ping -c1 -W2 10.100.0.2")
+
+    with subtest("phone: hosts on/off gates the mesh hosts"):
+        olympus.succeed("vpn-phone phone1 hosts on")
+        phone.wait_until_succeeds("ping -c1 -W2 10.100.0.2")
+        olympus.succeed("vpn-phone phone1 hosts off")
+        phone.wait_until_fails("ping -c1 -W2 10.100.0.2")
+        phone.fail("ping -c1 -W2 192.168.178.2")
+
+    with subtest("phone: egress via hestia and hermes"):
+        olympus.succeed("vpn-phone phone1 egress hestia")
+        out = phone.succeed(curl).strip()
+        assert out == "203.0.113.20", f"expected phone egress via hestia, got {out!r}"
+        olympus.succeed("vpn-phone phone1 egress hermes")
+        out = phone.succeed(curl).strip()
+        assert out == "203.0.113.30", f"expected phone egress via hermes, got {out!r}"
+
+    with subtest("phone: a dead exit drops the traffic, never falls back to olympus"):
+        hermes.succeed("systemctl stop wireguard-olympus.service")
+        out = phone.execute(curl)[1].strip()
+        assert out == "", f"expected a dropped connection, got {out!r}"
+        hermes.succeed("systemctl start wireguard-olympus.service")
+        phone.wait_until_succeeds(f"{curl} | grep -x 203.0.113.30", timeout=60)
+
+    with subtest("phone: reloading the hub keeps the phone rules"):
+        olympus.succeed("systemctl restart vpn-hub-nft.service")
+        out = phone.succeed(curl).strip()
+        assert out == "203.0.113.30", f"expected phone egress via hermes, got {out!r}"
+
+    with subtest("phone: list, then back to olympus"):
+        listing = olympus.succeed("vpn-phone list")
+        assert "phone1" in listing and "hermes" in listing, listing
+        olympus.succeed("vpn-phone phone1 egress olympus")
+        out = phone.succeed(curl).strip()
+        assert out == "203.0.113.10", f"expected phone egress via olympus, got {out!r}"
+        olympus.fail("ip rule show | grep 3500")
+
+    with subtest("phone: db changes re-apply, reading the db does not retrigger"):
+        olympus.succeed("vpn-phone phone1 egress hestia")
+        olympus.succeed("ip rule show | grep 3500")
+        olympus.succeed("sqlite3 /var/lib/wg-easy/wg-easy.db \"UPDATE clients_table SET enabled = 0\"")
+        olympus.wait_until_fails("ip rule show | grep 3500")
+        olympus.succeed("sqlite3 /var/lib/wg-easy/wg-easy.db \"UPDATE clients_table SET enabled = 1\"")
+        olympus.wait_until_succeeds("ip rule show | grep 3500")
+        olympus.succeed("vpn-phone phone1 egress olympus")
+        olympus.sleep(3)
+        n = olympus.succeed("journalctl -u vpn-phones.service -o cat | grep -c 'db changed'").strip()
+        for _ in range(3):
+            olympus.succeed("vpn-phone list")
+        olympus.sleep(10)
+        m = olympus.succeed("journalctl -u vpn-phones.service -o cat | grep -c 'db changed'").strip()
+        assert n == m, f"vpn-phones keeps re-running: {n} -> {m}"
+        olympus.succeed("systemctl is-active vpn-phones.service")
   '';
 }

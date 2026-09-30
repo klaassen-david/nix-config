@@ -173,11 +173,35 @@ let
     };
   };
 
+  # Phone gate (see the phone plane section): wg-easy clients may go out to the
+  # internet and between phones; the mesh hosts and the home LAN only when
+  # `vpn-phone` put them in the matching set.
+  phoneIf = cfg.phones.interface;
+  hostSpokes = lib.filter (n: !n.hub) (lib.attrValues nodes);
+  lanNodes = lib.filter (n: n.lan != null) (lib.attrValues nodes);
+  addrList = lib.concatMapStringsSep ", " toString;
   hubRuleset = nftReload "vpn-hub" ''
     table inet vpn-hub {
+      set phone_hosts { type ipv4_addr; }
+      set phone_hosts6 { type ipv6_addr; }
+      set phone_home { type ipv4_addr; }
+      set local_home { type ipv4_addr; flags interval; }
+
       chain forward {
         type filter hook forward priority filter; policy accept;
         oifname "vpn-*" tcp flags syn tcp option maxseg size set rt mtu
+
+        iifname "${phoneIf}" ct state established,related accept
+        iifname "${phoneIf}" oifname { "${cfg.uplink}", "${phoneIf}" } accept
+        iifname "${phoneIf}" oifname "vpn-*" accept
+        ${lib.optionalString (hostSpokes != [ ]) ''
+          iifname "${phoneIf}" ip daddr { ${addrList (map (n: n.ip) hostSpokes)} } ip saddr @phone_hosts accept
+          iifname "${phoneIf}" ip6 daddr { ${addrList (map (n: n.ip6) hostSpokes)} } ip6 saddr @phone_hosts6 accept
+        ''}
+        ${lib.concatMapStringsSep "\n" (
+          n: ''iifname "${phoneIf}" ip daddr ${n.lan} ip saddr @phone_home accept''
+        ) lanNodes}
+        iifname "${phoneIf}" drop
       }
     }
   '';
@@ -243,6 +267,195 @@ let
         ip -j -6 route show table main \
           | jq -r "$routes | select(.dst | test(\"^(fe[89ab][0-9a-f]:|ff)\"; \"i\") | not) | .dst" | fill lan6
       } | nft -f -
+    '';
+  };
+
+  # Per-phone policy for the wg-easy clients (hub only): which exit they leave
+  # through and whether they may reach the mesh hosts / home LAN. Clients come
+  # from wg-easy's sqlite db; the choices live in state.json, keyed by public key.
+  phoneStateDir = "/var/lib/vpn-phones";
+  phoneCli = pkgs.writeShellApplication {
+    name = "vpn-phone";
+    runtimeInputs = [
+      pkgs.jq
+      pkgs.iproute2
+      pkgs.nftables
+      pkgs.coreutils
+      pkgs.sqlite
+      pkgs.gawk
+      pkgs.gnugrep
+      pkgs.util-linux
+    ];
+    text = ''
+      db=${cfg.phones.db}
+      state=${phoneStateDir}/state.json
+      # exit name -> routing table on the hub
+      declare -A tables=(${lib.concatMapStrings (x: " [${x.name}]=${toString (2000 + x.octet)}") exits} )
+
+      usage() {
+        cat >&2 <<'USAGE'
+      usage: vpn-phone list
+             vpn-phone <phone> egress <olympus|${lib.concatMapStringsSep "|" (x: x.name) exits}>
+             vpn-phone <phone> hosts on|off
+             vpn-phone <phone> home on|off
+             vpn-phone apply
+      <phone> is the wg-easy client name or its IPv4 address.
+      USAGE
+        exit 2
+      }
+
+      if [ "$(id -u)" != 0 ]; then
+        echo "vpn-phone: must run as root (sudo vpn-phone ...)" >&2
+        exit 1
+      fi
+
+      # public_key, v4, v6, name, enabled (tab separated); nothing while wg-easy has no db yet
+      clients() {
+        if [ -e "$db" ]; then
+          sqlite3 -readonly -separator $'\t' "$db" \
+            "SELECT public_key, ipv4_address, ipv6_address, name, enabled FROM clients_table WHERE interface_id = '${cfg.phones.interface}';"
+        fi
+      }
+
+      get() { # <pk> <key> <default>
+        if [ -s "$state" ]; then
+          jq -r --arg pk "$1" --arg k "$2" --arg d "$3" '.[$pk][$k] // $d | tostring' "$state"
+        else
+          echo "$3"
+        fi
+      }
+
+      set_state() { # <pk> <key> <json value>
+        local tmp
+        tmp=$(mktemp "$state.XXXXXX")
+        if [ -s "$state" ]; then cat "$state"; else echo '{}'; fi \
+          | jq --arg pk "$1" --arg k "$2" --argjson v "$3" '.[$pk][$k] = $v' > "$tmp"
+        mv "$tmp" "$state"
+      }
+
+      # Rules are diffed, not reset: adds precede deletes, so a phone never
+      # passes through a moment without its rule (which would leak it to olympus).
+      apply() {
+        local rows sets="" want have spec
+        rows=$(clients)
+        want=$(mktemp)
+        have=$(mktemp)
+        while IFS=$'\t' read -r pk a4 a6 name enabled; do
+          [ -n "$pk" ] && [ "$enabled" != 0 ] || continue
+          egress=$(get "$pk" egress olympus)
+          if [ "$egress" != olympus ]; then
+            target=''${tables[$egress]:-}
+            if [ -z "$target" ]; then
+              echo "vpn-phone: $name: unknown exit '$egress', its traffic is dropped" >&2
+              target=prohibit
+            fi
+            [ -z "$a4" ] || echo "4 $a4/32 $target" >> "$want"
+            [ -z "$a6" ] || echo "6 $a6/128 $target" >> "$want"
+          fi
+          if [ "$(get "$pk" hosts false)" = true ]; then
+            [ -z "$a4" ] || sets+="add element inet vpn-hub phone_hosts { $a4 }"$'\n'
+            [ -z "$a6" ] || sets+="add element inet vpn-hub phone_hosts6 { $a6 }"$'\n'
+          fi
+          if [ "$(get "$pk" home false)" = true ] && [ -n "$a4" ]; then
+            sets+="add element inet vpn-hub phone_home { $a4 }"$'\n'
+          fi
+        done <<< "$rows"
+        for f in 4 6; do
+          ip -j -"$f" rule show pref 3500 \
+            | jq -r --arg f "$f" '.[] | "\($f) \(.src)/\(.srclen // (if $f == "4" then 32 else 128 end)) \(.table // .action)"' >> "$have"
+        done
+        sort -o "$want" "$want"
+        sort -o "$have" "$have"
+        rule() { # <add|del> <family> <src> <target>
+          if [[ $4 =~ ^[0-9]+$ ]]; then spec=(lookup "$4"); else spec=("$4"); fi
+          ip -"$2" rule "$1" from "$3" "''${spec[@]}" pref 3500
+        }
+        comm -13 "$have" "$want" | while read -r f src target; do rule add "$f" "$src" "$target"; done
+        comm -23 "$have" "$want" | while read -r f src target; do rule del "$f" "$src" "$target"; done
+        rm -f "$want" "$have"
+        nft -f - <<NFT
+      flush set inet vpn-hub phone_hosts
+      flush set inet vpn-hub phone_hosts6
+      flush set inet vpn-hub phone_home
+      $sets
+      NFT
+      }
+
+      # resolve <phone> to a public key
+      resolve() {
+        local hits
+        hits=$(clients | awk -F'\t' -v p="$1" '$4 == p || $2 == p { print $1 }')
+        case $(printf '%s' "$hits" | grep -c . || true) in
+          1) echo "$hits" ;;
+          0) echo "vpn-phone: no such phone: $1" >&2; return 1 ;;
+          *) echo "vpn-phone: '$1' is ambiguous, use its IPv4 address" >&2; return 1 ;;
+        esac
+      }
+
+      [ $# -ge 1 ] || usage
+      mkdir -p ${phoneStateDir}
+      # the CLI, vpn-phones.service and the hub reload may overlap
+      exec 9> ${phoneStateDir}/lock
+      flock 9
+      case $1 in
+        list)
+          [ $# -eq 1 ] || usage
+          {
+            echo -e "NAME\tIPV4\tIPV6\tENABLED\tEGRESS\tHOSTS\tHOME"
+            clients | while IFS=$'\t' read -r pk a4 a6 name enabled; do
+              echo -e "$name\t$a4\t$a6\t$enabled\t$(get "$pk" egress olympus)\t$(get "$pk" hosts false)\t$(get "$pk" home false)"
+            done
+          } | column -t -s $'\t'
+          ;;
+        apply)
+          [ $# -eq 1 ] || usage
+          apply
+          ;;
+        *)
+          [ $# -ge 3 ] || usage
+          pk=$(resolve "$1")
+          case $2 in
+            egress)
+              [ $# -eq 3 ] || usage
+              if [ "$3" != olympus ] && [ -z "''${tables[$3]:-}" ]; then usage; fi
+              set_state "$pk" egress "\"$3\""
+              ;;
+            hosts | home)
+              [ $# -eq 3 ] || usage
+              case $3 in
+                on) set_state "$pk" "$2" true ;;
+                off) set_state "$pk" "$2" false ;;
+                *) usage ;;
+              esac
+              ;;
+            *) usage ;;
+          esac
+          apply
+          ;;
+      esac
+    '';
+  };
+
+  # Re-applies whenever wg-easy writes its db. A systemd .path unit cannot do
+  # this: it also fires on IN_CLOSE_WRITE, which every sqlite reader (apply
+  # itself) causes by opening the -wal/-shm files read-write, so it re-triggers
+  # forever until the start limit kills it. IN_MODIFY is writers only, bar the
+  # -shm file, which a reader rewrites when no writer holds the db open.
+  phonesWatch = pkgs.writeShellApplication {
+    name = "vpn-phones-watch";
+    runtimeInputs = [
+      pkgs.inotify-tools
+      pkgs.coreutils
+      phoneCli
+    ];
+    text = ''
+      vpn-phone apply
+      inotifywait -m -q -e modify -e moved_to --exclude '-shm$' --format x ${dirOf cfg.phones.db} | while read -r _; do
+        # let a burst of writes settle
+        while read -r -t 1 _; do :; done
+        echo "wg-easy db changed, applying"
+        vpn-phone apply
+      done
     '';
   };
 
@@ -513,6 +726,24 @@ in
       default = "1.1.1.1";
       description = "Address the egress watchdog pings through the exit.";
     };
+    phones.interface = lib.mkOption {
+      internal = true;
+      type = lib.types.str;
+      default = "wg0";
+      description = "wg-easy interface on the hub.";
+    };
+    phones.subnet = lib.mkOption {
+      internal = true;
+      type = lib.types.str;
+      default = "10.100.1.0/24";
+      description = "wg-easy phone v4 subnet.";
+    };
+    phones.db = lib.mkOption {
+      internal = true;
+      type = lib.types.str;
+      default = "/var/lib/wg-easy/wg-easy.db";
+      description = "wg-easy's sqlite database, read by vpn-phone.";
+    };
     phones.subnet6 = lib.mkOption {
       internal = true;
       type = lib.types.str;
@@ -680,7 +911,23 @@ in
           }) otherExits
         )
       ))
-      (lib.mkIf isServer { vpn-hub-nft = nftUnit hubRuleset; })
+      (lib.mkIf isServer {
+        vpn-hub-nft = nftUnit hubRuleset // {
+          serviceConfig = (nftUnit hubRuleset).serviceConfig // {
+            ExecStartPost = "${phoneCli}/bin/vpn-phone apply";
+          };
+        };
+        vpn-phones = {
+          wantedBy = [ "multi-user.target" ];
+          after = [ "vpn-hub-nft.service" ];
+          requires = [ "vpn-hub-nft.service" ];
+          serviceConfig = {
+            Type = "simple";
+            ExecStart = "${phonesWatch}/bin/vpn-phones-watch";
+            Restart = "on-failure";
+          };
+        };
+      })
       (lib.mkIf self.exit {
         vpn-exit-nft = nftUnit exitRuleset // {
           serviceConfig = (nftUnit exitRuleset).serviceConfig // {
@@ -689,6 +936,23 @@ in
         };
       })
     ];
+
+    # ---------------------------------------------------------------------------
+    # Phone plane (hub) — per-phone egress and access
+    # ---------------------------------------------------------------------------
+    # wg-easy phones exit through olympus by default, see no mesh host and no home
+    # LAN. `vpn-phone` changes that per phone (rules 3500 route a phone's source
+    # into an exit's table; the vpn-hub nft sets open the mesh hosts / home LAN):
+    #   sudo vpn-phone list
+    #   sudo vpn-phone <name> egress hestia      (olympus | hermes | hestia)
+    #   sudo vpn-phone <name> hosts on|off       (mesh hosts)
+    #   sudo vpn-phone <name> home on|off        (hestia's LAN)
+    # Choices live in ${phoneStateDir}/state.json keyed by public key. A phone
+    # whose exit is unknown is blocked (prohibit), and one whose exit is down
+    # loses its traffic — neither falls back to olympus. `vpn-phones.service` re-applies
+    # whenever wg-easy's db changes; the hub reload re-applies too.
+    systemd.tmpfiles.rules = lib.mkIf isServer [ "d ${phoneStateDir} 0700 root root -" ];
+    environment.systemPackages = lib.mkIf isServer [ phoneCli ];
 
     # ---------------------------------------------------------------------------
     # Exits — hosts that carry other hosts' full-tunnel traffic
