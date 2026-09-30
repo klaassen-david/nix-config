@@ -3,6 +3,10 @@
 **Ruling** [USER 2026-09-30]: hermes hibernates into a 32 GiB swapfile on `/`,
 enabling `suspend-then-hibernate` on lid close.
 
+**Delay** [USER 2026-09-30]: hibernate after 1 h of suspend
+(`HibernateDelaySec = "1h"`, hermes). [AGENT] This applies on AC too
+(systemd's `HibernateOnACPower` default); not ruled on.
+
 **Docked** [USER 2026-09-30]: lid close with an external display connected
 triggers neither suspend nor suspend-then-hibernate. `lid-suspend-delay`
 (`common/modules/wifi/default.nix`) already exits on any connected non-eDP
