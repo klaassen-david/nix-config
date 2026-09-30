@@ -108,27 +108,82 @@ in
               default = null;
               description = "LAN prefix behind the node, if it has one.";
             };
+            tukl = lib.mkOption {
+              type = lib.types.nullOr (lib.types.submodule {
+                options = {
+                  secret = lib.mkOption {
+                    type = lib.types.str;
+                    description = "Agenix secret filename (without .age) for the WireGuard private key.";
+                  };
+                  address = lib.mkOption {
+                    type = lib.types.listOf lib.types.str;
+                    description = "List of addresses for the tukl interface.";
+                  };
+                  dns = lib.mkOption {
+                    type = lib.types.listOf lib.types.str;
+                    description = "List of DNS servers for the tukl interface.";
+                  };
+                  mtu = lib.mkOption {
+                    type = lib.types.int;
+                    description = "MTU for the tukl interface.";
+                  };
+                  publicKey = lib.mkOption {
+                    type = lib.types.str;
+                    description = "RPTU peer's WireGuard public key.";
+                  };
+                  endpoint = lib.mkOption {
+                    type = lib.types.str;
+                    description = "RPTU peer's endpoint (host:port).";
+                  };
+                };
+              });
+              default = null;
+              description = "RPTU VPN configuration for this node (null if not using tukl).";
+            };
           };
         }
       );
-      default = {
-        olympus = {
-          octet = 1;
-          publicKey = "8ujDiLPMOK3X0BdAWVTDWPMUOxPSnGNdFKtYD1MgxRk=";
-          hub = true;
+      default =
+        let
+          # Today's single RPTU config, dialled from both desktops until each
+          # gets its own `wg-tukl-<host>` — never up on both at once.
+          sharedTukl = {
+            secret = "wg-tukl";
+            address = [
+              "172.27.221.17/32"
+              "2001:638:208:fd49:1:aff:fea0:40da/128"
+            ];
+            dns = [
+              "2001:638:208:9::116"
+              "2001:638:208:1::116"
+              "131.246.9.116"
+              "131.246.1.116"
+            ];
+            mtu = 1280;
+            publicKey = "j77guFVKQ4sxwJCgqt/vFvHxkvX4Bwqh7B3Za6oOOk4=";
+            endpoint = "vpnwg.uni-kl.de:51820";
+          };
+        in
+        {
+          olympus = {
+            octet = 1;
+            publicKey = "8ujDiLPMOK3X0BdAWVTDWPMUOxPSnGNdFKtYD1MgxRk=";
+            hub = true;
+          };
+          hestia = {
+            octet = 2;
+            publicKey = "4YGKRQjZN2l4OmoxOfvL9zAa5hVFBb3IoE6+uUGz4kk=";
+            exit = true;
+            lan = "192.168.178.0/24";
+            tukl = sharedTukl;
+          };
+          hermes = {
+            octet = 3;
+            publicKey = "bAad0LzXDbsnk4NISns3VOfWiOlmgVMc3dkWd4Z2KTM=";
+            exit = true;
+            tukl = sharedTukl;
+          };
         };
-        hestia = {
-          octet = 2;
-          publicKey = "4YGKRQjZN2l4OmoxOfvL9zAa5hVFBb3IoE6+uUGz4kk=";
-          exit = true;
-          lan = "192.168.178.0/24";
-        };
-        hermes = {
-          octet = 3;
-          publicKey = "bAad0LzXDbsnk4NISns3VOfWiOlmgVMc3dkWd4Z2KTM=";
-          exit = true;
-        };
-      };
     };
     endpoint = lib.mkOption {
       internal = true;
@@ -244,36 +299,24 @@ in
     networking.networkmanager.unmanaged = lib.mkIf (!isServer) [ "interface-name:olympus" ];
 
     # ---------------------------------------------------------------------------
-    # tukl — TU Kaiserslautern university VPN, desktop clients only
+    # tukl — TU Kaiserslautern university VPN, per-node config from registry
     # ---------------------------------------------------------------------------
     # Modeled declaratively from the upstream wg-quick config. Only the private
-    # key is secret: it lives in agenix (wg-tukl.age) and is referenced via
-    # privateKeyFile so it never lands in the Nix store. Everything else (addresses,
-    # DNS, peer/endpoint) is public config inlined below. On-demand, like olympus:
+    # key is secret: it lives in agenix and is referenced via privateKeyFile so
+    # it never lands in the Nix store. On-demand, like olympus:
     #   systemctl start wg-quick-tukl   (stop to disconnect)
-    age.secrets.wg-tukl = lib.mkIf (!isServer) {
-      file = "${secretsPath}/wg-tukl.age";
+    age.secrets.wg-tukl = lib.mkIf (self.tukl != null) {
+      file = "${secretsPath}/${self.tukl.secret}.age";
       mode = "0400";
     };
 
-    networking.wg-quick.interfaces.tukl = lib.mkIf (!isServer) {
+    networking.wg-quick.interfaces.tukl = lib.mkIf (self.tukl != null) {
       autostart = false;
       privateKeyFile = config.age.secrets.wg-tukl.path;
-      address = [
-        "172.27.221.17/32"
-        "2001:638:208:fd49:1:aff:fea0:40da/128"
-      ];
-      dns = [
-        "2001:638:208:9::116"
-        "2001:638:208:1::116"
-        "131.246.9.116"
-        "131.246.1.116"
-      ];
-      mtu = 1280;
+      inherit (self.tukl) address dns mtu;
       peers = [
         {
-          publicKey = "j77guFVKQ4sxwJCgqt/vFvHxkvX4Bwqh7B3Za6oOOk4=";
-          endpoint = "vpnwg.uni-kl.de:51820";
+          inherit (self.tukl) publicKey endpoint;
           allowedIPs = [
             "0.0.0.0/0"
             "::/0"
