@@ -264,8 +264,58 @@ transitions. What is left, roughly by impact:
   [AGENT 2026-09-30] The logger exists: `common/modules/power-log` (hermes
   only). A/B a setting with `power-log mark <label>` … `power-log mark end`,
   read with `power-report --by mark|gen|context`. Per-app attribution needs
-  apps in their own scope: sway's menu, browser and mpvpaper now launch via
-  `app-scope`.
+  apps in their own scope: sway's menu and browser launch via `app-scope`;
+  mpvpaper and wl-gammarelay-rs are user services.
+
+- [ ] **deploy hand-over (hermes)** `[auto]`
+  [AGENT 2026-09-30] Switched: `/run/current-system` is the `main` build at
+  `23bdb91`. Live: `HibernateMode=shutdown` + `HibernateDelaySec=1h` in
+  `/etc/systemd/sleep.conf`, `hibernate-console.service`, the lid script ends
+  in `suspend-then-hibernate`, power-log's state carries `kind`,
+  `wl-gammarelay.service` owns `rs.wl-gammarelay`. Left: the pre-switch
+  mpvpaper (exec'd 18:18) still runs → `pkill mpvpaper`; zen is still in
+  `session-1.scope` → relaunch it from the menu (or re-login). Verify:
+  `pgrep -x mpvpaper` empty, `cat /proc/$(pgrep -o zen)/cgroup` shows an
+  `app-…zen….scope`.
+
+- [ ] **hestia: switch + hand-over** `[manual]`
+  The sway changes (per-app scopes, mpvpaper + wl-gammarelay as user
+  services, no `exec swaync`) land on hestia's next switch. Then
+  `pkill mpvpaper; pkill -f 'wl-gammarelay-rs run'; systemctl --user restart
+  wl-gammarelay mpvpaper` (or re-login), else two wallpapers run until the
+  next login. Verify: `systemctl --user is-active mpvpaper wl-gammarelay`,
+  `pgrep -c mpvpaper` = 1.
+
+- [ ] **battery A/B session** `[manual]` ~1.5–2 h unplugged
+  One sitting, brightness and profile fixed, 10–15 min per state, each
+  bracketed `power-log mark <label>` … `power-log mark end`: ABM
+  (`panel_power_savings` 0 vs 1–3), bluetooth blocked, wifi `power_save on`,
+  PCI runtime PM `auto` (the 27 devices above). `power-report --by mark`
+  decides the ABM, bluetooth, wifi and runtime-PM items.
+
+- [ ] **baseline + review** `[manual]` after ~1 week
+  A few hours of ordinary battery use (≥ 30 min per context bucket) and one
+  multi-hour suspend on battery, then `power-report`; rule on the items above
+  in `decisions/` and close them here.
+
+- [ ] **no screen locker** `[USER]` to decide
+  Nothing locks the session (no swayidle/swaylock), so resume from suspend or
+  hibernation — now where a lid left shut > 1 h ends up — lands on an
+  unlocked desktop. Candidate: swayidle `before-sleep` → swaylock, with
+  fingerprint unlock via fprintd.
+
+- [ ] **power-log: the suspend→hibernate leg is unlogged** `[auto]`
+  `powerDownCommands`/`resumeCommands` fire once per
+  `suspend-then-hibernate`, so for a lid shut > 1 h `power-report`'s suspend
+  drain averages the s2idle hour with the hibernated time. Fix: a
+  `/etc/systemd/system-sleep` hook sampling when `SYSTEMD_SLEEP_ACTION` is
+  `hibernate` (new `kind`), paired in the report. Verify: after a > 1 h lid
+  close on battery the report shows the s2idle leg on its own.
+
+- [ ] **hibernate on AC too?** `[USER]` to rule
+  `HibernateDelaySec = "1h"` also counts on AC (systemd's
+  `HibernateOnACPower` default); `HibernateOnACPower = false` (systemd ≥ 257)
+  would hibernate on battery only (decisions/hibernate-swapfile.md).
 
 ## Performance & build
 
