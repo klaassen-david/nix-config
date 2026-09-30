@@ -7,6 +7,7 @@
   imports = [
     ./hardware-configuration.nix
     ../common/desktop.nix
+    ../common/modules/power-log
   ];
 
   powerManagement.enable = true;
