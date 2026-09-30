@@ -9,10 +9,12 @@
 # ---------------------------------------------------------------------------
 # WireGuard tunnels — infra hub `olympus` (+ the `tukl` university VPN)
 # ---------------------------------------------------------------------------
-# Hub-and-spoke: olympus (the VPS) is the server; hermes and hestia dial in
-# on-demand on the `olympus` interface and route ALL their traffic (full
-# tunnel) out through olympus. The desktops also carry a second, independent
-# on-demand tunnel `tukl` (the TU Kaiserslautern VPN; see bottom of file).
+# Hub-and-spoke: olympus (the VPS) is the server; hermes and hestia keep an
+# always-on split tunnel to it on the `olympus` interface — only the mesh
+# supernet goes through it, everything else stays direct. Full-tunnel egress
+# is a separate, opt-in layer (own units, later steps). The desktops also carry
+# a second, independent on-demand tunnel `tukl` (the TU Kaiserslautern VPN; see
+# bottom of file).
 #
 # DNS records to add (registrar / DNS provider for dklaassen.de):
 #   vpn.dklaassen.de.  A     <olympus public IPv4>
@@ -49,13 +51,33 @@ let
   # Spokes in octet order, so the hub's peer list is stable.
   spokes = lib.sort (a: b: a.octet < b.octet) (lib.filter (n: !n.hub) (lib.attrValues nodes));
 
+  ip = "${pkgs.iproute2}/bin/ip";
+  # fwmark on the mesh socket; rule 5000 sends marked packets via main
+  mark = "0x1000";
+  underlayRules =
+    action:
+    lib.concatMapStringsSep "\n"
+      (
+        f:
+        lib.optionalString (
+          action == "add"
+        ) "${ip} ${f} rule del fwmark ${mark}/${mark} lookup main pref 5000 || true\n"
+        + "${ip} ${f} rule ${action} fwmark ${mark}/${mark} lookup main pref 5000${
+          lib.optionalString (action == "del") " || true"
+        }"
+      )
+      [
+        "-4"
+        "-6"
+      ];
+
   selfName = config.host.hostName;
   self = nodes.${selfName};
   isServer = self.hub;
 
   # ssh over the tunnel. While `olympus` is up, `ssh hestia` must resolve to the
   # peer's tunnel address — its LAN name is unreachable from anywhere else, and
-  # a full tunnel puts the client "anywhere else" even at home. Every node in the
+  # a full tunnel (tukl, egress) puts the client "anywhere else" even at home. Every node in the
   # registry gets an entry, self included, so the file is the same everywhere.
   # The `.local` aliases are deliberately left alone as the LAN fast path for
   # bulk transfers: via the tunnel every byte detours through olympus at ~45 ms
@@ -109,34 +131,36 @@ in
               description = "LAN prefix behind the node, if it has one.";
             };
             tukl = lib.mkOption {
-              type = lib.types.nullOr (lib.types.submodule {
-                options = {
-                  secret = lib.mkOption {
-                    type = lib.types.str;
-                    description = "Agenix secret filename (without .age) for the WireGuard private key.";
+              type = lib.types.nullOr (
+                lib.types.submodule {
+                  options = {
+                    secret = lib.mkOption {
+                      type = lib.types.str;
+                      description = "Agenix secret filename (without .age) for the WireGuard private key.";
+                    };
+                    address = lib.mkOption {
+                      type = lib.types.listOf lib.types.str;
+                      description = "List of addresses for the tukl interface.";
+                    };
+                    dns = lib.mkOption {
+                      type = lib.types.listOf lib.types.str;
+                      description = "List of DNS servers for the tukl interface.";
+                    };
+                    mtu = lib.mkOption {
+                      type = lib.types.int;
+                      description = "MTU for the tukl interface.";
+                    };
+                    publicKey = lib.mkOption {
+                      type = lib.types.str;
+                      description = "RPTU peer's WireGuard public key.";
+                    };
+                    endpoint = lib.mkOption {
+                      type = lib.types.str;
+                      description = "RPTU peer's endpoint (host:port).";
+                    };
                   };
-                  address = lib.mkOption {
-                    type = lib.types.listOf lib.types.str;
-                    description = "List of addresses for the tukl interface.";
-                  };
-                  dns = lib.mkOption {
-                    type = lib.types.listOf lib.types.str;
-                    description = "List of DNS servers for the tukl interface.";
-                  };
-                  mtu = lib.mkOption {
-                    type = lib.types.int;
-                    description = "MTU for the tukl interface.";
-                  };
-                  publicKey = lib.mkOption {
-                    type = lib.types.str;
-                    description = "RPTU peer's WireGuard public key.";
-                  };
-                  endpoint = lib.mkOption {
-                    type = lib.types.str;
-                    description = "RPTU peer's endpoint (host:port).";
-                  };
-                };
-              });
+                }
+              );
               default = null;
               description = "RPTU VPN configuration for this node (null if not using tukl).";
             };
@@ -215,8 +239,8 @@ in
     # ---------------------------------------------------------------------------
     # SERVER (olympus) — plain wireguard interface + NAT for full-tunnel egress
     # ---------------------------------------------------------------------------
-    networking.wireguard.interfaces = lib.mkIf isServer {
-      olympus = {
+    networking.wireguard.interfaces.olympus = lib.mkMerge [
+      (lib.mkIf isServer {
         ips = [
           "${self.ip}/24"
           "${self.ip6}/64"
@@ -230,8 +254,42 @@ in
             "${node.ip6}/128"
           ];
         }) spokes;
-      };
-    };
+      })
+      (lib.mkIf (!isServer) {
+        ips = [
+          "${self.ip}/24"
+          "${self.ip6}/64"
+        ];
+        inherit (cfg) privateKeyFile;
+        fwMark = mark;
+        allowedIPsAsRoutes = false;
+        peers = [
+          {
+            name = "olympus";
+            inherit (nodes.olympus) publicKey;
+            allowedIPs = [
+              "0.0.0.0/0"
+              "::/0"
+            ];
+            inherit (cfg) endpoint;
+            persistentKeepalive = 25;
+            # retries DNS forever, so booting offline is fine
+            dynamicEndpointRefreshSeconds = 300;
+          }
+        ];
+        # rules are deleted first so a re-run after a crashed stop stays idempotent
+        postSetup = ''
+          ${ip} route replace ${subnet}.0/16 dev olympus src ${self.ip}
+          ${ip} -6 route replace ${subnet6}/48 dev olympus src ${self.ip6}
+          ${underlayRules "add"}
+          ${pkgs.coreutils}/bin/install -m 0600 -o ${sshUser.name} -g ${sshUser.group} ${sshTunnelConfig} ${sshLocalConfig}
+        '';
+        postShutdown = ''
+          ${underlayRules "del"}
+          ${pkgs.coreutils}/bin/rm -f ${sshLocalConfig}
+        '';
+      })
+    ];
 
     # networking.nat enables forwarding and installs the masquerade/forward rules
     # so client traffic (0.0.0.0/0, ::/0) can egress via olympus's WAN interface.
@@ -255,55 +313,32 @@ in
     networking.firewall.allowedUDPPorts = lib.mkIf isServer [ port ];
 
     # ---------------------------------------------------------------------------
-    # CLIENTS (hermes / hestia) — wg-quick handles full-tunnel policy routing
+    # HOSTS (hermes / hestia) — always-on split mesh
     # ---------------------------------------------------------------------------
-    # wg-quick installs the fwmark + ip rules that keep the handshake to the
-    # endpoint reachable while 0.0.0.0/0 becomes the default route. Plain
-    # networking.wireguard does NOT do this and would blackhole the handshake.
-    #
-    # On-demand: autostart = false. Dial in deliberately with
-    #   systemctl start wg-quick-olympus   (stop to return to direct connectivity)
-    # No sudo needed — the unit is registered in host.userManagedUnits below, which
-    # common/modules/polkit-units turns into a polkit exemption for wheel.
-    # Full tunnel means DNS queries also egress via olympus; the clients' existing
-    # public resolvers (1.1.1.1/8.8.8.8) keep working, so no `dns` override needed.
-    networking.wg-quick.interfaces.olympus = lib.mkIf (!isServer) {
-      autostart = false;
-      address = [
-        "${self.ip}/24"
-        "${self.ip6}/64"
-      ];
-      inherit (cfg) privateKeyFile;
-      peers = [
-        {
-          publicKey = nodes.olympus.publicKey;
-          allowedIPs = [
-            "0.0.0.0/0"
-            "::/0"
-          ];
-          inherit (cfg) endpoint;
-          persistentKeepalive = 25;
-        }
-      ];
-      postUp = "${pkgs.coreutils}/bin/install -m 0600 -o ${sshUser.name} -g ${sshUser.group} ${sshTunnelConfig} ${sshLocalConfig}";
-      preDown = "${pkgs.coreutils}/bin/rm -f ${sshLocalConfig}";
-    };
+    # The peer carries 0.0.0.0/0 + ::/0 only so the hub may source any address;
+    # allowedIPsAsRoutes = false keeps the default route off the interface, and
+    # postSetup routes just the mesh supernet through it. fwMark + rule 5000 keep
+    # the encrypted socket on the underlay, out of any full tunnel (tukl included).
+    # Full-tunnel egress via olympus comes as separate units in later steps.
+    # Toggle with `systemctl stop|start wireguard-olympus` (no sudo: userManagedUnits).
 
-    # both client tunnels are hand-dialled, so let wheel flip them without sudo
-    host.userManagedUnits = lib.optionals (!isServer) [
-      "wg-quick-olympus.service"
-      "wg-quick-tukl.service"
+    # the mesh is flipped by hand, so let wheel do it without sudo
+    host.userManagedUnits = lib.optionals (!isServer) (
+      [ "wireguard-olympus.service" ] ++ lib.optional (self.tukl != null) "wg-quick-tukl.service"
+    );
+
+    # keep NetworkManager off the mesh and (later) GRE ifaces on the desktops
+    networking.networkmanager.unmanaged = lib.mkIf (!isServer) [
+      "interface-name:olympus"
+      "interface-name:vpn-*"
     ];
-
-    # keep NetworkManager off the tunnel iface on the desktop clients
-    networking.networkmanager.unmanaged = lib.mkIf (!isServer) [ "interface-name:olympus" ];
 
     # ---------------------------------------------------------------------------
     # tukl — TU Kaiserslautern university VPN, per-node config from registry
     # ---------------------------------------------------------------------------
     # Modeled declaratively from the upstream wg-quick config. Only the private
     # key is secret: it lives in agenix and is referenced via privateKeyFile so
-    # it never lands in the Nix store. On-demand, like olympus:
+    # it never lands in the Nix store. On-demand:
     #   systemctl start wg-quick-tukl   (stop to disconnect)
     age.secrets.wg-tukl = lib.mkIf (self.tukl != null) {
       file = "${secretsPath}/${self.tukl.secret}.age";

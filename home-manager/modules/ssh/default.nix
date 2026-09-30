@@ -4,7 +4,7 @@
   programs.ssh = {
     enable = true;
 
-    # written by wg-quick's PostUp and removed by PreDown (common/modules/wireguard):
+    # written by the mesh interface's postSetup and removed by postShutdown (common/modules/wireguard):
     # peer HostNames on the tunnel while `olympus` is up, absent while it is down.
     includes = [ "config.local" ];
 
