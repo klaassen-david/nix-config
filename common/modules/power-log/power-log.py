@@ -3,7 +3,8 @@
 samples-YYYY-MM.jsonl, one object per line, every key always present,
 null when unreadable:
   ts, kind (tick|suspend|resume), boot_id, gen (system generation),
-  interval_s (since previous sample this boot; null on the first)
+  interval_s (since previous sample this boot; null on the first, and
+    on a tick that does not follow a tick within MAX_GAP_S)
   ac, bat_status, bat_pct, bat_charge_uah, bat_voltage_uv,
   bat_w (instant; + discharging, - charging),
   bat_discharge_w (d charge x V / dt; ticks while discharging only)
@@ -15,6 +16,7 @@ marks.jsonl: {ts, label}; a mark closes the previous window, `end` only
 closes. power-report reads both.
 """
 import argparse
+import fcntl
 import glob
 import json
 import os
@@ -29,6 +31,8 @@ LID_STATE = os.environ.get("POWER_LOG_LID_STATE", "@lid_state@")
 DIR = os.environ.get("POWER_LOG_DIR", "/var/lib/power-log")
 CGROOT = "/sys/fs/cgroup"
 RAPL = "/sys/class/powercap/intel-rapl:0"
+# The timer ticks every 60-80 s; a longer gap spans a sleep or an outage.
+MAX_GAP_S = 300
 
 
 def read(path):
@@ -176,6 +180,10 @@ def sample(kind):
     if dt is not None and dt <= 0:
         dt = None
     tick = kind == "tick"
+    # Deltas only between consecutive ticks: a suspend/resume sample in
+    # between means sleep, across which firmware may reset the counters.
+    if tick and (prev.get("kind") != "tick" or (dt or 0) > MAX_GAP_S):
+        dt = None
 
     ps = power_supply()
     pkg, pkg_rng = rapl_energy("")
@@ -229,7 +237,7 @@ def sample(kind):
         top = sorted(deltas.items(), key=lambda kv: -kv[1])[:10]
         line["cgroups"] = [{"cg": cg, "cpu_s": s} for cg, s in top]
 
-    state = {"boot_id": boot_id, "ts": now,
+    state = {"boot_id": boot_id, "ts": now, "kind": kind,
              "bat_charge_uah": ps["bat_charge_uah"],
              "bat_status": ps["bat_status"],
              "rapl_pkg_uj": pkg, "rapl_core_uj": core, "cg": cgs}
@@ -237,16 +245,19 @@ def sample(kind):
 
 
 def cmd_sample(args):
-    line, state = sample(args.kind)
-    text = json.dumps(line, separators=(",", ":"))
     if args.dry_run:
-        print(text)
+        print(json.dumps(sample(args.kind)[0], separators=(",", ":")))
         return 0
-    path = time.strftime(DIR + "/samples-%Y-%m.jsonl", time.localtime(line["ts"]))
-    fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o644)
-    with os.fdopen(fd, "a") as f:
-        f.write(text + "\n")
-    save_state(state)
+    # The resume hook and a timer tick fire together after a wakeup.
+    with open(DIR + "/.lock", "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        line, state = sample(args.kind)
+        path = time.strftime(DIR + "/samples-%Y-%m.jsonl",
+                             time.localtime(line["ts"]))
+        fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o644)
+        with os.fdopen(fd, "a") as f:
+            f.write(json.dumps(line, separators=(",", ":")) + "\n")
+        save_state(state)
     return 0
 
 
