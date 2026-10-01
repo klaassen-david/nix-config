@@ -5,9 +5,11 @@ the Claude account by this hierarchy:
 
 1. Never a disabled profile (`cswap disable`).
 2. Then slot order: `klaassed@rptu.de` (slot 1) is spent first and returned to
-   when its window resets — `autoswitch.drainAccount`. Disabled today, which
-   makes the rule dormant rather than dropped: `_drain_account_target` folds in
-   `cswap disable`.
+   when its window resets — `autoswitch.drainAccount`. Live again as of
+   2026-10-01 (it was disabled when this was first written, which made the rule
+   dormant rather than dropped: `_drain_account_target` folds in `cswap
+   disable`). Being live is what makes rule 5's departures ordinary rather
+   than theoretical — see the 2026-10-01 fix below.
 3. Leave an account as soon as *any* of its limits (5h, 7d, per-model) reaches
    its line: 95 % for `klaassed@rptu.de`, 98 % for every other account —
    `autoswitch.threshold 98`, `autoswitch.accountThresholds klaassed@rptu.de=95`,
@@ -21,6 +23,11 @@ the Claude account by this hierarchy:
    is rule 3 firing on 5h windows.
 5. A spent session window still leaves at 98 % even when the only healthy peer
    resets later — the weekly rule ranks the target, it never blocks a departure.
+   But it ranks it only *among healthy peers*: a forced departure prefers any
+   account below its own line to a sooner-resetting one that is spent, and
+   falls back to reset order only when nothing is healthy. Rule 4 is a
+   preference between usable accounts, never a reason to land on an unusable
+   one — see the 2026-10-01 fix below.
 6. When *nothing* is below its threshold the weekly rule is overridden: rank by
    soonest **binding** recovery instead (usually a 5h window, minutes out, not
    a weekly one days out). `_every_account_above_threshold` → `_recovery_is_useful`.
@@ -66,6 +73,32 @@ only on a rollover, after which the ranking's own filter refuses the return.
 A manual `cswap switch` also clears a stuck bar: `lastSwitchTo` stops matching
 the active account.
 
-**Revisit if**: a fourth account joins, or rptu is re-enabled — `drain-return`
-off a freshly reset account is what records the baseline above, so the gap
-resurfaces there.
+**Fixed in the fork** [AGENT 2026-10-01]: `consume-first` landed a forced
+departure on a nearly-spent account because its weekly window reset sooner.
+`at-limit` and `failover` skip the proactive landing-health gate on purpose —
+escaping a spent account outranks optimising a return time — but the
+consume-first sort key then ranked on reset ordering ALONE, leaving "headroom
+above zero" as the only filter on the target. Filter and sort on two different
+axes, which is the split the all-above key (rule 6) was already tiered to avoid.
+
+Observed 2026-10-01 14:36, the first rptu-enabled instance of rule 5: at-limit
+off slot 1 (5h at 100 % against its 95 line) with slot 2 at 99 % weekly — one
+point left, resetting Oct 4 — and slot 3 at 36 %, 64 points, resetting Oct 7.
+Slot 2 was chosen on reset order alone; the next tick would have fired at-limit
+straight back off it. Caught manually, 17 s later (`leftTrigger: at-limit`,
+`leftHeadroom: 0.0` in `autoswitch_state.json`).
+
+`claude-swap` 0766ac8 tiers both proactive strategy keys on landing health, so
+each axis ranks only within a tier. It RANKS rather than filters: an
+at-/over-threshold account still sorts, just behind every healthy one, so the
+at-limit escape survives when nothing healthy exists — rule 6's state, where
+holding still would burn the active account into a hard limit. Under a
+proactive trigger the gate has already dropped those candidates, so the tier is
+a no-op there and rule 4 is untouched between two usable accounts.
+`weekly-headroom` had the identical shape (a full week ranking ahead of a spent
+5h window) and got the same treatment, though this policy does not use it.
+
+**Revisit if**: a fourth account joins — `drain-return` off a freshly reset
+account is what records the baseline for the no-return bar above, so that gap
+resurfaces there. The rptu-re-enabled half of this note is now spent: it was
+re-enabled on 2026-10-01 and the gap it predicted is the 14:36 incident above.
