@@ -30,6 +30,10 @@ locally; for phones it is a per-phone option on olympus, never on the phone —
 phones are untrusted. While it is on, the home prefix wins over a colliding
 local LAN on the device; reaching both at once is not needed.
 
+**Host interface** [USER 2026-10-02]: a `vpn` wrapper (`vpn status`,
+`vpn egress <direct|olympus|host|tukl>`, `vpn home on|off`, `vpn mesh on|off`)
+over the units, and an i3status block showing the current exit.
+
 **Exit offline**: traffic is dropped; hosts additionally show a notification.
 
 **olympus** keeps its own traffic on its uplink — no exit, no filtered split
