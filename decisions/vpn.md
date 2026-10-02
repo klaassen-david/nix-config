@@ -47,8 +47,9 @@ reaches the hosts like any other node.
   peers — each exit needs its own interface or an encapsulation (e.g. GRE)
   over the mesh.
 - Per-phone egress needs each phone's tunnel address visible on olympus; the
-  in-container MASQUERADE (plus podman's NAT) currently collapses all phones
-  into one container address.
+  in-container MASQUERADE (plus podman's NAT) collapsed all phones into one
+  container address. Resolved by running wg-easy v15 in the host netns
+  [AGENT 2026-10-02].
 
 ## Rejected
 
