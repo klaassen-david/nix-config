@@ -705,7 +705,10 @@ let
   owner = "/run/vpn-egress";
 
   # Egress table 2100 is consulted by rules 5200/5300 while the unit is active.
-  # `extra` are addresses added to `olympus` for the unit's lifetime.
+  # It carries a blackhole default (worst metric): if the tunnel route vanishes
+  # traffic drops instead of falling through to the direct path. `prohibit` for
+  # every home lan keeps it out of a full tunnel unless vpn-home's rule 5100
+  # picks it first. `extra` are addresses added to `olympus` for the unit's lifetime.
   egressScripts =
     {
       name,
@@ -725,12 +728,16 @@ let
     in
     {
       start = pkgs.writeShellScript "vpn-egress-start" ''
+        set -euo pipefail
         echo ${name} > ${owner}
+        # fail closed first: whatever goes wrong below, nothing leaks
+        ${each (f: "${ip} ${f} route replace blackhole default metric 4294967295 table 2100")}
+        ${lib.concatMapStringsSep "\n" (n: "${ip} -4 route replace prohibit ${n.lan} table 2100") lanNodes}
         ${lib.concatMapStringsSep "\n" (
           a: "${ip} ${addrFlags a}addr replace ${a} dev olympus${nodad a}"
         ) extra}
-        ${ip} route replace default dev olympus src ${src4} table 2100
-        ${ip} -6 route replace default dev olympus src ${src6} table 2100
+        ${ip} route replace default dev olympus src ${src4} metric 100 table 2100
+        ${ip} -6 route replace default dev olympus src ${src6} metric 100 table 2100
         ${each (f: ''
           ${ip} ${f} rule del pref 5200 || true
           ${ip} ${f} rule add pref 5200 lookup main suppress_prefixlength 0
@@ -741,7 +748,8 @@ let
       # Switching units starts the new one before this stop may run; only the
       # current owner of the shared rules and table tears them down.
       stop = pkgs.writeShellScript "vpn-egress-stop" ''
-        if [ "$(cat ${owner} 2>/dev/null)" = ${name} ]; then
+        set -euo pipefail
+        if [ "$(cat ${owner} 2>/dev/null || true)" = ${name} ]; then
           ${each (f: ''
             ${ip} ${f} rule del pref 5200 || true
             ${ip} ${f} rule del pref 5300 || true

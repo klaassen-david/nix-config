@@ -785,5 +785,21 @@ pkgs.testers.runNixOSTest {
         olympus.wait_until_succeeds("journalctl -u vpn-phones.service -p err -o cat | grep -q 'interface hooks are set'")
         olympus.wait_until_succeeds(f"test \"$(systemctl show -p InvocationID --value podman-wg-easy.service)\" != {before}")
         olympus.succeed("systemctl is-active vpn-phones.service")
+    with subtest("A1: a full tunnel never carries the home lan"):
+        hermes.succeed("vpn egress olympus")
+        hermes.fail(f"ping -c1 -W2 {home}")
+        hermes.succeed("systemctl start vpn-home.service")
+        hermes.wait_until_succeeds(f"ping -c1 -W2 {home}")
+        hermes.succeed("systemctl stop vpn-home.service")
+        hermes.fail(f"ping -c1 -W2 {home}")
+        hermes.succeed("vpn egress direct")
+
+    with subtest("A2: a vanished tunnel route drops, never falls through to direct"):
+        hermes.succeed("vpn egress olympus")
+        hermes.succeed("ip route del default dev olympus table 2100")
+        hermes.succeed("ip -6 route del default dev olympus table 2100")
+        out = hermes.execute(curl)[1].strip()
+        assert out == "", f"expected a dropped connection, got {out!r}"
+        hermes.succeed("vpn egress direct")
   '';
 }
