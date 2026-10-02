@@ -4,9 +4,9 @@ Multi-host NixOS flake (x86_64-linux only). Three hosts, one shared base:
 
 | Host      | Role     | Machine                       | Notes                                  |
 |-----------|----------|-------------------------------|----------------------------------------|
-| `olympus` | `vps`    | headless VPS                  | server: nginx/SSO, nextcloud, stalwart, wg-easy, wireguard hub |
-| `hermes`  | `laptop` | Framework 16 (7040 AMD)       | desktop (sway), wireguard client       |
-| `hestia`  | `tower`  | Nvidia tower                  | desktop (sway), wireguard client       |
+| `olympus` | `vps`    | headless VPS                  | server: nginx/SSO, nextcloud, stalwart, wg-easy (phones), wireguard hub |
+| `hermes`  | `laptop` | Framework 16 (7040 AMD)       | desktop (sway), wireguard mesh + exit   |
+| `hestia`  | `tower`  | Nvidia tower                  | desktop (sway), wireguard mesh + exit   |
 
 Inputs track `nixpkgs-unstable` + `home-manager/master`. Unfree allowed.
 
@@ -56,7 +56,15 @@ One oauth2-proxy + one Nextcloud OAuth2 client gates all `*.dklaassen.de` vhosts
 
 ## WireGuard
 
-`modules/wireguard` self-selects by `host.role`: `vps` runs the `olympus` server interface (`networking.wireguard.interfaces`) + NAT; clients run on-demand `wg-quick` interfaces (`autostart = false`, full-tunnel). `tukl` is the university VPN on desktops, modeled declaratively with only its private key from agenix. Per-interface keys are `wg-<host>.age`; peer public keys are inlined in the `nodes` registry.
+Rulings and rejected alternatives: `decisions/vpn.md`; mechanics (addressing, tables, rule prefs, nft): the `modules/wireguard` header.
+
+- **Mesh.** `olympus` is the hub; every host keeps an always-on *split* tunnel to it on the `olympus` interface (`vpn mesh on|off`; units `wireguard-olympus`). The node registry (`vpn.nodes`: octet, pubkey, `hub`/`exit`/`lan`/`tukl`) is the single source for addressing; peer public keys live there, private keys are `wg-<host>.age`.
+- **Egress** is chosen per host at runtime, never in nix: `vpn egress direct|olympus|<host>|tukl`, backed by mutually exclusive `vpn-egress-*` units (+ `wg-quick-tukl`). `vpn status` and the i3status block show the exit and flag `inconsistent`. A dead exit drops traffic (never falls back to direct) and notifies. olympus itself has no exit.
+- **Host exits** relay through olympus over GRE (the hub cannot hold more than one `0.0.0.0/0` peer per WireGuard interface, so each exit gets its own encapsulated link). Exit hosts forward and NAT, and refuse to let relayed traffic reach their own services or LAN.
+- **tukl** is dialled directly by each host with its own RPTU config (`tukl` field in the registry; both hosts still share `wg-tukl.age` until each has `wg-tukl-<host>.age` — never up on both at once). Never relayed, never offered to phones.
+- **Home network** (hestia's LAN) is a separate switch: `vpn home on|off`, never implied by choosing hestia as exit.
+- **Phones** stay in wg-easy v15 (host network namespace; UI adds/removes them, no rebuild). Per-phone egress (olympus or a host), host reachability and home access are set on olympus with `sudo vpn-phone …`, keyed by the phone's public key.
+- `checks.vpn` (`tests/vpn.nix`) is a multi-VM test of all of the above and runs as part of `nix flake check`.
 
 ## Backups
 
@@ -83,7 +91,7 @@ One oauth2-proxy + one Nextcloud OAuth2 client gates all `*.dklaassen.de` vhosts
 ## Commands
 
 ```sh
-nix flake check                        # eval + build every host's toplevel, + statix lint (run before deploy)
+nix flake check                        # eval + build every host's toplevel, + statix lint, + vpn VM test (needs KVM)
 nix develop                            # devShell with `agenix` + `statix` on PATH
 nixos-rebuild switch --flake .#<host>  # explicit per-host
 ```
