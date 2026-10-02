@@ -71,8 +71,6 @@
 #   - In a full tunnel DNS is whatever resolver the local network handed out
 #     (tukl pushes its own); it is not forced through the exit.
 #   - Phones get v6 only via an exit: olympus has no global v6 (see networking.nat).
-#   - Both desktops dial the same tukl config until each has its own; never
-#     bring it up on both at once.
 
 let
   base4 = "10.100";
@@ -756,14 +754,9 @@ in
       );
       default =
         let
-          # Today's single RPTU config, dialled from both desktops until each
-          # gets its own `wg-tukl-<host>` — never up on both at once.
-          sharedTukl = {
-            secret = "wg-tukl";
-            address = [
-              "172.27.221.17/32"
-              "2001:638:208:fd49:1:aff:fea0:40da/128"
-            ];
+          # RPTU's peer is the same for every config; each host has its own key/address.
+          rptu = secret: address: {
+            inherit secret address;
             dns = [
               "2001:638:208:9::116"
               "2001:638:208:1::116"
@@ -786,13 +779,19 @@ in
             publicKey = "4YGKRQjZN2l4OmoxOfvL9zAa5hVFBb3IoE6+uUGz4kk=";
             exit = true;
             lan = "192.168.178.0/24";
-            tukl = sharedTukl;
+            tukl = rptu "wg-tukl-hestia" [
+              "172.27.242.67/32"
+              "2001:638:208:fd49:f:5fff:fe21:49a7/128"
+            ];
           };
           hermes = {
             octet = 3;
             publicKey = "bAad0LzXDbsnk4NISns3VOfWiOlmgVMc3dkWd4Z2KTM=";
             exit = true;
-            tukl = sharedTukl;
+            tukl = rptu "wg-tukl-hermes" [
+              "172.27.248.53/32"
+              "2001:638:208:fd49:37:9bff:fe2e:ef6a/128"
+            ];
           };
         };
     };
