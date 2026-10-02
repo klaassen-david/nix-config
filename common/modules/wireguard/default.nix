@@ -48,9 +48,11 @@
 # nft: `vpn-hub` (hub) gates phones on wg0: internet and phones always, mesh
 # hosts and the home lan only for addresses in the vpn-phone sets; it also
 # rejects the hub's own traffic to the lan unless vpn-home is on. `vpn-exit`
-# (exits) refuses relayed traffic to private ranges, the exit's own lan
-# (`vpn-languard` refills it) and its own services, and lets nothing open
-# connections into the mesh. Both tables reload atomically and have no stop.
+# (exits) forwards with policy drop: relayed traffic (from `vpn-exit`) to
+# anywhere but the mesh, tukl, private ranges and the exit's own lan
+# (`vpn-languard` refills it), plus mesh/phone sources to the lan on its owner;
+# only those are masqueraded, and the exit's own services are shut to relayed
+# traffic. Both tables reload atomically and have no stop.
 #
 # Units (hosts; wheel starts/stops them without sudo, host.userManagedUnits):
 #   wireguard-olympus      the mesh; the units below are bound to it
@@ -272,26 +274,31 @@ let
         iifname "vpn-exit" drop
       }
 
+      # Default drop: forwarding is on host-wide, so LAN neighbours or spoofed
+      # mesh sources must not find a router here; only relay and home access pass.
       chain forward {
-        type filter hook forward priority filter; policy accept;
+        type filter hook forward priority filter; policy drop;
         oifname "vpn-exit" tcp flags syn tcp option maxseg size set rt mtu
+        ct state invalid drop
+        ct state established,related accept
         iifname "vpn-exit" oifname ${meshIfaces} drop
+        iifname "vpn-exit" oifname "tukl" counter drop
         iifname "vpn-exit" ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10, 169.254.0.0/16 } drop
         iifname "vpn-exit" ip daddr @lan4 drop
         iifname "vpn-exit" ip6 daddr { fc00::/7, fe80::/10 } drop
         iifname "vpn-exit" ip6 daddr @lan6 drop
+        iifname "vpn-exit" accept
         ${lib.optionalString (self.lan != null)
           # the hub's lan route also catches exit-range sources (rule 2000): only mesh and phone sources may enter
           ''iifname "olympus" ip saddr { ${base4}.0.0/24,${cfg.phones.subnet} } ip daddr ${self.lan} accept''
         }
-        iifname "olympus" ct state new drop
-        iifname != ${meshIfaces} oifname ${meshIfaces} ct state new drop
       }
 
+      # NAT only relayed flows (connection mark from prerouting) and home access
       chain postrouting {
         type nat hook postrouting priority srcnat; policy accept;
-        oifname != { "olympus", "vpn-exit", "lo" } ip saddr ${base4}.0.0/16 masquerade
-        oifname != { "olympus", "vpn-exit", "lo" } ip6 saddr { ${base6}::/48, ${cfg.phones.subnet6} } masquerade
+        oifname != { "olympus", "vpn-exit", "lo", "tukl" } ct mark & 0x2000 == 0x2000 masquerade
+        ${lib.optionalString (self.lan != null) ''iifname "olympus" ip daddr ${self.lan} masquerade''}
       }
     }
   '';

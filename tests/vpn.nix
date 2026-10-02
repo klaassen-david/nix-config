@@ -104,6 +104,7 @@ let
       environment.systemPackages = [
         pkgs.conntrack-tools
         pkgs.nftables
+        pkgs.tcpdump
       ];
       environment.etc."vpn-test.key" = {
         text = keys.${name}.private;
@@ -599,5 +600,42 @@ pkgs.testers.runNixOSTest {
         m = olympus.succeed("journalctl -u vpn-phones.service -o cat | grep -c 'db changed'").strip()
         assert n == m, f"vpn-phones keeps re-running: {n} -> {m}"
         olympus.succeed("systemctl is-active vpn-phones.service")
+
+    # What hestia sends out of eth1 (-Q out) while homerouter probes it, with
+    # the arrival at hestia (-Q in) as the control that the probe got there.
+    def probe_router(src_ip):
+        hestia.succeed("rm -f /tmp/in.cap /tmp/out.cap")
+        for d in ["in", "out"]:
+            hestia.execute(f"nohup timeout 12 tcpdump -nl -i eth1 -Q {d} -c1 'icmp and dst 198.51.100.1' >/tmp/{d}.cap 2>&1 &")
+        hestia.sleep(2)
+        homerouter.execute(f"ping -c3 -W1 -I {src_ip} 198.51.100.1")
+        hestia.sleep(3)
+        arrived = hestia.execute("grep -q 'ICMP echo request' /tmp/in.cap")[0] == 0
+        forwarded = hestia.execute("grep -q 'ICMP echo request' /tmp/out.cap")[0] == 0
+        return arrived, forwarded
+
+    with subtest("exit gate: a LAN neighbour cannot use hestia as a router"):
+        hestia.succeed("test $(sysctl -n net.ipv4.conf.all.forwarding) = 1")
+        homerouter.succeed("ip route replace 198.51.100.1/32 via 192.168.178.32")
+        arrived, forwarded = probe_router("192.168.178.2")
+        assert arrived and not forwarded, (arrived, forwarded)
+
+    with subtest("exit gate: a spoofed mesh source is neither forwarded nor masqueraded"):
+        homerouter.succeed("ip addr add 10.100.0.9/32 dev lo")
+        homerouter.succeed("ip route replace 198.51.100.1/32 via 192.168.178.32 src 10.100.0.9")
+        arrived, forwarded = probe_router("10.100.0.9")
+        assert arrived and not forwarded, (arrived, forwarded)
+        homerouter.succeed("ip route del 198.51.100.1/32; ip addr del 10.100.0.9/32 dev lo")
+
+    with subtest("exit gate: relayed traffic still works and may not leave via tukl"):
+        hermes.succeed("vpn egress hestia")
+        out = hermes.succeed(curl).strip()
+        assert out == "203.0.113.20", f"expected egress via hestia, got {out!r}"
+        hestia.succeed("ip link add tukl type dummy; ip link set tukl up; ip addr add 192.0.2.1/24 dev tukl")
+        hestia.succeed("ip route replace 198.51.100.1/32 dev tukl")
+        hermes.fail(curl)
+        hestia.succeed("nft list chain inet vpn-exit forward | grep 'oifname \"tukl\"' | grep -v 'packets 0 '")
+        hestia.succeed("ip link del tukl")
+        hermes.succeed("vpn egress direct")
   '';
 }
