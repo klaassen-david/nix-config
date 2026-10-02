@@ -443,6 +443,7 @@ let
       pkgs.gnugrep
       pkgs.util-linux
       pkgs.conntrack-tools
+      pkgs.python3
     ];
     text = ''
       db=${cfg.phones.db}
@@ -520,25 +521,39 @@ let
         done
       }
 
+      # The kernel and nft print addresses compressed and lowercase, so every
+      # address is canonicalised before it is compared, stored or handed to them.
+      canon6() { python3 -c 'import ipaddress, sys; print(ipaddress.IPv6Address(sys.argv[1]))' "$1"; }
+
       # public_key, v4, v6, name, enabled (US separated; empty fields stay
-      # empty); nothing while wg-easy has no db yet
+      # empty); nothing while wg-easy has no db yet. Rows sharing an address
+      # are all skipped: which phone owns it is not decidable.
       clients() {
-        local json pk a4 a6 name enabled
+        local json pk a4 a6 name enabled rows
         [ -e "$db" ] || return 0
         json=$(sqlite3 -readonly -json -cmd '.timeout 5000' "$db" \
           "SELECT public_key, ipv4_address, ipv6_address, name, enabled FROM clients_table WHERE interface_id = '${cfg.phones.interface}';")
         [ -n "$json" ] || return 0
-        jq -r '.[] | (map_values(if . == null then "" else tostring | gsub("[[:cntrl:]]"; "?") end)
+        rows=$(jq -r '.[] | (map_values(if . == null then "" else tostring | gsub("[[:cntrl:]]"; "?") end)
             | [.public_key, .ipv4_address, .ipv6_address, .name]) + [if .enabled == 1 then "1" else "0" end]
             | join("\u001f")' <<< "$json" \
           | while IFS=$us read -r pk a4 a6 name enabled; do
               if [[ $pk =~ ^[A-Za-z0-9+/]{43}=$ ]] && { [ -n "$a4" ] || [ -n "$a6" ]; } \
                 && { [ -z "$a4" ] || valid4 "$a4"; } && { [ -z "$a6" ] || valid6 "$a6"; }; then
+                [ -z "$a6" ] || a6=$(canon6 "$a6")
                 printf '%s\n' "$pk$us$a4$us$a6$us$name$us$enabled"
               else
                 echo "vpn-phone: skipping malformed client row '$name'" >&2
               fi
-            done
+            done)
+        [ -n "$rows" ] || return 0
+        awk -F "$us" '
+          NR == FNR { if ($2 != "") n[$2]++; if ($3 != "") n[$3]++; next }
+          ($2 != "" && n[$2] > 1) || ($3 != "" && n[$3] > 1) {
+            print "vpn-phone: skipping client row \x27" $4 "\x27: its address is used by another row" > "/dev/stderr"
+            next
+          }
+          { print }' <(printf '%s\n' "$rows") <(printf '%s\n' "$rows")
       }
 
       get() { # <pk> <key> <default>
@@ -557,14 +572,26 @@ let
         mv "$tmp" "$state"
       }
 
-      # Rules are diffed, not reset: adds precede deletes, so a phone never
-      # passes through a moment without its rule (which would leak it to olympus).
-      #
-      # A conntrack entry outlives the rule that admitted it (the forward chain
-      # accepts established flows, NAT keeps its mapping), so whatever a phone
-      # lost or changed is also dropped from conntrack.
+      cut_flows() { # <addresses, one per line>
+        local a fam
+        for a in $(printf '%s\n' "$1" | sort -u); do
+          fam=ipv4
+          if [[ $a == *:* ]]; then fam=ipv6; fi
+          conntrack -f "$fam" -D -s "$a" > /dev/null 2>&1 || true
+          conntrack -f "$fam" -D -d "$a" > /dev/null 2>&1 || true
+        done
+      }
+
+      # Order matters. First the nft sets and the conntrack entries of what a
+      # phone lost: they neither wait on nor fail with the rule changes. Then
+      # the rules, diffed rather than reset (adds precede deletes, so a phone
+      # never has a moment without its rule, which would leak it to olympus)
+      # and idempotent. Last the conntrack entries of phones whose rules
+      # changed: a flow outlives the rule that admitted it (established flows
+      # are accepted, NAT keeps its mapping), and cut earlier it would be
+      # re-created on the old path.
       apply() {
-        local rows sets="" want have spec newel changed revoked a fam
+        local rows sets="" want have spec newel changed revoked rc=0
         rows=$(clients)
         want=$(mktemp)
         have=$(mktemp)
@@ -597,31 +624,35 @@ let
         done
         sort -o "$want" "$want"
         sort -o "$have" "$have"
-        rule() { # <add|del> <family> <src> <target>
-          if [[ $4 =~ ^[0-9]+$ ]]; then spec=(lookup "$4"); else spec=("$4"); fi
-          ip -"$2" rule "$1" from "$3" "''${spec[@]}" pref 3500
-        }
-        { comm -13 "$have" "$want"; comm -23 "$have" "$want"; } | awk '{ sub("/.*", "", $2); print $2 }' > "$changed"
+
         revoked=$(for a in phone_hosts phone_hosts6 phone_home; do
           nft -j list set inet vpn-hub "$a" \
             | jq -r --arg s "$a" '.nftables[] | select(.set) | .set.elem // [] | .[] | "\($s) \(.)"'
-        done | { grep -vxFf "$newel" || true; } | cut -d' ' -f2)
-        comm -13 "$have" "$want" | while read -r f src target; do rule add "$f" "$src" "$target"; done
-        comm -23 "$have" "$want" | while read -r f src target; do rule del "$f" "$src" "$target"; done
-        rm -f "$want" "$have"
-        nft -f - <<NFT
+        done | { grep -vxFf "$newel" || true; } | cut -d' ' -f2) || revoked=""
+        nft -f - <<NFT || { echo "vpn-phone: updating the nft sets failed" >&2; rc=1; }
       flush set inet vpn-hub phone_hosts
       flush set inet vpn-hub phone_hosts6
       flush set inet vpn-hub phone_home
       $sets
       NFT
-        for a in $({ cat "$changed"; printf '%s\n' "$revoked"; } | sort -u); do
-          fam=ipv4
-          if [[ $a == *:* ]]; then fam=ipv6; fi
-          conntrack -f "$fam" -D -s "$a" > /dev/null 2>&1 || true
-          conntrack -f "$fam" -D -d "$a" > /dev/null 2>&1 || true
-        done
-        rm -f "$newel" "$changed"
+        cut_flows "$revoked"
+
+        rule() { # <add|del> <family> <src> <target>; adding what exists or deleting what is gone is fine
+          local out
+          if [[ $4 =~ ^[0-9]+$ ]]; then spec=(lookup "$4"); else spec=("$4"); fi
+          out=$(ip -"$2" rule "$1" from "$3" "''${spec[@]}" pref 3500 2>&1) && return 0
+          case $out in
+            *"File exists"* | *"No such file"*) return 0 ;;
+          esac
+          echo "vpn-phone: ip rule $1 from $3 $4 failed: $out" >&2
+          return 1
+        }
+        { comm -13 "$have" "$want"; comm -23 "$have" "$want"; } | awk '{ sub("/.*", "", $2); print $2 }' > "$changed"
+        while read -r f src target; do rule add "$f" "$src" "$target" || rc=1; done < <(comm -13 "$have" "$want")
+        while read -r f src target; do rule del "$f" "$src" "$target" || rc=1; done < <(comm -23 "$have" "$want")
+        cut_flows "$(cat "$changed")"
+        rm -f "$want" "$have" "$newel" "$changed"
+        return "$rc"
       }
 
       # resolve <phone> to a public key
@@ -713,15 +744,26 @@ let
         fi
       }
 
+      # Watch first, then apply: a write in between would go unseen until the
+      # next one. Events queue in the pipe while apply runs.
+      exec 3< <(inotifywait -m -e modify -e moved_to --exclude '-shm$' --format x ${dirOf cfg.phones.db} 2>&1)
+      line=
+      while read -r -u 3 line; do
+        [ "$line" != "Watches established." ] || break
+      done
+      [ "$line" = "Watches established." ] || { echo "<3>inotifywait failed to start" >&2; exit 1; }
+
       check_hooks
-      vpn-phone apply
-      inotifywait -m -q -e modify -e moved_to --exclude '-shm$' --format x ${dirOf cfg.phones.db} | while read -r _; do
+      vpn-phone apply || echo "<3>vpn-phone apply failed"
+      while read -r -u 3 line; do
+        [ "$line" = x ] || continue
         # let a burst of writes settle
-        while read -r -t 1 _; do :; done
+        while read -r -t 1 -u 3 _; do :; done
         echo "wg-easy db changed, applying"
         check_hooks
-        vpn-phone apply
+        vpn-phone apply || echo "<3>vpn-phone apply failed"
       done
+      exit 1
     '';
   };
 
