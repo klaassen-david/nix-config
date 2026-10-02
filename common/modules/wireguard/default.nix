@@ -761,14 +761,23 @@ let
     '';
   };
 
-  # Egress table 2100 is consulted by rules 5200/5300 while the unit is active.
+  # Egress table 2100 is consulted by rules 5200/5300 while an egress is selected.
   # It carries a blackhole default (worst metric): if the tunnel route vanishes
   # traffic drops instead of falling through to the direct path. `prohibit` for
   # every home lan keeps it out of a full tunnel unless vpn-home's rule 5100
   # picks it first. `extra` are addresses added to `olympus` for the unit's lifetime.
+  #
+  # Switching through `vpn egress` is a handover: the CLI writes the target unit to
+  # /run/vpn-egress.next first, and the old unit's stop then keeps rules 5200/5300 and the
+  # blackhole (only its real default goes), so there is no direct window; the new
+  # unit's start replaces the default and clears the file. A failed start stays
+  # dropped (`vpn status`: inconsistent; `vpn egress direct` clears it). A plain
+  # stop tears everything down. The owner marker names the unit holding the slot;
+  # it still names the old unit during a handover, until the new start overwrites it.
   egressScripts =
     {
       name,
+      dev,
       src4,
       src6,
       extra ? [ ],
@@ -782,8 +791,19 @@ let
         ];
       addrFlags = a: lib.optionalString (lib.hasInfix ":" a) "-6 ";
       nodad = a: lib.optionalString (lib.hasInfix ":" a) " nodad";
+      srcOpt = a: lib.optionalString (a != null) " src ${a}";
     in
-    {
+    rec {
+      # (Re)creates what lives and dies with the tunnel link: source addresses and
+      # the real default routes. Also run by the mesh's postSetup after a restart.
+      attach = pkgs.writeShellScript "vpn-egress-attach" ''
+        set -euo pipefail
+        ${lib.concatMapStringsSep "\n" (
+          a: "${ip} ${addrFlags a}addr replace ${a} dev olympus${nodad a}"
+        ) extra}
+        ${ip} -4 route replace default dev ${dev}${srcOpt src4} metric 100 table 2100
+        ${ip} -6 route replace default dev ${dev}${srcOpt src6} metric 100 table 2100
+      '';
       start = pkgs.writeShellScript "vpn-egress-start" ''
         set -euo pipefail
         ${systemctl} start vpn-onlink.service
@@ -791,79 +811,141 @@ let
         # fail closed first: whatever goes wrong below, nothing leaks
         ${each (f: "${ip} ${f} route replace blackhole default metric 4294967295 table 2100")}
         ${lib.concatMapStringsSep "\n" (n: "${ip} -4 route replace prohibit ${n.lan} table 2100") lanNodes}
-        ${lib.concatMapStringsSep "\n" (
-          a: "${ip} ${addrFlags a}addr replace ${a} dev olympus${nodad a}"
-        ) extra}
-        ${ip} route replace default dev olympus src ${src4} metric 100 table 2100
-        ${ip} -6 route replace default dev olympus src ${src6} metric 100 table 2100
+        # rules already in place (handover) are left alone: no gap
         ${each (f: ''
-          ${ip} ${f} rule del pref 5200 || true
-          ${ip} ${f} rule add pref 5200 lookup 2150
-          ${ip} ${f} rule del pref 5300 || true
-          ${ip} ${f} rule add pref 5300 lookup 2100
+          ${ip} ${f} rule show pref 5200 | ${grep} -qw 'lookup 2150' || ${ip} ${f} rule add pref 5200 lookup 2150
+          ${ip} ${f} rule show pref 5300 | ${grep} -qw 'lookup 2100' || ${ip} ${f} rule add pref 5300 lookup 2100
         '')}
+        ${attach}
+        if [ -e ${nextFile} ]; then : > ${nextFile}; fi
       '';
-      # Switching units starts the new one before this stop may run; only the
-      # current owner of the shared rules and table tears them down.
+      # Only the current owner of the shared rules and table tears them down.
       stop = pkgs.writeShellScript "vpn-egress-stop" ''
         set -euo pipefail
         if [ "$(cat ${owner} 2>/dev/null || true)" = ${name} ]; then
-          ${each (f: ''
-            ${ip} ${f} rule del pref 5200 || true
-            ${ip} ${f} rule del pref 5300 || true
-            ${ip} ${f} route flush table 2100 || true
-          '')}
-          rm -f ${owner}
-          ${systemctl} stop --no-block vpn-onlink.service || true
+          next=$(cat ${nextFile} 2>/dev/null || true)
+          case $next in
+            ${lib.concatStringsSep " | " (lib.filter (n: n != name) egressSlots)}) ;;
+            *) next="" ;;
+          esac
+          if [ -n "$next" ]; then
+            ${each (f: "${ip} ${f} route del default dev ${dev} metric 100 table 2100 || true")}
+          else
+            ${teardown}
+          fi
         fi
         ${lib.concatMapStringsSep "\n" (a: "${ip} ${addrFlags a}addr del ${a} dev olympus || true") extra}
       '';
     };
 
+  # Everything that makes up the egress slot, regardless of owner.
+  teardown = ''
+    ${lib.concatMapStringsSep "\n" (f: ''
+      ${ip} ${f} rule del pref 5200 || true
+      ${ip} ${f} rule del pref 5300 || true
+      ${ip} ${f} route flush table 2100 || true
+    '') [ "-4" "-6" ]}
+    rm -f ${owner}
+    ${systemctl} stop --no-block vpn-onlink.service || true
+  '';
+  grep = "${pkgs.gnugrep}/bin/grep";
+  nextFile = "/run/vpn-egress.next";
+
+  # Egress slot holders: the egress units, and tukl when this node has one.
+  egressSlots = egressUnits ++ lib.optional (self.tukl != null) "wg-quick-tukl";
+
+  # One definition per slot holder; units, the mesh re-attach and tukl share them.
+  egressDefs = {
+    vpn-egress-olympus = {
+      dev = "olympus";
+      src4 = self.ip;
+      src6 = self.ip6;
+    };
+  }
+  // lib.listToAttrs (
+    map (x: {
+      name = "vpn-egress-${x.name}";
+      value = {
+        dev = "olympus";
+        src4 = src4 x self;
+        src6 = src6 x self;
+        extra = [
+          "${src4 x self}/32"
+          "${src6 x self}/128"
+        ];
+      };
+    }) otherExits
+  )
+  // lib.optionalAttrs (self.tukl != null) {
+    wg-quick-tukl =
+      let
+        addr =
+          v6:
+          let
+            l = lib.filter (a: lib.hasInfix ":" a == v6) self.tukl.address;
+          in
+          if l == [ ] then null else lib.head (lib.splitString "/" (lib.head l));
+      in
+      {
+        dev = "tukl";
+        src4 = addr false;
+        src6 = addr true;
+      };
+  };
+  egressScriptsOf = lib.mapAttrs (name: args: egressScripts (args // { inherit name; })) egressDefs;
+
+  # `systemctl start vpn-egress-reset` clears a stuck or half-switched slot (`vpn egress direct`).
+  resetScript = pkgs.writeShellScript "vpn-egress-reset" ''
+    set -euo pipefail
+    ${teardown}
+    if [ -e ${nextFile} ]; then : > ${nextFile}; fi
+  '';
+
   # Bypass guards: tukl and the egress rules (pref 5300) must never be up together,
-  # whatever brought one of them up.
+  # whatever brought one of them up. A handover (the CLI named tukl in /run/vpn-egress.next)
+  # legitimately finds the old rules still in place.
   egressGuard = pkgs.writeShellScript "vpn-egress-guard" ''
     if ${ip} link show dev tukl >/dev/null 2>&1 \
-      && ! ${config.systemd.package}/bin/systemctl is-active --quiet wg-quick-tukl.service; then
+      && ! ${systemctl} is-active --quiet wg-quick-tukl.service; then
       echo "a tukl link exists outside wg-quick-tukl.service; run 'wg-quick down tukl' first" >&2
       exit 1
     fi
   '';
   tuklGuard = pkgs.writeShellScript "wg-quick-tukl-guard" ''
+    [ "$(cat ${nextFile} 2>/dev/null || true)" = wg-quick-tukl ] && exit 0
     for f in -4 -6; do
       if [ -n "$(${ip} $f rule show pref 5300)" ]; then
-        echo "an egress rule (pref 5300) is active; stop the vpn-egress unit first" >&2
+        echo "an egress rule (pref 5300) is active; use 'vpn egress tukl' or stop the vpn-egress unit first" >&2
         exit 1
       fi
     done
   '';
 
-  egressUnit =
-    name: args:
-    let
-      scripts = egressScripts (args // { inherit name; });
-    in
-    {
-      bindsTo = [ "wireguard-olympus.service" ];
-      # Conflicts= alone does not order the stop before the start; any ordering edge
-      # does, so the egress units and tukl form a one-directional chain in list order.
-      after = [
-        "wireguard-olympus.service"
-      ]
-      ++ map (n: "${n}.service") (lib.take (lib.lists.findFirstIndex (n: n == name) null egressUnits) egressUnits);
-      partOf = [ "wireguard-olympus.service" ];
-      conflicts =
-        map (n: "${n}.service") (lib.filter (n: n != name) egressUnits)
-        ++ lib.optional (self.tukl != null) "wg-quick-tukl.service";
-      wants = [ "vpn-egress-watch@${name}.service" ];
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-        ExecStartPre = egressGuard;
-        ExecStart = scripts.start;
-        ExecStop = scripts.stop;
-      };
+  # wants+after the mesh, not bound to it: a mesh restart (deploy, `wg` hiccup)
+  # leaves the selection in place, the blackhole drops meanwhile, and the mesh's
+  # postSetup re-attaches the routes.
+  egressUnit = name: {
+    # Conflicts= alone does not order the stop before the start; any ordering edge
+    # does, so the egress units and tukl form a one-directional chain in list order.
+    wants = [
+      "wireguard-olympus.service"
+      "vpn-egress-watch@${name}.service"
+    ];
+    after = [
+      "wireguard-olympus.service"
+    ]
+    ++ map (n: "${n}.service") (lib.take (lib.lists.findFirstIndex (n: n == name) null egressUnits) egressUnits);
+    conflicts =
+      map (n: "${n}.service") (lib.filter (n: n != name) egressUnits)
+      ++ lib.optional (self.tukl != null) "wg-quick-tukl.service";
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStartPre = egressGuard;
+      ExecStart = egressScriptsOf.${name}.start;
+      ExecStop = egressScriptsOf.${name}.stop;
     };
+  };
 
   # Pings through the egress table (the unit's rules are active) and shouts when
   # the exit stops forwarding; the tunnel then drops traffic instead of leaking it.
@@ -1190,6 +1272,12 @@ in
           ${ip} -6 route replace ${subnet6}/48 dev olympus src ${self.ip6}
           ${underlayRules "add"}
           ${lib.optionalString self.exit exitSetup}
+          # a selected egress survives a mesh restart: put its routes back (until then the blackhole drops)
+          case "$(cat ${owner} 2>/dev/null || true)" in
+          ${lib.concatMapStrings (n: ''
+            ${n}) ${egressScriptsOf.${n}.attach} || true ;;
+          '') egressUnits}
+          esac
           ${pkgs.coreutils}/bin/install -m 0600 -o ${sshUser.name} -g ${sshUser.group} ${sshTunnelConfig} ${sshLocalConfig}
         '';
         postShutdown = ''
@@ -1238,6 +1326,7 @@ in
         "wireguard-olympus.service"
       ]
       ++ map (n: "${n}.service") egressUnits
+      ++ [ "vpn-egress-reset.service" ]
       ++ lib.optional (remoteLans != [ ]) "vpn-home.service"
       ++ lib.optional (self.tukl != null) "wg-quick-tukl.service"
     );
@@ -1258,9 +1347,9 @@ in
             Restart = "always";
             RestartSec = 1;
           };
-          vpn-egress-olympus = egressUnit "vpn-egress-olympus" {
-            src4 = self.ip;
-            src6 = self.ip6;
+          vpn-egress-reset.serviceConfig = {
+            Type = "oneshot";
+            ExecStart = resetScript;
           };
           "vpn-egress-watch@" = {
             bindsTo = [ "%i.service" ];
@@ -1275,19 +1364,7 @@ in
             after = map (n: "${n}.service") egressUnits;
           };
         }
-        // lib.listToAttrs (
-          map (x: {
-            name = "vpn-egress-${x.name}";
-            value = egressUnit "vpn-egress-${x.name}" {
-              src4 = src4 x self;
-              src6 = src6 x self;
-              extra = [
-                "${src4 x self}/32"
-                "${src6 x self}/128"
-              ];
-            };
-          }) otherExits
-        )
+        // lib.genAttrs egressUnits egressUnit
       ))
       (lib.mkIf isServer {
         # a reload empties local_home: restart vpn-home (partOf) to refill it
@@ -1382,7 +1459,12 @@ in
     # ${phoneStateDir}/state.json keyed by public key. A phone whose exit is
     # unknown is blocked (prohibit), one whose exit is down loses its traffic;
     # neither falls back to olympus.
-    systemd.tmpfiles.rules = lib.mkIf isServer [ "d ${phoneStateDir} 0700 root root -" ];
+    systemd.tmpfiles.rules =
+      if isServer then
+        [ "d ${phoneStateDir} 0700 root root -" ]
+      else
+        # the `vpn` CLI (user) names the next egress here for a gapless handover
+        [ "f ${nextFile} 0600 ${sshUser.name} ${sshUser.group} -" ];
     environment.systemPackages = lib.mkIf isServer [ phoneCli ];
 
     # ---------------------------------------------------------------------------
@@ -1424,7 +1506,13 @@ in
     networking.wg-quick.interfaces.tukl = lib.mkIf (self.tukl != null) {
       autostart = false;
       privateKeyFile = config.age.secrets.wg-tukl.path;
+      # tukl shares the egress slot (table 2100, rules 5200/5300) instead of wg-quick's
+      # own policy routing; fwMark + rule 5000 keep its socket out of the tunnel.
+      table = "off";
+      extraOptions.FwMark = mark;
       preUp = "${tuklGuard}";
+      postUp = "${egressScriptsOf.wg-quick-tukl.start}";
+      preDown = "${egressScriptsOf.wg-quick-tukl.stop}";
       inherit (self.tukl) address dns mtu;
       peers = [
         {

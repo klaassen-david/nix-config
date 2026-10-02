@@ -384,14 +384,13 @@ pkgs.testers.runNixOSTest {
         hermes.fail("ip rule show | grep -E '^(5200|5300):'")
         hermes.fail("ip -6 rule show | grep -E '^(5200|5300):'")
 
-    with subtest("egress is bound to the mesh"):
+    with subtest("egress survives a mesh stop: traffic is dropped, then returns"):
         hermes.succeed("systemctl start vpn-egress-olympus.service")
         hermes.succeed("systemctl stop wireguard-olympus.service")
-        hermes.fail("systemctl is-active vpn-egress-olympus.service")
-        out = hermes.succeed(curl).strip()
-        assert out == "203.0.113.30", f"expected direct egress, got {out!r}"
-        hermes.succeed("systemctl start vpn-egress-olympus.service")
-        hermes.succeed("systemctl is-active wireguard-olympus.service")
+        hermes.succeed("systemctl is-active vpn-egress-olympus.service")
+        out = hermes.execute(curl)[1].strip()
+        assert out == "", f"expected a dropped connection, got {out!r}"
+        hermes.succeed("systemctl start wireguard-olympus.service")
         hermes.wait_until_succeeds("ping -c1 -W2 10.100.0.1")
         out = hermes.succeed(curl).strip()
         assert out == "203.0.113.10", f"expected egress via olympus, got {out!r}"
@@ -826,5 +825,65 @@ pkgs.testers.runNixOSTest {
         hermes.succeed("vpn egress direct")
         hermes.fail("systemctl is-active vpn-onlink.service")
         hermes.fail("ip route show table 2150 | grep .")
+
+    def poll_start():
+        hermes.succeed("rm -f /tmp/poll.log")
+        hermes.succeed(
+            "systemd-run --unit=poll -p StandardOutput=file:/tmp/poll.log -E PATH=$PATH "
+            "sh -c 'while true; do curl -s --max-time 2 http://198.51.100.1/ || echo fail; sleep 0.1; done'"
+        )
+
+    def poll_stop():
+        hermes.succeed("systemctl stop poll.service")
+        return hermes.succeed("cat /tmp/poll.log").split()
+
+    with subtest("A3: switching exits never shows the direct address"):
+        hermes.succeed("vpn egress hestia")
+        poll_start()
+        for target in ["olympus", "hestia", "olympus", "hestia"]:
+            hermes.succeed(f"vpn egress {target}")
+            hermes.sleep(1)
+        seen = poll_stop()
+        assert "203.0.113.30" not in seen, f"direct address leaked during a switch: {seen}"
+        assert {"203.0.113.10", "203.0.113.20"} <= set(seen), seen
+
+    with subtest("A3: a failed switch stays dropped and reports inconsistent, direct recovers"):
+        hermes.succeed("ip link add tukl type dummy")
+        hermes.fail("vpn egress olympus")
+        out = hermes.execute(curl)[1].strip()
+        assert out == "", f"expected a dropped connection, got {out!r}"
+        rc, out = hermes.execute("vpn status --short")
+        assert rc == 1 and out.strip() == "inconsistent", (rc, out)
+        hermes.succeed("ip link del tukl")
+        hermes.succeed("vpn egress direct")
+        out = hermes.succeed(curl).strip()
+        assert out == "203.0.113.30", f"expected direct egress, got {out!r}"
+        assert short(hermes) == "direct", short(hermes)
+        check_exclusive(hermes, [])
+        hermes.succeed("systemctl reset-failed vpn-egress-olympus.service")
+
+    with subtest("A4: a mesh restart drops, never leaks, and the egress comes back by itself"):
+        for target, address in [("olympus", "203.0.113.10"), ("hestia", "203.0.113.20")]:
+            hermes.succeed(f"vpn egress {target}")
+            poll_start()
+            hermes.succeed("systemctl restart wireguard-olympus.service")
+            hermes.wait_until_succeeds(f"{curl} | grep -x {address}", timeout=60)
+            hermes.sleep(1)
+            seen = poll_stop()
+            assert "203.0.113.30" not in seen, f"direct address leaked during a mesh restart: {seen}"
+            assert address in seen, seen
+            hermes.succeed(f"systemctl is-active vpn-egress-{target}.service")
+        hermes.succeed("vpn egress direct")
+
+    with subtest("A4: mesh off means direct"):
+        hermes.succeed("vpn egress olympus")
+        hermes.succeed("vpn mesh off")
+        out = hermes.succeed(curl).strip()
+        assert out == "203.0.113.30", f"expected direct egress, got {out!r}"
+        hermes.fail("ip rule show | grep -E '^(5200|5300):'")
+        check_exclusive(hermes, [])
+        hermes.succeed("vpn mesh on")
+        hermes.wait_until_succeeds("ping -c1 -W2 10.100.0.1")
+        assert short(hermes) == "direct", short(hermes)
   '';
 }

@@ -15,6 +15,9 @@
 #   vpn home on|off                 needs vpn-home.service
 #   vpn mesh on|off
 #
+# `egress` switches without a direct window (see egressScripts in default.nix);
+# `egress direct` and `mesh off` go direct.
+#
 # --short is `direct|olympus|<host>|tukl`, plus ` +home` and ` !down` (the exit
 # watchdog's /run/vpn-egress-watch/<unit>.down marker), or exactly `inconsistent`.
 # --json is the same as an i3status-rust custom block (always exit 0, so the bar
@@ -40,6 +43,7 @@ let
     text = ''
       targets=(${lib.escapeShellArgs targets})
       owner=/run/vpn-egress
+      next=/run/vpn-egress.next
       watch=/run/vpn-egress-watch
 
       usage() {
@@ -85,7 +89,8 @@ let
               ;;
             tukl)
               if [ "$link" = 0 ]; then problems+=("wg-quick-tukl is active but there is no tukl link"); fi
-              if [ "$r4" != 0 ] || [ "$r6" != 0 ]; then problems+=("tukl is active but pref 5300 rules exist"); fi
+              if [ "$r4" != 1 ] || [ "$r6" != 1 ]; then problems+=("tukl should have one pref 5300 rule per family (v4: $r4, v6: $r6)"); fi
+              if [ "$own" != wg-quick-tukl ]; then problems+=("$owner names '$own', not wg-quick-tukl"); fi
               ;;
             *)
               if [ "$r4" != 1 ] || [ "$r6" != 1 ]; then problems+=("$exit_name should have one pref 5300 rule per family (v4: $r4, v6: $r6)"); fi
@@ -131,6 +136,15 @@ let
         esac
       }
 
+      # stop every unit, then clear what a failed or half-finished switch left behind
+      direct() {
+        local units=() t
+        : > "$next" || true
+        for t in "''${targets[@]}"; do units+=("$(unit_of "$t").service"); done
+        systemctl stop "''${units[@]}"
+        systemctl start vpn-egress-reset.service
+      }
+
       switch() { # <on|off> <unit>
         case $1 in
           on) systemctl start "$2.service" ;;
@@ -154,14 +168,21 @@ let
         egress)
           [ $# -eq 1 ] || usage
           if [ "$1" = direct ]; then
-            units=()
-            for t in "''${targets[@]}"; do units+=("$(unit_of "$t").service"); done
-            systemctl stop "''${units[@]}"
+            direct
           else
             found=0
             for t in "''${targets[@]}"; do if [ "$t" = "$1" ]; then found=1; fi; done
             [ "$found" = 1 ] || usage
-            systemctl start "$(unit_of "$1").service"
+            # name the target first: the unit being stopped then keeps the rules and
+            # the blackhole, so a switch never passes through a direct moment
+            printf '%s' "$(unit_of "$1")" > "$next"
+            rc=0
+            systemctl start "$(unit_of "$1").service" || rc=$?
+            : > "$next"
+            if [ "$rc" != 0 ]; then
+              echo "vpn: switching failed, traffic stays dropped; 'vpn egress direct' goes direct" >&2
+              exit "$rc"
+            fi
           fi
           status --short
           ;;
@@ -175,6 +196,8 @@ let
           ;;
         mesh)
           [ $# -eq 1 ] || usage
+          # mesh off means direct: a selected egress cannot outlive its tunnel
+          if [ "$1" = off ]; then direct; fi
           switch "$1" wireguard-olympus
           ;;
         *) usage ;;
