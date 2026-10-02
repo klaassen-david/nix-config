@@ -21,10 +21,15 @@
 # fails the unit rather than being silently ignored — the limit not applying is
 # exactly the failure this is meant to make visible, so check
 # `systemctl status nvidia-power-limit` after a rebuild.
-{ config, lib, ... }:
+#
+# A switch that bumps the driver restarts this unit against the still-loaded old
+# kernel module, where nvidia-smi dies on "Driver/library version mismatch". The
+# ExecCondition skips it instead; the previous limit stays applied until reboot.
+{ config, lib, pkgs, ... }:
 
 let
   watts = config.host.gpuPowerLimitWatts;
+  inherit (config.hardware.nvidia) package;
 in
 {
   config = lib.mkIf (config.host.gpu == "nvidia" && watts != null) {
@@ -37,7 +42,8 @@ in
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
-        ExecStart = "${config.hardware.nvidia.package.bin}/bin/nvidia-smi --power-limit=${toString watts}";
+        ExecCondition = "${pkgs.gnugrep}/bin/grep -qF ' ${package.version} ' /proc/driver/nvidia/version";
+        ExecStart = "${package.bin}/bin/nvidia-smi --power-limit=${toString watts}";
       };
     };
   };
