@@ -19,6 +19,9 @@
 # → create the admin → "existing configuration" → upload the old wg0.json
 # (keys and v4 addresses carry over) → host vpn.dklaassen.de, port 51821; then
 # `systemctl restart podman-wg-easy` so the ExecStartPre below applies.
+# The IPv4 range must be 10.100.1.0/24 (`vpn.phones.subnet`); a fresh setup
+# defaults to 10.8.0.0/24, which `vpn-phone` rejects. Changing the range in the
+# UI renumbers the clients but not the live wg0: restart podman-wg-easy after it.
 #
 # Trust: a wg-easy admin is root-equivalent on olympus — host netns plus
 # NET_ADMIN, and the interface hooks are shell run by wg-quick. Hooks are
