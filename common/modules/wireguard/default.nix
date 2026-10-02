@@ -34,19 +34,30 @@
 #   hub    3500   from <phone> (vpn-phone, per phone)    2000+x, or prohibit
 #   exit   4900   fwmark 0x2000/0x2000                   2300: default dev vpn-exit
 #   exit   4950   iif vpn-exit                           main
+#   host   4960   to <mesh /16, /48, phones /112>        2050: those prefixes dev olympus, + blackholes
 #   host   5000   fwmark 0x1000/0x1000                   main (mesh socket: never tunnelled)
 #   host   5100   to <lan> (v4; vpn-home)                2200: <lan> dev olympus
-#   host   5200   all (egress or tukl selected)          2150: on-link routes of main (own lan, mesh, home)
+#   host   5200   all (egress or tukl selected)          2150: networks attached to the local links
+#                                                        (>= /16, /48) + routes over the mesh
 #   host   5300   all (egress or tukl selected)          2100: default dev olympus|tukl, else blackhole;
 #                                                        prohibit <home lan>
 #
+# Mesh prefixes (4960) are always resolved in table 2050, whatever main holds: a
+# route a local network pushes cannot divert them, and with the mesh down the
+# blackholes (kept by `vpn-underlay`, like rule 5000, independent of the mesh unit)
+# make them unreachable rather than sending them out of the local link.
+#
 # The egress slot (5200/5300, table 2100) is shared by the egress units and tukl
-# (wg-quick `Table = off`, its scripts fill the slot). Table 2150 holds only
-# on-link routes (no gateway, prefix >= /8, /48), kept by `vpn-onlink` while a
-# slot is taken: a route pushed into main by the local network (DHCP option 121)
-# cannot steer traffic around the tunnel. A mesh restart or a failed switch leaves
-# the blackhole in force: traffic drops until the selection is back or `vpn egress
-# direct` / `vpn mesh off` clears it.
+# (wg-quick `Table = off`, its scripts fill the slot). It outlives its holder: a
+# unit's stop (plain stop, restart, shutdown) removes only its default routes and
+# extra addresses, so the blackhole in 2100 drops traffic until a unit takes the
+# slot again or `vpn egress direct` / `vpn mesh off` (`vpn-egress-reset`) removes
+# it; `vpn status` calls that `blocked`. Table 2150 holds the prefixes of the
+# networks the host sits on (from the interface addresses, not from main) and the
+# mesh routes, kept by `vpn-onlink` while a slot is taken: a route pushed into
+# main by the local network (DHCP option 121, TunnelVision) cannot steer traffic
+# around the tunnel. A mesh restart re-attaches the selected unit's routes only if
+# that unit is still active; the units do not restart on deploys.
 #
 # GRE relays host exits: a WireGuard interface lets only one peer hold
 # 0.0.0.0/0, so the hub cannot give each exit its own default route. Instead
@@ -81,6 +92,8 @@
 # Units (hosts; wheel starts/stops them without sudo, host.userManagedUnits):
 #   wireguard-olympus      the mesh; vpn-home is bound to it, the egress units only
 #                          want it (a restart re-attaches the selected egress)
+#   vpn-underlay           always on, before the network: rule 5000, rule 4960 + blackholes
+#   vpn-onlink             keeps table 2150 current while the slot is taken
 #   vpn-egress-<olympus|x> one active at most, conflict with each other and tukl;
 #                          vpn-egress-watch@ announces a dead exit (traffic is dropped)
 #   wg-quick-tukl          tukl, dialled by the host itself, in the same slot
@@ -99,9 +112,11 @@
 #   - In a full tunnel DNS is whatever resolver the local network handed out
 #     (tukl pushes its own); it is not forced through the exit.
 #   - Phones get v6 only via an exit: olympus has no global v6 (see networking.nat).
-#   - A local network can still hand out on-link routes (>= /8) that table 2150
-#     honours; those destinations then bypass the tunnel. The watchdog checks the
-#     probe's path, not every destination.
+#   - Table 2150 trusts the host's own interface addresses: a network that hands
+#     out a /16-or-longer address (or a rogue DHCP lease) keeps that prefix
+#     direct, as it must for the network to be reachable at all. The watchdog
+#     checks the probe's path, not every destination.
+#   - The selection does not survive a reboot; hosts boot direct.
 #   - After the hub's mesh restarts, spokes re-handshake on their next keepalive:
 #     up to 1-2 minutes of dropped traffic.
 #   - Relayed traffic is refused the exit's LAN, not the home router's WAN
@@ -138,22 +153,6 @@ let
   ip = "${pkgs.iproute2}/bin/ip";
   # fwmark on the mesh socket; rule 5000 sends marked packets via main
   mark = "0x1000";
-  underlayRules =
-    action:
-    lib.concatMapStringsSep "\n"
-      (
-        f:
-        lib.optionalString (
-          action == "add"
-        ) "${ip} ${f} rule del fwmark ${mark}/${mark} lookup main pref 5000 || true\n"
-        + "${ip} ${f} rule ${action} fwmark ${mark}/${mark} lookup main pref 5000${
-          lib.optionalString (action == "del") " || true"
-        }"
-      )
-      [
-        "-4"
-        "-6"
-      ];
 
   selfName = config.host.hostName;
   self = nodes.${selfName};
@@ -185,6 +184,13 @@ let
   ruleDel =
     spec:
     lib.concatMapStringsSep "\n" (f: "${ip} ${f} rule del ${spec} || true") [
+      "-4"
+      "-6"
+    ];
+  # Add if missing, never delete first: for rules that must not blink on a re-run.
+  ruleKeep =
+    spec:
+    lib.concatMapStringsSep "\n" (f: "${ip} ${f} rule add ${spec} 2>/dev/null || true") [
       "-4"
       "-6"
     ];
@@ -265,6 +271,43 @@ let
     ${ruleDel "pref 4900"}
     ${ruleDel "pref 4950"}
     ${ip} link del vpn-exit || true
+  '';
+
+  # Mesh prefixes (hosts): routed by table 2050, consulted by rule 4960 ahead of the
+  # egress slot and main. The mesh's postSetup adds the real routes; the blackholes
+  # stay, so a downed mesh makes the mesh unreachable instead of sending it to the
+  # local network (a route pushed into main cannot take it either).
+  meshTable = "2050";
+  meshPrefixes = [
+    {
+      f = "-4";
+      dst = "${subnet}.0/16";
+    }
+    {
+      f = "-6";
+      dst = "${subnet6}/48";
+    }
+    {
+      f = "-6";
+      dst = cfg.phones.subnet6;
+    }
+  ];
+  meshRoutes = lib.concatMapStringsSep "\n" (
+    p:
+    "${ip} ${p.f} route replace ${p.dst} dev olympus src ${
+      if p.f == "-4" then self.ip else self.ip6
+    } table ${meshTable}"
+  ) meshPrefixes;
+  # Independent of the mesh unit and never removed: the underlay rule (the mesh
+  # socket stays out of any tunnel) and the mesh blackholes must outlive a mesh
+  # restart. Idempotent, so a restart of this unit never opens a gap.
+  underlay = pkgs.writeShellScript "vpn-underlay" ''
+    set -euo pipefail
+    ${ruleKeep "pref 5000 fwmark ${mark}/${mark} lookup main"}
+    ${lib.concatMapStringsSep "\n" (p: ''
+      ${ip} ${p.f} route replace blackhole ${p.dst} metric 4294967295 table ${meshTable}
+      ${ip} ${p.f} rule add pref 4960 to ${p.dst} lookup ${meshTable} 2>/dev/null || true
+    '') meshPrefixes}
   '';
 
   nft = "${pkgs.nftables}/bin/nft";
@@ -824,10 +867,44 @@ let
   owner = "/run/vpn-egress";
   systemctl = "${config.systemd.package}/bin/systemctl";
 
-  # Table 2150 (rule 5200): the on-link routes of main, i.e. what stays direct in
-  # a full tunnel (own lan, mesh, home). Gatewayed routes are left out on purpose:
-  # a rogue DHCP server could push `0.0.0.0/1 via <it>` and, with a
-  # suppress_prefixlength rule, pull traffic around the tunnel (TunnelVision).
+  # Table 2150 (rule 5200): what stays direct in a full tunnel — the prefixes
+  # attached to the local links (from their addresses, at least /16 resp. /48) and
+  # every route over the mesh (mesh, home). Routes in main are *not* copied: a
+  # rogue DHCP server could push `198.51.100.0/24 dev eth1` (option 121) or
+  # `0.0.0.0/1 via <it>` and pull traffic around the tunnel (TunnelVision).
+  onlinkPy = pkgs.writeText "vpn-onlink.py" ''
+    import ipaddress
+    import json
+    import re
+    import subprocess
+    import sys
+
+    fam = sys.argv[1]
+    minlen = 16 if fam == "-4" else 48
+    vpn = re.compile(r"^(lo|olympus|tukl|vpn-.*)$")
+
+
+    def ip(*args):
+        out = subprocess.run(["ip", "-j", fam, *args], capture_output=True, text=True).stdout
+        return json.loads(out) if out.strip() else []
+
+
+    for link in ip("addr", "show"):
+        if vpn.match(link["ifname"]):
+            continue
+        for a in link.get("addr_info", []):
+            if a.get("scope") != "global":
+                continue
+            net = ipaddress.ip_interface(f"{a['local']}/{a['prefixlen']}").network
+            if net.prefixlen >= minlen:
+                print(f"{net} dev {link['ifname']} metric {0 if fam == '-4' else 1024}")
+
+    for r in ip("route", "show", "dev", "olympus"):
+        if r["dst"] == "default" or r["dst"].startswith("fe80:") or r.get("type", "unicast") != "unicast":
+            continue
+        src = f" src {r['prefsrc']}" if r.get("prefsrc") else ""
+        print(f"{r['dst']} dev olympus{src} metric {r.get('metric', 0)}")
+  '';
   onlink = pkgs.writeShellApplication {
     name = "vpn-onlink";
     runtimeInputs = [
@@ -837,19 +914,16 @@ let
       pkgs.gnugrep
       pkgs.gnused
       pkgs.gawk
+      pkgs.python3
+      config.systemd.package
     ];
     text = ''
       # replace first, delete stale after, so a refill never opens a gap
-      fill() { # <-4|-6> <min prefix length> <host prefix length>
+      fill() { # <-4|-6>
         local want have
         want=$(mktemp)
         have=$(mktemp)
-        ip -j "$1" route show table main | jq -r --argjson min "$2" --argjson full "$3" '
-          .[] | select(.dst != "default" and .gateway == null and .dev != null and .nexthops == null
-                       and (.type // "unicast") == "unicast")
-              | select((.dst | if test("/") then split("/")[1] | tonumber else $full end) >= $min)
-              | "\(.dst) dev \(.dev)\(if .prefsrc then " src " + .prefsrc else "" end) metric \(.metric // 0)"' \
-          | sort -u > "$want"
+        python3 ${onlinkPy} "$1" | sort -u > "$want"
         sed 's/^/route replace /; s/$/ table 2150/' "$want" | ip -force "$1" -batch - || true
         awk '{ print $1, $NF }' "$want" | sort -u > "$want.k"
         { ip -j "$1" route show table 2150 2>/dev/null || true; } | jq -r '.[]? | "\(.dst) \(.metric // 0)"' | sort -u > "$have"
@@ -859,20 +933,25 @@ let
         rm -f "$want" "$want.k" "$have"
       }
       fill_all() {
-        fill -4 8 32
-        fill -6 48 128
+        fill -4
+        fill -6
       }
 
       case $1 in
-        fill) fill_all ;;
         clear)
           ip -4 route flush table 2150 2>/dev/null || true
           ip -6 route flush table 2150 2>/dev/null || true
           ;;
         watch)
-          # events of other tables (incl. our own 2150 writes) print " table "
-          ip -o monitor route | grep --line-buffered -v ' table ' | while read -r _; do
-            while read -r -t 1 _; do :; done
+          # The follower is subscribed before the first fill, so a change in between
+          # is not lost; the unit is ready (Type=notify) once table 2150 is filled.
+          # Events of other tables (incl. our own 2150 writes) print " table ".
+          exec 8< <(ip -o monitor route address | grep --line-buffered -v ' table ')
+          sleep 0.3
+          fill_all
+          systemd-notify --ready
+          while read -r _ <&8; do
+            while read -r -t 1 _ <&8; do :; done
             fill_all
           done
           ;;
@@ -880,19 +959,17 @@ let
     '';
   };
 
-  # Egress table 2100 is consulted by rules 5200/5300 while an egress is selected.
-  # It carries a blackhole default (worst metric): if the tunnel route vanishes
-  # traffic drops instead of falling through to the direct path. `prohibit` for
-  # every home lan keeps it out of a full tunnel unless vpn-home's rule 5100
-  # picks it first. `extra` are addresses added to `olympus` for the unit's lifetime.
-  #
-  # Switching through `vpn egress` is a handover: the CLI writes the target unit to
-  # /run/vpn-egress.next first, and the old unit's stop then keeps rules 5200/5300 and the
-  # blackhole (only its real default goes), so there is no direct window; the new
-  # unit's start replaces the default and clears the file. A failed start stays
-  # dropped (`vpn status`: inconsistent; `vpn egress direct` clears it). A plain
-  # stop tears everything down. The owner marker names the unit holding the slot;
-  # it still names the old unit during a handover, until the new start overwrites it.
+  # Egress table 2100 is consulted by rules 5200/5300 while the slot is taken. The
+  # slot (rules, blackhole default at the worst metric, `prohibit` for every home
+  # lan so a full tunnel never carries it unless vpn-home's rule 5100 picks it
+  # first) is installed by a unit's start and outlives it: a unit's stop removes
+  # only its own default routes, its extra addresses and the owner marker, so a
+  # plain stop, restart, crash or shutdown fails closed (`vpn status`: blocked).
+  # Only `vpn-egress-reset` (`vpn egress direct`, `vpn mesh off`) removes the slot.
+  # A switch is the same thing: the old unit's stop leaves the blackhole, the new
+  # start replaces it, with no direct window. The owner marker names the unit
+  # holding the routes, so a late ExecStop of the old unit cannot strip the new one.
+  # `extra` are addresses added to `olympus` for the unit's lifetime.
   egressScripts =
     {
       name,
@@ -930,34 +1007,25 @@ let
         # fail closed first: whatever goes wrong below, nothing leaks
         ${each (f: "${ip} ${f} route replace blackhole default metric 4294967295 table 2100")}
         ${lib.concatMapStringsSep "\n" (n: "${ip} -4 route replace prohibit ${n.lan} table 2100") lanNodes}
-        # rules already in place (handover) are left alone: no gap
+        # rules already in place (switch, or left by a stop) are not touched: no gap
         ${each (f: ''
           ${ip} ${f} rule show pref 5200 | ${grep} -qw 'lookup 2150' || ${ip} ${f} rule add pref 5200 lookup 2150
           ${ip} ${f} rule show pref 5300 | ${grep} -qw 'lookup 2100' || ${ip} ${f} rule add pref 5300 lookup 2100
         '')}
         ${attach}
-        if [ -e ${nextFile} ]; then : > ${nextFile}; fi
       '';
-      # Only the current owner of the shared rules and table tears them down.
+      # The slot (rules, blackhole, prohibits, onlink) stays; see above.
       stop = pkgs.writeShellScript "vpn-egress-stop" ''
-        set -euo pipefail
+        set -uo pipefail
         if [ "$(cat ${owner} 2>/dev/null || true)" = ${name} ]; then
-          next=$(cat ${nextFile} 2>/dev/null || true)
-          case $next in
-            ${lib.concatStringsSep " | " (lib.filter (n: n != name) egressSlots)}) ;;
-            *) next="" ;;
-          esac
-          if [ -n "$next" ]; then
-            ${each (f: "${ip} ${f} route del default dev ${dev} metric 100 table 2100 || true")}
-          else
-            ${teardown}
-          fi
+          ${each (f: "${ip} ${f} route del default dev ${dev} metric 100 table 2100 || true")}
+          rm -f ${owner}
         fi
         ${lib.concatMapStringsSep "\n" (a: "${ip} ${addrFlags a}addr del ${a} dev olympus || true") extra}
       '';
     };
 
-  # Everything that makes up the egress slot, regardless of owner.
+  # The whole slot, whoever holds it.
   teardown = ''
     ${lib.concatMapStringsSep "\n" (f: ''
       ${ip} ${f} rule del pref 5200 || true
@@ -968,10 +1036,6 @@ let
     ${systemctl} stop --no-block vpn-onlink.service || true
   '';
   grep = "${pkgs.gnugrep}/bin/grep";
-  nextFile = "/run/vpn-egress.next";
-
-  # Egress slot holders: the egress units, and tukl when this node has one.
-  egressSlots = egressUnits ++ lib.optional (self.tukl != null) "wg-quick-tukl";
 
   # One definition per slot holder; units, the mesh re-attach and tukl share them.
   egressDefs = {
@@ -1013,16 +1077,14 @@ let
   };
   egressScriptsOf = lib.mapAttrs (name: args: egressScripts (args // { inherit name; })) egressDefs;
 
-  # `systemctl start vpn-egress-reset` clears a stuck or half-switched slot (`vpn egress direct`).
+  # `systemctl start vpn-egress-reset` removes the slot (`vpn egress direct`).
   resetScript = pkgs.writeShellScript "vpn-egress-reset" ''
     set -euo pipefail
     ${teardown}
-    if [ -e ${nextFile} ]; then : > ${nextFile}; fi
   '';
 
-  # Bypass guards: tukl and the egress rules (pref 5300) must never be up together,
-  # whatever brought one of them up. A handover (the CLI named tukl in /run/vpn-egress.next)
-  # legitimately finds the old rules still in place.
+  # Bypass guards: tukl and an egress unit must never be up together, whatever
+  # brought one of them up. (A slot left by a stopped unit is fine: it only blocks.)
   egressGuard = pkgs.writeShellScript "vpn-egress-guard" ''
     if ${ip} link show dev tukl >/dev/null 2>&1 \
       && ! ${systemctl} is-active --quiet wg-quick-tukl.service; then
@@ -1031,13 +1093,15 @@ let
     fi
   '';
   tuklGuard = pkgs.writeShellScript "wg-quick-tukl-guard" ''
-    [ "$(cat ${nextFile} 2>/dev/null || true)" = wg-quick-tukl ] && exit 0
-    for f in -4 -6; do
-      if [ -n "$(${ip} $f rule show pref 5300)" ]; then
-        echo "an egress rule (pref 5300) is active; use 'vpn egress tukl' or stop the vpn-egress unit first" >&2
-        exit 1
-      fi
-    done
+    own=$(cat ${owner} 2>/dev/null || true)
+    case $own in
+      vpn-egress-*)
+        if ${systemctl} is-active --quiet "$own.service"; then
+          echo "$own is active; use 'vpn egress tukl' or stop it first" >&2
+          exit 1
+        fi
+        ;;
+    esac
   '';
 
   # wants+after the mesh, not bound to it: a mesh restart (deploy, `wg` hiccup)
@@ -1057,6 +1121,8 @@ let
     conflicts =
       map (n: "${n}.service") (lib.filter (n: n != name) egressUnits)
       ++ lib.optional (self.tukl != null) "wg-quick-tukl.service";
+    # a deploy must not bounce the selected exit
+    restartIfChanged = false;
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
@@ -1083,6 +1149,8 @@ let
       # the `vpn` CLI and the bar read this marker while the exit is down
       marker=/run/vpn-egress-watch/$unit.down
       mkdir -p /run/vpn-egress-watch
+      # a marker left by a killed predecessor must not outlive its watcher
+      rm -f "$marker"
       trap 'rm -f "$marker"' EXIT
       trap 'exit 0' TERM INT
 
@@ -1387,20 +1455,18 @@ in
         ];
         # rules are deleted first so a re-run after a crashed stop stays idempotent
         postSetup = ''
-          ${ip} route replace ${subnet}.0/16 dev olympus src ${self.ip}
-          ${ip} -6 route replace ${subnet6}/48 dev olympus src ${self.ip6}
-          ${underlayRules "add"}
+          ${meshRoutes}
           ${lib.optionalString self.exit exitSetup}
-          # a selected egress survives a mesh restart: put its routes back (until then the blackhole drops)
+          # a selected egress survives a mesh restart: put its routes back (until then the
+          # blackhole drops), but only for a unit that is still running
           case "$(cat ${owner} 2>/dev/null || true)" in
           ${lib.concatMapStrings (n: ''
-            ${n}) ${egressScriptsOf.${n}.attach} || true ;;
+            ${n}) if ${systemctl} is-active --quiet ${n}.service; then ${egressScriptsOf.${n}.attach} || true; fi ;;
           '') egressUnits}
           esac
           ${pkgs.coreutils}/bin/install -m 0600 -o ${sshUser.name} -g ${sshUser.group} ${sshTunnelConfig} ${sshLocalConfig}
         '';
         postShutdown = ''
-          ${underlayRules "del"}
           ${lib.optionalString self.exit exitShutdown}
           ${pkgs.coreutils}/bin/rm -f ${sshLocalConfig}
         '';
@@ -1458,13 +1524,30 @@ in
     systemd.services = lib.mkMerge [
       (lib.mkIf (!isServer) (
         {
-          # filled and followed while an egress is selected (started/stopped by its scripts)
+          # follows the local links while the slot is taken (started by its scripts, stopped by reset)
           vpn-onlink.serviceConfig = {
-            ExecStartPre = "${onlink}/bin/vpn-onlink fill";
+            Type = "notify";
+            NotifyAccess = "all";
             ExecStart = "${onlink}/bin/vpn-onlink watch";
             ExecStopPost = "${onlink}/bin/vpn-onlink clear";
             Restart = "always";
             RestartSec = 1;
+          };
+          # always on, before the network: the mesh socket stays out of any tunnel
+          # (rule 5000) and the mesh prefixes have their blackholes (rule 4960)
+          vpn-underlay = {
+            wantedBy = [ "multi-user.target" ];
+            wants = [ "network-pre.target" ];
+            before = [ "network-pre.target" ];
+            serviceConfig = {
+              Type = "oneshot";
+              RemainAfterExit = true;
+              ExecStart = underlay;
+            };
+          };
+          wireguard-olympus = {
+            wants = [ "vpn-underlay.service" ];
+            after = [ "vpn-underlay.service" ];
           };
           vpn-egress-reset.serviceConfig = {
             Type = "oneshot";
@@ -1476,9 +1559,13 @@ in
             serviceConfig = {
               Type = "simple";
               ExecStart = "${egressWatch}/bin/vpn-egress-watch %i";
+              Restart = "on-failure";
+              RestartSec = 2;
             };
           };
           wg-quick-tukl = lib.mkIf (self.tukl != null) {
+            # a deploy must not bounce the selected exit
+            restartIfChanged = false;
             wants = [ "vpn-egress-watch@wg-quick-tukl.service" ];
             after = map (n: "${n}.service") egressUnits;
           };
@@ -1582,8 +1669,8 @@ in
       if isServer then
         [ "d ${phoneStateDir} 0700 root root -" ]
       else
-        # the `vpn` CLI (user) names the next egress here for a gapless handover
-        [ "f ${nextFile} 0600 ${sshUser.name} ${sshUser.group} -" ];
+        # the `vpn` CLI serialises its calls on a lock here
+        [ "f /run/lock/vpn.lock 0644 root root -" ];
     environment.systemPackages = lib.mkIf isServer [ phoneCli ];
 
     # ---------------------------------------------------------------------------

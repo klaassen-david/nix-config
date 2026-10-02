@@ -387,7 +387,8 @@ pkgs.testers.runNixOSTest {
         hermes.succeed("systemctl stop wireguard-olympus.service")
         hermes.fail("ping -c1 -W2 10.100.0.1")
         hermes.fail("test -e /home/dk/.ssh/config.local")
-        hermes.fail("ip rule show | grep 5000")
+        # the underlay rule belongs to vpn-underlay, not to the mesh
+        hermes.succeed("ip rule show | grep 5000")
         hermes.succeed("systemctl start wireguard-olympus.service")
         hermes.wait_until_succeeds("ping -c1 -W2 10.100.0.1")
         hermes.succeed("test -e /home/dk/.ssh/config.local")
@@ -396,7 +397,7 @@ pkgs.testers.runNixOSTest {
 
     curl = "curl -s --max-time 5 http://198.51.100.1/"
 
-    with subtest("egress via olympus: hermes exits from the hub, stop goes direct"):
+    with subtest("egress via olympus: hermes exits from the hub, direct clears the slot"):
         hermes.succeed("systemctl start vpn-egress-olympus.service")
         out = hermes.succeed(curl).strip()
         assert out == "203.0.113.10", f"expected egress via olympus, got {out!r}"
@@ -404,7 +405,7 @@ pkgs.testers.runNixOSTest {
         hermes.succeed("ip rule show | grep 5300")
         hermes.succeed("ping -c1 -W2 10.100.0.2")
         hermes.succeed("ping -6 -c1 -W2 fdaa:e184:83f::1")
-        hermes.succeed("systemctl stop vpn-egress-olympus.service")
+        hermes.succeed("vpn egress direct")
         out = hermes.succeed(curl).strip()
         assert out == "203.0.113.30", f"expected direct egress, got {out!r}"
         hermes.fail("ip rule show | grep -E '^(5200|5300):'")
@@ -431,7 +432,7 @@ pkgs.testers.runNixOSTest {
         hermes.wait_until_succeeds(f"journalctl -u '{watch}' | grep 'reachable again'", timeout=120)
         out = hermes.succeed(curl).strip()
         assert out == "203.0.113.10", f"expected egress via olympus, got {out!r}"
-        hermes.succeed("systemctl stop vpn-egress-olympus.service")
+        hermes.succeed("vpn egress direct")
 
     with subtest("egress via hestia: exits from hestia's home NAT, refuses its LAN"):
         hermes.succeed("systemctl start vpn-egress-hestia.service")
@@ -442,14 +443,14 @@ pkgs.testers.runNixOSTest {
         hermes.fail("systemctl is-active vpn-egress-hestia.service")
         out = hermes.succeed(curl).strip()
         assert out == "203.0.113.10", f"expected egress via olympus, got {out!r}"
-        hermes.succeed("systemctl stop vpn-egress-olympus.service")
+        hermes.succeed("vpn egress direct")
         hermes.fail("ip addr show dev olympus | grep 10.100.12.3")
 
     with subtest("egress via hermes: hestia exits from hermes"):
         hestia.succeed("systemctl start vpn-egress-hermes.service")
         out = hestia.succeed(curl).strip()
         assert out == "203.0.113.30", f"expected egress via hermes, got {out!r}"
-        hestia.succeed("systemctl stop vpn-egress-hermes.service")
+        hestia.succeed("vpn egress direct")
 
     with subtest("exit offline: traffic is dropped, never sent from another exit"):
         watch = "vpn-egress-watch@vpn-egress-hestia.service"
@@ -461,7 +462,7 @@ pkgs.testers.runNixOSTest {
         hermes.wait_until_succeeds(f"journalctl -u '{watch}' | grep 'traffic is dropped'", timeout=120)
         hestia.succeed("systemctl start wireguard-olympus.service")
         hermes.wait_until_succeeds(f"{curl} | grep -x 203.0.113.20", timeout=120)
-        hermes.succeed("systemctl stop vpn-egress-hestia.service")
+        hermes.succeed("vpn egress direct")
         out = hermes.succeed(curl).strip()
         assert out == "203.0.113.30", f"expected direct egress, got {out!r}"
 
@@ -520,11 +521,18 @@ pkgs.testers.runNixOSTest {
         assert "mesh: up" in hermes.succeed("vpn status")
 
     with subtest("vpn wrapper: kernel state without a unit is inconsistent"):
+        # a slot nobody holds blocks (traffic is dropped); it is not a contradiction
         hermes.succeed("ip rule add pref 5300 lookup 2100")
+        rc, out = hermes.execute("vpn status --short")
+        assert rc == 1 and out.strip() == "blocked", (rc, out)
+        assert json.loads(hermes.succeed("vpn status --json")) == {"text": "blocked", "state": "Critical"}
+        hermes.succeed("ip rule del pref 5300")
+        # an owner marker without a unit holding it is a contradiction
+        hermes.succeed("echo vpn-egress-olympus > /run/vpn-egress")
         rc, out = hermes.execute("vpn status --short")
         assert rc == 1 and out.strip() == "inconsistent", (rc, out)
         assert json.loads(hermes.succeed("vpn status --json")) == {"text": "inconsistent", "state": "Critical"}
-        hermes.succeed("ip rule del pref 5300")
+        hermes.succeed("rm /run/vpn-egress")
         assert short(hermes) == "direct", short(hermes)
 
         # a tukl link outside wg-quick-tukl: flagged, and the egress units refuse to start
@@ -558,7 +566,7 @@ pkgs.testers.runNixOSTest {
         hermes.succeed(f"ping -c1 -W2 {home}")
         out = hermes.succeed(curl).strip()
         assert out == "203.0.113.10", f"expected egress via olympus, got {out!r}"
-        hermes.succeed("systemctl stop vpn-egress-olympus.service")
+        hermes.succeed("vpn egress direct")
         hermes.succeed("systemctl stop vpn-home.service")
         hermes.fail(f"ping -c1 -W2 {home}")
         hermes.fail("ip rule show | grep 5100")
@@ -574,7 +582,7 @@ pkgs.testers.runNixOSTest {
     with subtest("home switch: an exit's traffic never reaches the LAN"):
         hermes.succeed("systemctl start vpn-egress-hestia.service")
         hermes.fail(f"ping -c1 -W2 {home}")
-        hermes.succeed("systemctl stop vpn-egress-hestia.service")
+        hermes.succeed("vpn egress direct")
 
     with subtest("home switch: olympus reaches the LAN only while vpn-home is on"):
         olympus.fail(f"ping -c1 -W2 {home}")
@@ -830,7 +838,7 @@ pkgs.testers.runNixOSTest {
     with subtest("A6: gatewayed routes pushed into main cannot pull traffic around the tunnel"):
         watch = "vpn-egress-watch@vpn-egress-olympus.service"
         hermes.succeed("vpn egress olympus")
-        hermes.succeed("ip route show table 2150 | grep -F 10.100.0.0/16")
+        hermes.succeed("ip route show table 2150 | grep -F 10.100.0.0/24")
         hermes.succeed("ip route show table 2150 | grep -F 203.0.113.0/24")
         hermes.fail("ip route show table 2150 | grep default")
         hermes.succeed("ip route add 0.0.0.0/1 via 203.0.113.1 dev eth1")
@@ -841,10 +849,10 @@ pkgs.testers.runNixOSTest {
         assert out == "203.0.113.10", f"expected egress via olympus, got {out!r}"
         hermes.sleep(40)
         hermes.fail(f"journalctl -u '{watch}' | grep 'path left'")
-        # an on-link route appearing later is picked up by the follower
-        hermes.succeed("ip route add 198.18.0.0/24 dev eth1")
+        # a network address appearing later is picked up by the follower
+        hermes.succeed("ip addr add 198.18.0.1/24 dev eth1")
         hermes.wait_until_succeeds("ip route show table 2150 | grep -F 198.18.0.0/24")
-        hermes.succeed("ip route del 198.18.0.0/24 dev eth1")
+        hermes.succeed("ip addr del 198.18.0.1/24 dev eth1")
         hermes.wait_until_fails("ip route show table 2150 | grep -F 198.18.0.0/24")
         hermes.succeed("ip route del 0.0.0.0/1 via 203.0.113.1 dev eth1")
         hermes.succeed("ip route del 128.0.0.0/1 via 203.0.113.1 dev eth1")
@@ -881,6 +889,8 @@ pkgs.testers.runNixOSTest {
         rc, out = hermes.execute("vpn status --short")
         assert rc == 1 and out.strip() == "inconsistent", (rc, out)
         hermes.succeed("ip link del tukl")
+        rc, out = hermes.execute("vpn status --short")
+        assert rc == 1 and out.strip() == "blocked", (rc, out)
         hermes.succeed("vpn egress direct")
         out = hermes.succeed(curl).strip()
         assert out == "203.0.113.30", f"expected direct egress, got {out!r}"
@@ -1026,5 +1036,121 @@ pkgs.testers.runNixOSTest {
         hestia.wait_until_succeeds("nft list set inet vpn-exit lan4 | grep 10.78.0.0/24")
         hestia.succeed("ip link del dum1")
         hestia.wait_until_fails("nft list set inet vpn-exit lan4 | grep 10.78.0.0/24")
+    # Any packet leaving eth1 for `dst` while a tunnel is selected is a leak: the
+    # tunnel's own traffic goes to the hub, never to the destination.
+    def leak_start(tag, dst="198.51.100.1"):
+        hermes.succeed(f"rm -f /tmp/leak-{tag}.txt")
+        hermes.succeed(f"systemd-run --unit=leak-{tag} -p StandardOutput=file:/tmp/leak-{tag}.txt tcpdump -nl -i eth1 -Q out 'dst host {dst}'")
+        hermes.succeed(f"systemd-run --unit=gen-{tag} ping -i 0.01 {dst}")
+        hermes.succeed(
+            f"systemd-run --unit=gen2-{tag} -E PATH=$PATH sh -c "
+            f"'while true; do curl -s --max-time 1 http://{dst}/ >/dev/null; sleep 0.05; done'"
+        )
+        hermes.sleep(2)
+
+    def leak_stop(tag):
+        hermes.sleep(2)
+        hermes.execute(f"systemctl stop gen-{tag} gen2-{tag}")
+        hermes.sleep(1)
+        hermes.execute(f"systemctl stop leak-{tag}")
+        out = hermes.succeed(f"cat /tmp/leak-{tag}.txt")
+        # packet lines only (tcpdump's banner and summary share the file)
+        return [l for l in out.splitlines() if " > " in l]
+
+    with subtest("H1: stop and restart of an exit fail closed, never direct"):
+        hermes.succeed("vpn egress olympus")
+        leak_start("h1")
+        hermes.succeed("systemctl restart vpn-egress-olympus.service")
+        hermes.wait_until_succeeds(f"{curl} | grep -x 203.0.113.10")
+        hermes.succeed("systemctl stop vpn-egress-olympus.service")
+        out = hermes.execute(curl)[1].strip()
+        assert out == "", f"expected a dropped connection, got {out!r}"
+        rc, out = hermes.execute("vpn status --short")
+        assert rc == 1 and out.strip() == "blocked", (rc, out)
+        assert json.loads(hermes.succeed("vpn status --json")) == {"text": "blocked", "state": "Critical"}
+        hermes.succeed("ip rule show pref 5300 | grep .")
+        hermes.succeed("ip route show table 2100 | grep blackhole")
+        hermes.fail("ip route show table 2100 | grep 'default dev'")
+        hermes.fail("test -e /run/vpn-egress")
+        hermes.succeed("systemctl start vpn-egress-olympus.service")
+        hermes.wait_until_succeeds(f"{curl} | grep -x 203.0.113.10")
+        assert short(hermes) == "olympus", short(hermes)
+        leaked = leak_stop("h1")
+        assert not leaked, f"packets left eth1 for the probe: {leaked[:3]}"
+        hermes.succeed("vpn egress direct")
+        out = hermes.succeed(curl).strip()
+        assert out == "203.0.113.30", f"expected direct egress, got {out!r}"
+        assert short(hermes) == "direct", short(hermes)
+        hermes.fail("ip rule show | grep -E '^(5200|5300):'")
+
+    with subtest("M1: overlapping vpn calls are serialised and never go direct"):
+        hermes.succeed("vpn egress olympus")
+        leak_start("m1")
+        hermes.succeed("vpn egress hestia & vpn egress olympus & vpn egress hestia & vpn egress olympus & wait")
+        active = [
+            u for u in ["olympus", "hestia"]
+            if hermes.execute(f"systemctl is-active --quiet vpn-egress-{u}.service")[0] == 0
+        ]
+        assert len(active) == 1, active
+        assert short(hermes) == active[0], short(hermes)
+        for fam in ["-4", "-6"]:
+            assert hermes.succeed(f"ip {fam} rule show pref 5300 | wc -l").strip() == "1"
+        leaked = leak_stop("m1")
+        assert not leaked, f"packets left eth1 for the probe: {leaked[:3]}"
+        hermes.succeed("vpn egress direct")
+
+    with subtest("M2: a pushed on-link route cannot pull traffic around the tunnel"):
+        hermes.succeed("vpn egress olympus")
+        hermes.succeed("ip route add 198.51.100.0/24 dev eth1")
+        hermes.fail("ip route show table 2150 | grep -F 198.51.100.0/24")
+        leak_start("m2")
+        out = hermes.succeed(curl).strip()
+        assert out == "203.0.113.10", f"expected egress via olympus, got {out!r}"
+        leaked = leak_stop("m2")
+        assert not leaked, f"packets left eth1 for the probe: {leaked[:3]}"
+        hermes.succeed("ip route del 198.51.100.0/24 dev eth1")
+        hermes.succeed("vpn egress direct")
+
+    with subtest("M3: mesh prefixes go over the mesh, or nowhere"):
+        for mode in ["direct", "olympus"]:
+            hermes.succeed(f"vpn egress {mode}")
+            hermes.succeed("ip route add 10.100.0.2/32 via 203.0.113.1 dev eth1")
+            hermes.succeed("ip -6 route add fdaa:e184:83f::2/128 dev eth1")
+            assert "dev olympus" in hermes.succeed("ip route get 10.100.0.2")
+            assert "dev olympus" in hermes.succeed("ip -6 route get fdaa:e184:83f::2")
+            hermes.wait_until_succeeds("ping -c1 -W2 10.100.0.2")
+            hermes.succeed("ip route del 10.100.0.2/32 via 203.0.113.1 dev eth1")
+            hermes.succeed("ip -6 route del fdaa:e184:83f::2/128 dev eth1")
+        hermes.succeed("vpn egress direct")
+        hermes.succeed("ip route add 10.100.0.2/32 via 203.0.113.1 dev eth1")
+        hermes.succeed("systemctl stop wireguard-olympus.service")
+        leak_start("m3", "10.100.0.2")
+        hermes.fail("ping -c1 -W1 10.100.0.2")
+        out = hermes.execute("ip route get 10.100.0.2 2>&1")[1]
+        assert "eth1" not in out, out
+        leaked = leak_stop("m3")
+        assert not leaked, f"mesh traffic left eth1: {leaked[:3]}"
+        hermes.succeed("ip route del 10.100.0.2/32 via 203.0.113.1 dev eth1")
+        hermes.succeed("systemctl start wireguard-olympus.service")
+        hermes.wait_until_succeeds("ping -c1 -W2 10.100.0.2")
+
+    with subtest("L3: a mesh restart re-attaches only a unit that is still running"):
+        hermes.succeed("echo vpn-egress-olympus > /run/vpn-egress")
+        hermes.succeed("systemctl restart wireguard-olympus.service")
+        hermes.wait_until_succeeds("ping -c1 -W2 10.100.0.1")
+        hermes.fail("ip route show table 2100 | grep 'default dev'")
+        hermes.succeed("rm /run/vpn-egress")
+
+    with subtest("L4: a killed watcher leaves no stale !down behind"):
+        hermes.succeed("vpn egress hestia")
+        hestia.succeed("systemctl stop wireguard-olympus.service")
+        hermes.wait_until_succeeds('test "$(vpn status --short)" = "hestia !down"', timeout=120)
+        hermes.succeed("systemctl kill -s KILL vpn-egress-watch@vpn-egress-hestia.service")
+        hestia.succeed("systemctl start wireguard-olympus.service")
+        hermes.wait_until_succeeds(f"{curl} | grep -x 203.0.113.20", timeout=120)
+        hermes.wait_until_succeeds('test "$(vpn status --short)" = hestia', timeout=120)
+        hermes.sleep(20)
+        assert short(hermes) == "hestia", short(hermes)
+        hermes.succeed("vpn egress direct")
   '';
 }
