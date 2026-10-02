@@ -510,6 +510,24 @@ let
       '';
     };
 
+  # Bypass guards: tukl and the egress rules (pref 5300) must never be up together,
+  # whatever brought one of them up.
+  egressGuard = pkgs.writeShellScript "vpn-egress-guard" ''
+    if ${ip} link show dev tukl >/dev/null 2>&1 \
+      && ! ${config.systemd.package}/bin/systemctl is-active --quiet wg-quick-tukl.service; then
+      echo "a tukl link exists outside wg-quick-tukl.service; run 'wg-quick down tukl' first" >&2
+      exit 1
+    fi
+  '';
+  tuklGuard = pkgs.writeShellScript "wg-quick-tukl-guard" ''
+    for f in -4 -6; do
+      if [ -n "$(${ip} $f rule show pref 5300)" ]; then
+        echo "an egress rule (pref 5300) is active; stop the vpn-egress unit first" >&2
+        exit 1
+      fi
+    done
+  '';
+
   egressUnit =
     name: args:
     let
@@ -517,7 +535,12 @@ let
     in
     {
       bindsTo = [ "wireguard-olympus.service" ];
-      after = [ "wireguard-olympus.service" ];
+      # Conflicts= alone does not order the stop before the start; any ordering edge
+      # does, so the egress units and tukl form a one-directional chain in list order.
+      after = [
+        "wireguard-olympus.service"
+      ]
+      ++ map (n: "${n}.service") (lib.take (lib.lists.findFirstIndex (n: n == name) null egressUnits) egressUnits);
       partOf = [ "wireguard-olympus.service" ];
       conflicts =
         map (n: "${n}.service") (lib.filter (n: n != name) egressUnits)
@@ -526,6 +549,7 @@ let
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
+        ExecStartPre = egressGuard;
         ExecStart = scripts.start;
         ExecStop = scripts.stop;
       };
@@ -544,6 +568,11 @@ let
       unit=$1
       fails=0
       down=0
+      # the `vpn` CLI and the bar read this marker while the exit is down
+      marker=/run/vpn-egress-watch/$unit.down
+      mkdir -p /run/vpn-egress-watch
+      trap 'rm -f "$marker"' EXIT
+      trap 'exit 0' TERM INT
 
       notify() {
         bus="/run/user/$(id -u dk)/bus"
@@ -558,6 +587,7 @@ let
           fails=0
           if [ "$down" = 1 ]; then
             down=0
+            rm -f "$marker"
             echo "$unit: reachable again"
             notify normal "VPN exit back" "$unit: internet reachable again"
           fi
@@ -565,11 +595,13 @@ let
           fails=$((fails + 1))
           if [ "$fails" -ge 2 ] && [ "$down" = 0 ]; then
             down=1
+            touch "$marker"
             echo "$unit: no internet through the exit — traffic is dropped"
             notify critical "VPN exit down" "$unit: no internet, traffic is dropped — systemctl stop $unit to go direct"
           fi
         fi
-        sleep 15
+        sleep 15 &
+        wait $!
       done
     '';
   };
@@ -598,6 +630,8 @@ let
   sshLocalConfig = "${sshUser.home}/.ssh/config.local";
 in
 {
+  imports = [ ./cli.nix ];
+
   # Internal: the registry and its constants. tests/vpn.nix overrides them.
   options.vpn = {
     nodes = lib.mkOption {
@@ -895,6 +929,7 @@ in
           };
           wg-quick-tukl = lib.mkIf (self.tukl != null) {
             wants = [ "vpn-egress-watch@wg-quick-tukl.service" ];
+            after = map (n: "${n}.service") egressUnits;
           };
         }
         // lib.listToAttrs (
@@ -1010,6 +1045,7 @@ in
     networking.wg-quick.interfaces.tukl = lib.mkIf (self.tukl != null) {
       autostart = false;
       privateKeyFile = config.age.secrets.wg-tukl.path;
+      preUp = "${tuklGuard}";
       inherit (self.tukl) address dns mtu;
       peers = [
         {

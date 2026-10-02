@@ -303,6 +303,8 @@ pkgs.testers.runNixOSTest {
   };
 
   testScript = ''
+    import json
+
     start_all()
 
     hosts = [hermes, hestia]
@@ -412,6 +414,87 @@ pkgs.testers.runNixOSTest {
         hermes.succeed("systemctl stop vpn-egress-hestia.service")
         out = hermes.succeed(curl).strip()
         assert out == "203.0.113.30", f"expected direct egress, got {out!r}"
+
+    # Run as root: the polkit rule that lets dk flip these units is not imported here.
+    # Read-only `vpn status` is also checked as dk.
+    with subtest("vpn wrapper: switching, status, exclusivity"):
+        egress_units = ["olympus", "hestia"]
+
+        def check_exclusive(m, expect):
+            active = [
+                u for u in egress_units
+                if m.execute(f"systemctl is-active --quiet vpn-egress-{u}.service")[0] == 0
+            ]
+            assert active == expect, f"active egress units {active}, expected {expect}"
+            for fam in ["-4", "-6"]:
+                n = int(m.succeed(f"ip {fam} rule show pref 5300 | wc -l").strip())
+                assert n == len(expect), f"{n} pref-5300 rules in {fam}, expected {len(expect)}"
+
+        def short(m):
+            return m.succeed("vpn status --short").strip()
+
+        hermes.succeed("vpn egress hestia")
+        out = hermes.succeed(curl).strip()
+        assert out == "203.0.113.20", f"expected egress via hestia, got {out!r}"
+        assert short(hermes) == "hestia", short(hermes)
+        assert hermes.succeed("su - dk -c 'vpn status --short'").strip() == "hestia"
+        status = json.loads(hermes.succeed("vpn status --json"))
+        assert status == {"text": "hestia", "state": "Info"}, status
+        assert "exit: hestia" in hermes.succeed("vpn status")
+        check_exclusive(hermes, ["hestia"])
+
+        hermes.succeed("vpn egress olympus")
+        out = hermes.succeed(curl).strip()
+        assert out == "203.0.113.10", f"expected egress via olympus, got {out!r}"
+        assert short(hermes) == "olympus", short(hermes)
+        check_exclusive(hermes, ["olympus"])
+
+        hermes.succeed("vpn egress direct")
+        out = hermes.succeed(curl).strip()
+        assert out == "203.0.113.30", f"expected direct egress, got {out!r}"
+        assert short(hermes) == "direct", short(hermes)
+        status = json.loads(hermes.succeed("vpn status --json"))
+        assert status == {"text": "direct", "state": "Idle"}, status
+        check_exclusive(hermes, [])
+
+        hermes.fail("vpn egress nowhere")
+        hermes.fail("vpn home on")  # no vpn-home.service yet
+        hermes.succeed("vpn mesh off")
+        hermes.fail("ping -c1 -W2 10.100.0.1")
+        assert "mesh: down" in hermes.succeed("vpn status")
+        hermes.succeed("vpn mesh on")
+        hermes.wait_until_succeeds("ping -c1 -W2 10.100.0.1")
+        assert "mesh: up" in hermes.succeed("vpn status")
+
+    with subtest("vpn wrapper: kernel state without a unit is inconsistent"):
+        hermes.succeed("ip rule add pref 5300 lookup 2100")
+        rc, out = hermes.execute("vpn status --short")
+        assert rc == 1 and out.strip() == "inconsistent", (rc, out)
+        assert json.loads(hermes.succeed("vpn status --json")) == {"text": "inconsistent", "state": "Critical"}
+        hermes.succeed("ip rule del pref 5300")
+        assert short(hermes) == "direct", short(hermes)
+
+        # a tukl link outside wg-quick-tukl: flagged, and the egress units refuse to start
+        hermes.succeed("ip link add tukl type dummy")
+        rc, out = hermes.execute("vpn status --short")
+        assert rc == 1 and out.strip() == "inconsistent", (rc, out)
+        hermes.fail("vpn egress olympus")
+        hermes.fail("ip rule show pref 5300 | grep .")
+        hermes.succeed("ip link del tukl")
+        hermes.succeed("systemctl reset-failed vpn-egress-olympus.service")
+        assert short(hermes) == "direct", short(hermes)
+
+    with subtest("vpn wrapper: a dead exit shows as !down"):
+        hermes.succeed("vpn egress hestia")
+        hestia.succeed("systemctl stop wireguard-olympus.service")
+        hermes.wait_until_succeeds('test "$(vpn status --short)" = "hestia !down"', timeout=120)
+        status = json.loads(hermes.succeed("vpn status --json"))
+        assert status == {"text": "hestia !down", "state": "Critical"}, status
+        hestia.succeed("systemctl start wireguard-olympus.service")
+        hermes.wait_until_succeeds('test "$(vpn status --short)" = hestia', timeout=120)
+        hermes.succeed("vpn egress direct")
+        hermes.fail("ls /run/vpn-egress-watch/*.down")
+        check_exclusive(hermes, [])
 
     with subtest("phone: exits via olympus by default, sees no mesh host"):
         olympus.wait_for_unit("vpn-hub-nft.service")
