@@ -637,5 +637,18 @@ pkgs.testers.runNixOSTest {
         hestia.succeed("nft list chain inet vpn-exit forward | grep 'oifname \"tukl\"' | grep -v 'packets 0 '")
         hestia.succeed("ip link del tukl")
         hermes.succeed("vpn egress direct")
+
+    with subtest("exit gate: languard follows the networks the exit joins and leaves"):
+        hestia.wait_for_unit("vpn-languard-watch.service")
+        hestia.succeed("ip link add dum0 type dummy; ip link set dum0 up")
+        hestia.succeed("ip addr add 10.77.0.1/24 dev dum0")
+        hestia.succeed("ip -6 addr add 2001:db8:1:2::1/64 dev dum0 nodad")
+        hestia.wait_until_succeeds("nft list set inet vpn-exit lan4 | grep 10.77.0.0/24")
+        # a global /64 is widened to the /56 around it
+        hestia.wait_until_succeeds("nft list set inet vpn-exit lan6 | grep -F 2001:db8:1::/56")
+        hestia.fail("nft list set inet vpn-exit lan6 | grep -F 2001:db8:1:2::/64")
+        hestia.succeed("ip link del dum0")
+        hestia.wait_until_fails("nft list set inet vpn-exit lan4 | grep 10.77.0.0/24")
+        hestia.wait_until_fails("nft list set inet vpn-exit lan6 | grep -F 2001:db8:1::/56")
   '';
 }

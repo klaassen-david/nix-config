@@ -50,7 +50,8 @@
 # rejects the hub's own traffic to the lan unless vpn-home is on. `vpn-exit`
 # (exits) forwards with policy drop: relayed traffic (from `vpn-exit`) to
 # anywhere but the mesh, tukl, private ranges and the exit's own lan
-# (`vpn-languard` refills it), plus mesh/phone sources to the lan on its owner;
+# (`vpn-languard` refills it, `vpn-languard-watch` on route and address
+# changes, v6 widened to /56), plus mesh/phone sources to the lan on its owner;
 # only those are masqueraded, and the exit's own services are shut to relayed
 # traffic. Both tables reload atomically and have no stop.
 #
@@ -303,6 +304,22 @@ let
     }
   '';
 
+  # Global v6 prefixes are widened to their /56: a delegated prefix hands out
+  # neighbouring /64s (and rotates them), the exit must refuse the whole site.
+  widen6 = pkgs.writeText "vpn-widen6.py" ''
+    import ipaddress
+    import sys
+
+    global_unicast = ipaddress.ip_network("2000::/3")
+    for line in sys.stdin:
+        if not line.strip():
+            continue
+        net = ipaddress.ip_network(line.strip(), strict=False)
+        if net.subnet_of(global_unicast) and net.prefixlen > 56:
+            net = net.supernet(new_prefix=56)
+        print(net)
+  '';
+
   # Refills lan4/lan6 with every routed prefix behind a real link, so the exit can
   # refuse its own LAN whatever network it is on.
   languard = pkgs.writeShellApplication {
@@ -312,6 +329,7 @@ let
       pkgs.nftables
       pkgs.jq
       pkgs.coreutils
+      pkgs.python3
     ];
     text = ''
       fill() {
@@ -324,8 +342,31 @@ let
       {
         ip -j route show table main | jq -r "$routes | .dst" | fill lan4
         ip -j -6 route show table main \
-          | jq -r "$routes | select(.dst | test(\"^(fe[89ab][0-9a-f]:|ff)\"; \"i\") | not) | .dst" | fill lan6
+          | jq -r "$routes | select(.dst | test(\"^(fe[89ab][0-9a-f]:|ff)\"; \"i\") | not) | .dst" \
+          | python3 ${widen6} | fill lan6
       } | nft -f -
+    '';
+  };
+
+  # Keeps the sets current: joining another network must not leave its lan open
+  # to relayed traffic. The first event refills at once; a burst is coalesced
+  # and followed by one more refill.
+  languardWatch = pkgs.writeShellApplication {
+    name = "vpn-languard-watch";
+    runtimeInputs = [
+      pkgs.iproute2
+      pkgs.coreutils
+      languard
+    ];
+    text = ''
+      vpn-languard || true
+      ip -o monitor route address | while read -r _; do
+        vpn-languard || true
+        if read -r -t 1 _; then
+          while read -r -t 1 _; do :; done
+          vpn-languard || true
+        fi
+      done
     '';
   };
 
@@ -1064,6 +1105,16 @@ in
             ExecStartPost = "${languard}/bin/vpn-languard";
           };
         };
+        vpn-languard-watch = {
+          wantedBy = [ "multi-user.target" ];
+          requires = [ "vpn-exit-nft.service" ];
+          after = [ "vpn-exit-nft.service" ];
+          partOf = [ "vpn-exit-nft.service" ];
+          serviceConfig = {
+            ExecStart = "${languardWatch}/bin/vpn-languard-watch";
+            Restart = "always";
+          };
+        };
       })
     ];
 
@@ -1094,14 +1145,6 @@ in
       assertion = config.networking.firewall.checkReversePath != true;
       message = "vpn exits need networking.firewall.checkReversePath = false or \"loose\": strict rpfilter drops the GRE-decapsulated exit traffic.";
     };
-    networking.networkmanager.dispatcherScripts =
-      lib.mkIf (self.exit && config.networking.networkmanager.enable)
-        [
-          {
-            source = pkgs.writeShellScript "vpn-languard-dispatch" "${languard}/bin/vpn-languard || true";
-            type = "basic";
-          }
-        ];
 
     # keep NetworkManager off the mesh and the GRE links on the desktops
     networking.networkmanager.unmanaged = lib.mkIf (!isServer) [
