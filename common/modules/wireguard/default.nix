@@ -208,14 +208,22 @@ let
       delete table inet ${table}
       ${ruleset}
     '';
-  nftUnit = file: {
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      ExecStart = "${nft} -f ${file}";
+  # A gate loads before the network exists (before network-pre.target) and
+  # wireguard-olympus requires it, so no packet is forwarded ungated. Changes
+  # are applied by reload: restarting the gate would bounce the mesh too.
+  nftUnit =
+    file: after: {
+      wantedBy = [ "multi-user.target" ];
+      wants = [ "network-pre.target" ];
+      before = [ "network-pre.target" ];
+      reloadIfChanged = true;
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = [ "${nft} -f ${file}" ] ++ after;
+        ExecReload = [ "${nft} -f ${file}" ] ++ after;
+      };
     };
-  };
 
   # Phone gate (see the phone plane section): wg-easy clients may go out to the
   # internet and between phones; the mesh hosts and the home LAN only when
@@ -1046,10 +1054,14 @@ in
         )
       ))
       (lib.mkIf isServer {
-        vpn-hub-nft = nftUnit hubRuleset // {
-          serviceConfig = (nftUnit hubRuleset).serviceConfig // {
-            ExecStartPost = "${phoneCli}/bin/vpn-phone apply";
-          };
+        # a reload empties local_home: restart vpn-home (partOf) to refill it
+        vpn-hub-nft = nftUnit hubRuleset [
+          "${phoneCli}/bin/vpn-phone apply"
+          "-${config.systemd.package}/bin/systemctl --no-block try-restart vpn-home.service"
+        ];
+        wireguard-olympus = {
+          requires = [ "vpn-hub-nft.service" ];
+          after = [ "vpn-hub-nft.service" ];
         };
         # olympus's own access to the home LAN
         vpn-home = lib.mkIf (lanNodes != [ ]) {
@@ -1099,11 +1111,18 @@ in
           };
         };
       })
+      # wg-easy's interface must not come up before the phone gate
+      (lib.mkIf (isServer && config.virtualisation.oci-containers.containers ? wg-easy) {
+        podman-wg-easy = {
+          requires = [ "vpn-hub-nft.service" ];
+          after = [ "vpn-hub-nft.service" ];
+        };
+      })
       (lib.mkIf self.exit {
-        vpn-exit-nft = nftUnit exitRuleset // {
-          serviceConfig = (nftUnit exitRuleset).serviceConfig // {
-            ExecStartPost = "${languard}/bin/vpn-languard";
-          };
+        vpn-exit-nft = nftUnit exitRuleset [ "${languard}/bin/vpn-languard" ];
+        wireguard-olympus = {
+          requires = [ "vpn-exit-nft.service" ];
+          after = [ "vpn-exit-nft.service" ];
         };
         vpn-languard-watch = {
           wantedBy = [ "multi-user.target" ];

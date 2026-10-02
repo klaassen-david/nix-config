@@ -572,7 +572,7 @@ pkgs.testers.runNixOSTest {
         phone.wait_until_succeeds(f"{curl} | grep -x 203.0.113.30", timeout=60)
 
     with subtest("phone: reloading the hub keeps the phone rules"):
-        olympus.succeed("systemctl restart vpn-hub-nft.service")
+        olympus.succeed("systemctl reload vpn-hub-nft.service")
         out = phone.succeed(curl).strip()
         assert out == "203.0.113.30", f"expected phone egress via hermes, got {out!r}"
 
@@ -650,5 +650,21 @@ pkgs.testers.runNixOSTest {
         hestia.succeed("ip link del dum0")
         hestia.wait_until_fails("nft list set inet vpn-exit lan4 | grep 10.77.0.0/24")
         hestia.wait_until_fails("nft list set inet vpn-exit lan6 | grep -F 2001:db8:1::/56")
+
+    with subtest("gates: loaded before the network, required by the mesh, reloaded without a bounce"):
+        for m, gate in [(olympus, "vpn-hub-nft"), (hestia, "vpn-exit-nft")]:
+            assert "network-pre.target" in m.succeed(f"systemctl show -p Before --value {gate}.service")
+            props = m.succeed("systemctl show -p Requires -p After wireguard-olympus.service")
+            assert props.count(f"{gate}.service") == 2, props
+            before = m.succeed("systemctl show -p InvocationID --value wireguard-olympus.service")
+            m.succeed(f"systemctl reload {gate}.service")
+            assert before == m.succeed("systemctl show -p InvocationID --value wireguard-olympus.service")
+        # the mesh cannot stay up (or start) without its gate
+        hestia.succeed("systemctl stop vpn-exit-nft.service")
+        hestia.fail("systemctl is-active wireguard-olympus.service")
+        hestia.succeed("systemctl start wireguard-olympus.service")
+        hestia.succeed("systemctl is-active vpn-exit-nft.service")
+        hestia.wait_until_succeeds("ping -c1 -W2 10.100.0.1")
+        hestia.wait_until_succeeds("nft list set inet vpn-exit lan4 | grep 192.168.178.0/24")
   '';
 }
