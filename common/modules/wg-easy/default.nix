@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   pkgs,
   sslVhost,
@@ -18,12 +19,22 @@
 # → create the admin → "existing configuration" → upload the old wg0.json
 # (keys and v4 addresses carry over) → host vpn.dklaassen.de, port 51821; then
 # `systemctl restart podman-wg-easy` so the ExecStartPre below applies.
+#
+# Trust: a wg-easy admin is root-equivalent on olympus — host netns plus
+# NET_ADMIN, and the interface hooks are shell run by wg-quick. Hooks are
+# cleared at every start (ExecStartPre) and whenever the db changes
+# (vpn-phones, ../wireguard), but the SSO gate admits any Nextcloud account and
+# the first visitor to an unconfigured UI creates the admin: complete the setup
+# wizard immediately after deploying.
 
 let
   image = "ghcr.io/wg-easy/wg-easy:15"; # pinned; do not use :latest
 in
 {
   imports = [ ../nginx ];
+
+  # The container cannot load it (no SYS_MODULE), so the host does.
+  boot.kernelModules = [ "wireguard" ];
 
   virtualisation.podman = {
     enable = true;
@@ -45,7 +56,6 @@ in
     extraOptions = [
       "--network=host"
       "--cap-add=NET_ADMIN"
-      "--cap-add=SYS_MODULE"
     ];
   };
 
@@ -63,7 +73,7 @@ in
         db=/var/lib/wg-easy/wg-easy.db
         if [ -f "$db" ]; then
           ${pkgs.sqlite}/bin/sqlite3 "$db" <<SQL
-        UPDATE hooks_table SET pre_up=''', post_up=''', pre_down=''', post_down=''' WHERE id='wg0';
+        ${config.vpn.phones.clearHooksSql}
         UPDATE interfaces_table SET port=51821 WHERE name='wg0';
         UPDATE user_configs_table SET port=51821 WHERE id='wg0';
         SQL
