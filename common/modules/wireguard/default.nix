@@ -626,7 +626,7 @@ let
       # empty); nothing while wg-easy has no db yet. Rows sharing an address
       # are all skipped: which phone owns it is not decidable.
       clients() {
-        local json pk a4 a6 name enabled rows
+        local json pk a4 a6 name enabled rows why
         [ -e "$db" ] || return 0
         json=$(sqlite3 -readonly -json -cmd '.timeout 5000' "$db" \
           "SELECT public_key, ipv4_address, ipv6_address, name, enabled FROM clients_table WHERE interface_id = '${cfg.phones.interface}';")
@@ -635,12 +635,16 @@ let
             | [.public_key, .ipv4_address, .ipv6_address, .name]) + [if .enabled == 1 then "1" else "0" end]
             | join("\u001f")' <<< "$json" \
           | while IFS=$us read -r pk a4 a6 name enabled; do
-              if [[ $pk =~ ^[A-Za-z0-9+/]{43}=$ ]] && { [ -n "$a4" ] || [ -n "$a6" ]; } \
-                && { [ -z "$a4" ] || valid4 "$a4"; } && { [ -z "$a6" ] || valid6 "$a6"; }; then
+              why=
+              [[ $pk =~ ^[A-Za-z0-9+/]{43}=$ ]] || why="public key is not a WireGuard key"
+              [ -n "$a4$a6" ] || why="no address"
+              [ -z "$a4" ] || valid4 "$a4" || why="IPv4 '$a4' is not inside $subnet4"
+              [ -z "$a6" ] || valid6 "$a6" || why="IPv6 '$a6' is not inside $subnet6"
+              if [ -z "$why" ]; then
                 [ -z "$a6" ] || a6=$(canon6 "$a6")
                 printf '%s\n' "$pk$us$a4$us$a6$us$name$us$enabled"
               else
-                echo "vpn-phone: skipping malformed client row '$name'" >&2
+                echo "vpn-phone: skipping malformed client row '$name': $why" >&2
               fi
             done)
         [ -n "$rows" ] || return 0
