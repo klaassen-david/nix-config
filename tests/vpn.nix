@@ -458,7 +458,10 @@ pkgs.testers.runNixOSTest {
         check_exclusive(hermes, [])
 
         hermes.fail("vpn egress nowhere")
-        hermes.fail("vpn home on")  # no vpn-home.service yet
+        hermes.succeed("vpn home on")
+        assert short(hermes) == "direct +home", short(hermes)
+        hermes.succeed("vpn home off")
+        assert short(hermes) == "direct", short(hermes)
         hermes.succeed("vpn mesh off")
         hermes.fail("ping -c1 -W2 10.100.0.1")
         assert "mesh: down" in hermes.succeed("vpn status")
@@ -495,6 +498,40 @@ pkgs.testers.runNixOSTest {
         hermes.succeed("vpn egress direct")
         hermes.fail("ls /run/vpn-egress-watch/*.down")
         check_exclusive(hermes, [])
+    home = "192.168.178.2"
+
+    with subtest("home switch: hermes reaches the LAN only while vpn-home is on"):
+        hermes.fail(f"ping -c1 -W2 {home}")
+        hermes.succeed("systemctl start vpn-home.service")
+        hermes.wait_until_succeeds(f"ping -c1 -W2 {home}")
+        hermes.succeed("systemctl start vpn-egress-olympus.service")
+        hermes.succeed(f"ping -c1 -W2 {home}")
+        out = hermes.succeed(curl).strip()
+        assert out == "203.0.113.10", f"expected egress via olympus, got {out!r}"
+        hermes.succeed("systemctl stop vpn-egress-olympus.service")
+        hermes.succeed("systemctl stop vpn-home.service")
+        hermes.fail(f"ping -c1 -W2 {home}")
+        hermes.fail("ip rule show | grep 5100")
+
+    with subtest("home switch: stopping the mesh stops vpn-home"):
+        hermes.succeed("systemctl start vpn-home.service")
+        hermes.succeed("systemctl stop wireguard-olympus.service")
+        hermes.fail("systemctl is-active vpn-home.service")
+        hermes.succeed("systemctl start wireguard-olympus.service")
+        hermes.wait_until_succeeds("ping -c1 -W2 10.100.0.1")
+        hermes.fail(f"ping -c1 -W2 {home}")
+
+    with subtest("home switch: an exit's traffic never reaches the LAN"):
+        hermes.succeed("systemctl start vpn-egress-hestia.service")
+        hermes.fail(f"ping -c1 -W2 {home}")
+        hermes.succeed("systemctl stop vpn-egress-hestia.service")
+
+    with subtest("home switch: olympus reaches the LAN only while vpn-home is on"):
+        olympus.fail(f"ping -c1 -W2 {home}")
+        olympus.succeed("systemctl start vpn-home.service")
+        olympus.wait_until_succeeds(f"ping -c1 -W2 {home}")
+        olympus.succeed("systemctl stop vpn-home.service")
+        olympus.fail(f"ping -c1 -W2 {home}")
 
     with subtest("phone: exits via olympus by default, sees no mesh host"):
         olympus.wait_for_unit("vpn-hub-nft.service")
@@ -510,6 +547,13 @@ pkgs.testers.runNixOSTest {
         olympus.succeed("vpn-phone phone1 hosts off")
         phone.wait_until_fails("ping -c1 -W2 10.100.0.2")
         phone.fail("ping -c1 -W2 192.168.178.2")
+
+    with subtest("phone: home on/off gates the home LAN"):
+        phone.fail(f"ping -c1 -W2 {home}")
+        olympus.succeed("vpn-phone phone1 home on")
+        phone.wait_until_succeeds(f"ping -c1 -W2 {home}")
+        olympus.succeed("vpn-phone phone1 home off")
+        phone.wait_until_fails(f"ping -c1 -W2 {home}")
 
     with subtest("phone: egress via hestia and hermes"):
         olympus.succeed("vpn-phone phone1 egress hestia")

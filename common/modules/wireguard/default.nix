@@ -179,6 +179,8 @@ let
   phoneIf = cfg.phones.interface;
   hostSpokes = lib.filter (n: !n.hub) (lib.attrValues nodes);
   lanNodes = lib.filter (n: n.lan != null) (lib.attrValues nodes);
+  # Home LANs reached over the mesh rather than attached locally (vpn-home).
+  remoteLans = lib.filter (n: n.name != selfName) lanNodes;
   addrList = lib.concatMapStringsSep ", " toString;
   hubRuleset = nftReload "vpn-hub" ''
     table inet vpn-hub {
@@ -202,6 +204,12 @@ let
           n: ''iifname "${phoneIf}" ip daddr ${n.lan} ip saddr @phone_home accept''
         ) lanNodes}
         iifname "${phoneIf}" drop
+      }
+
+      # the hub's own home switch (vpn-home fills local_home)
+      chain output {
+        type filter hook output priority filter; policy accept;
+        ${lib.concatMapStringsSep "\n" (n: "ip daddr ${n.lan} ip daddr != @local_home reject") lanNodes}
       }
     }
   '';
@@ -231,7 +239,10 @@ let
         iifname "vpn-exit" ip daddr @lan4 drop
         iifname "vpn-exit" ip6 daddr { fc00::/7, fe80::/10 } drop
         iifname "vpn-exit" ip6 daddr @lan6 drop
-        ${lib.optionalString (self.lan != null) ''iifname "olympus" ip daddr ${self.lan} accept''}
+        ${lib.optionalString (self.lan != null)
+          # the hub's lan route also catches exit-range sources (rule 2000): only mesh and phone sources may enter
+          ''iifname "olympus" ip saddr { ${base4}.0.0/24,${cfg.phones.subnet} } ip daddr ${self.lan} accept''
+        }
         iifname "olympus" ct state new drop
         iifname != ${meshIfaces} oifname ${meshIfaces} ct state new drop
       }
@@ -819,7 +830,8 @@ in
           ++ lib.concatMap (x: [
             "${src4 x node}/32"
             "${src6 x node}/128"
-          ]) (lib.filter (x: x.name != node.name) exits);
+          ]) (lib.filter (x: x.name != node.name) exits)
+          ++ lib.optional (node.lan != null) node.lan;
         }) spokes;
         postSetup = hubSetup;
         postShutdown = hubShutdown;
@@ -900,6 +912,7 @@ in
         "wireguard-olympus.service"
       ]
       ++ map (n: "${n}.service") egressUnits
+      ++ lib.optional (remoteLans != [ ]) "vpn-home.service"
       ++ lib.optional (self.tukl != null) "wg-quick-tukl.service"
     );
 
@@ -952,6 +965,18 @@ in
             ExecStartPost = "${phoneCli}/bin/vpn-phone apply";
           };
         };
+        # olympus's own access to the home LAN
+        vpn-home = lib.mkIf (lanNodes != [ ]) {
+          after = [ "vpn-hub-nft.service" ];
+          requires = [ "vpn-hub-nft.service" ];
+          partOf = [ "vpn-hub-nft.service" ];
+          serviceConfig = {
+            Type = "oneshot";
+            RemainAfterExit = true;
+            ExecStart = "${nft} add element inet vpn-hub local_home { ${addrList (map (n: n.lan) lanNodes)} }";
+            ExecStop = "${nft} flush set inet vpn-hub local_home";
+          };
+        };
         vpn-phones = {
           wantedBy = [ "multi-user.target" ];
           after = [ "vpn-hub-nft.service" ];
@@ -960,6 +985,31 @@ in
             Type = "simple";
             ExecStart = "${phonesWatch}/bin/vpn-phones-watch";
             Restart = "on-failure";
+          };
+        };
+      })
+      # home LAN through the mesh: table 2200, rule 5100 (v4 only)
+      (lib.mkIf (!isServer && remoteLans != [ ]) {
+        vpn-home = {
+          bindsTo = [ "wireguard-olympus.service" ];
+          after = [ "wireguard-olympus.service" ];
+          partOf = [ "wireguard-olympus.service" ];
+          serviceConfig = {
+            Type = "oneshot";
+            RemainAfterExit = true;
+            ExecStart = pkgs.writeShellScript "vpn-home-start" (
+              lib.concatMapStringsSep "\n" (n: ''
+                ${ip} route replace ${n.lan} dev olympus src ${self.ip} table 2200
+                ${ip} rule del to ${n.lan} lookup 2200 pref 5100 || true
+                ${ip} rule add to ${n.lan} lookup 2200 pref 5100
+              '') remoteLans
+            );
+            ExecStop = pkgs.writeShellScript "vpn-home-stop" (
+              lib.concatMapStringsSep "\n" (n: ''
+                ${ip} rule del to ${n.lan} lookup 2200 pref 5100 || true
+                ${ip} route del ${n.lan} table 2200 || true
+              '') remoteLans
+            );
           };
         };
       })
