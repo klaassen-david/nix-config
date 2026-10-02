@@ -62,7 +62,8 @@
 # internet (not private, CGNAT or link-local ranges behind the uplink); mesh
 # hosts and the home lan only for addresses in the vpn-phone sets. New
 # connections from the uplink into the mesh, wg0 or the GRE links are dropped.
-# It also rejects the hub's own traffic to the lan unless vpn-home is on. `vpn-exit`
+# Hosts may open connections to phones (only wg0 ingress is gated). It also
+# rejects the hub's own traffic to the lan unless vpn-home is on. `vpn-exit`
 # (exits) forwards with policy drop: relayed traffic (from `vpn-exit`) to
 # anywhere but the mesh, tukl, private ranges and the exit's own lan
 # (`vpn-languard` refills it, `vpn-languard-watch` on route and address
@@ -94,6 +95,11 @@
 #   - In a full tunnel DNS is whatever resolver the local network handed out
 #     (tukl pushes its own); it is not forced through the exit.
 #   - Phones get v6 only via an exit: olympus has no global v6 (see networking.nat).
+#   - A local network can still hand out on-link routes (>= /8) that table 2150
+#     honours; those destinations then bypass the tunnel. The watchdog checks the
+#     probe's path, not every destination.
+#   - After the hub's mesh restarts, spokes re-handshake on their next keepalive:
+#     up to 1-2 minutes of dropped traffic.
 
 let
   base4 = "10.100";
