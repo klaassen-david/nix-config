@@ -177,6 +177,16 @@ let
       ${ruleAddIn "-6" "pref ${toString (3000 + x.octet)} from ${range6 x} lookup ${toString (2000 + x.octet)}"}
     '') exits}
   '';
+  # Fallback in every exit table, installed with the gate and never removed:
+  # while a vpn-<x> link is gone, its sources are dropped, not sent out of olympus.
+  hubBlackholes = pkgs.writeShellScript "vpn-hub-blackholes" (
+    lib.concatMapStringsSep "\n" (
+      x:
+      lib.concatMapStringsSep "\n" (
+        f: "${ip} ${f} route replace blackhole default metric 4294967295 table ${toString (2000 + x.octet)}"
+      ) [ "-4" "-6" ]
+    ) exits
+  );
   hubShutdown = ''
     ${ruleDel "pref 2000"}
     ${lib.concatMapStringsSep "\n" (x: ''
@@ -1055,10 +1065,10 @@ in
       ))
       (lib.mkIf isServer {
         # a reload empties local_home: restart vpn-home (partOf) to refill it
-        vpn-hub-nft = nftUnit hubRuleset [
+        vpn-hub-nft = lib.recursiveUpdate (nftUnit hubRuleset [
           "${phoneCli}/bin/vpn-phone apply"
           "-${config.systemd.package}/bin/systemctl --no-block try-restart vpn-home.service"
-        ];
+        ]) { serviceConfig.ExecStartPre = hubBlackholes; };
         wireguard-olympus = {
           requires = [ "vpn-hub-nft.service" ];
           after = [ "vpn-hub-nft.service" ];

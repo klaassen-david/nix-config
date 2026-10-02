@@ -666,5 +666,26 @@ pkgs.testers.runNixOSTest {
         hestia.succeed("systemctl is-active vpn-exit-nft.service")
         hestia.wait_until_succeeds("ping -c1 -W2 10.100.0.1")
         hestia.wait_until_succeeds("nft list set inet vpn-exit lan4 | grep 192.168.178.0/24")
+
+    with subtest("hub: a missing exit link drops the phone's traffic, never sends it out of olympus"):
+        hestia.succeed("systemctl start vpn-languard-watch.service")
+        olympus.succeed("vpn-phone phone1 egress hermes")
+        out = phone.succeed(curl).strip()
+        assert out == "203.0.113.30", f"expected phone egress via hermes, got {out!r}"
+        for f in ["-4", "-6"]:
+            olympus.succeed(f"ip {f} route show table 2003 | grep blackhole")
+        olympus.succeed("ip link del vpn-hermes")
+        out = phone.execute(curl)[1].strip()
+        assert out == "", f"expected a dropped connection, got {out!r}"
+        # the fallback also holds while the whole mesh unit is down
+        olympus.succeed("systemctl stop wireguard-olympus.service")
+        olympus.succeed("ip route show table 2003 | grep blackhole")
+        out = phone.execute(curl)[1].strip()
+        assert out == "", f"expected a dropped connection, got {out!r}"
+        # the hub has to wait for the spokes' keepalives to re-handshake
+        olympus.succeed("systemctl start wireguard-olympus.service")
+        phone.wait_until_succeeds(f"{curl} | grep -x 203.0.113.30", timeout=180)
+        hestia.wait_until_succeeds("ping -c1 -W2 10.100.0.1", timeout=180)
+        olympus.succeed("vpn-phone phone1 egress olympus")
   '';
 }
