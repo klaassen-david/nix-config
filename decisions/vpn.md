@@ -46,6 +46,14 @@ stoppable by hand (bar / `systemctl stop sshd`).
 (mail, inbound replies, ACME would all need exempting). It is on the mesh and
 reaches the hosts like any other node.
 
+**Failure semantics** [AGENT 2026-10-02, from the security review]: egress
+fails closed — a mesh restart or a failed switch keeps the egress slot
+blackholed until it recovers or `vpn egress direct`; `vpn mesh off` is an
+explicit return to direct. A wg-easy v15 admin is root-equivalent on olympus
+(host netns + NET_ADMIN); accepted with wg-easy's hooks cleared on every db
+change, and the setup wizard finished right after deploy. Restricting the SSO
+gate to dk's account is open (needs the account's email/group).
+
 ## Constraints [AGENT 2026-09-30]
 
 - Within one WireGuard interface only one peer may hold `0.0.0.0/0`, so the
