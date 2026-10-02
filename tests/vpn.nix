@@ -127,6 +127,19 @@ let
       );
     };
 
+  # common/modules/ssh-server on the desktop hosts, with its capability option
+  # (the real one lives in common/host.nix)
+  sshServer =
+    { lib, ... }:
+    {
+      imports = [ ../common/modules/ssh-server ];
+      config.environment.systemPackages = [ pkgs.netcat ];
+      options.host.capabilities.sshServer = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+      };
+    };
+
   addr = address: prefixLength: { inherit address prefixLength; };
 
   # wg-easy stand-in on olympus: plain wg0 plus the slice of its sqlite db that
@@ -188,6 +201,7 @@ pkgs.testers.runNixOSTest {
     internet =
       { ... }:
       {
+        environment.systemPackages = [ pkgs.netcat ];
         virtualisation.vlans = [ 1 ];
         networking.useDHCP = lib.mkForce false;
         networking.interfaces.eth1 = {
@@ -211,6 +225,7 @@ pkgs.testers.runNixOSTest {
     homerouter =
       { ... }:
       {
+        environment.systemPackages = [ pkgs.netcat ];
         virtualisation.vlans = [
           1
           2
@@ -256,6 +271,7 @@ pkgs.testers.runNixOSTest {
         address = "192.168.178.2";
         interface = "eth1";
       };
+      extra = sshServer;
     };
 
     phone =
@@ -300,6 +316,7 @@ pkgs.testers.runNixOSTest {
         address = "203.0.113.1";
         interface = "eth1";
       };
+      extra = sshServer;
     };
   };
 
@@ -708,5 +725,12 @@ pkgs.testers.runNixOSTest {
         hestia.fail("grep -q 'ICMP echo request' /tmp/hub.cap")
         olympus.succeed("nft list chain inet vpn-hub forward | grep '\"eth1\".*\"olympus\"' | grep -v 'packets 0 '")
         internet.succeed("ip route del 10.100.0.2/32")
+
+    with subtest("sshd: reachable over the mesh and from the home LAN, closed to the internet"):
+        for m in hosts:
+            m.wait_for_unit("sshd.service")
+        hermes.succeed("nc -z -w2 10.100.0.2 22")
+        homerouter.succeed("nc -z -w2 192.168.178.32 22")
+        internet.fail("nc -z -w2 203.0.113.30 22")
   '';
 }
