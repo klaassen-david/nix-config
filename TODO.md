@@ -72,6 +72,19 @@ Ranked by value-to-effort. Each expands in its own section below.
   need it. Try `"loose"` (or removing the line) and check the tunnels still
   come up.
 
+- [ ] **exits: refuse the home router's WAN address too** `[auto]` eval / `[manual]` VPN
+  Relayed traffic through hestia is refused the home LAN (`lan4`/`lan6`) but
+  not the router's public address, so its WAN-side services (hairpin, port
+  forwards) are reachable by any device exiting via hestia — phones included.
+  Needs the WAN address from a source the exit can trust (a DDNS name in the
+  `vpn.nodes` registry, resolved by `vpn-languard`). Found by the 2026-10-02
+  audit (M6). Verify: VM subtest with a WAN-side service on homerouter.
+
+- [ ] **SSO: restrict vpn.dklaassen.de to dk** `[manual]` account data
+  oauth2-proxy admits any Nextcloud account, and a wg-easy v15 admin is
+  root-equivalent on olympus. Gate the vpn vhost (or all vhosts) to dk's
+  account (email or Nextcloud group). Needs the account's email/group.
+
 ## Bugs
 
 - [ ] **hestia hard lockups — does the 280 W GPU cap hold?** `[manual]`
