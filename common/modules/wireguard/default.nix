@@ -7,29 +7,72 @@
 }:
 
 # ---------------------------------------------------------------------------
-# WireGuard tunnels — infra hub `olympus` (+ the `tukl` university VPN)
+# WireGuard mesh, egress and phone plane (+ the `tukl` university VPN)
 # ---------------------------------------------------------------------------
-# Hub-and-spoke: olympus (the VPS) is the server; hermes and hestia keep an
-# always-on split tunnel to it on the `olympus` interface — only the mesh
-# supernet goes through it, everything else stays direct. Full-tunnel egress
-# is a separate, opt-in layer (the `vpn-egress-*` units), via olympus or via the
-# other host acting as an exit (see Exits below). The desktops also carry
-# a second, independent on-demand tunnel `tukl` (the TU Kaiserslautern VPN; see
-# bottom of file).
+# Rulings: decisions/vpn.md. This header holds the mechanics.
 #
-# DNS records to add (registrar / DNS provider for dklaassen.de):
-#   vpn.dklaassen.de.  A     <olympus public IPv4>
-#   vpn.dklaassen.de.  AAAA  <olympus public IPv6>   # only if dialing over IPv6
-# One record serves both planes: olympus endpoint :51820 (this module) and the
-# wg-easy phone plane :51821 (see ../wg-easy). WireGuard only needs name->IP
-# resolution; there is no TLS/HTTP on these ports.
+# Roles come from the `vpn.nodes` registry: `hub` (olympus: server, NAT, keeps
+# its own traffic on its uplink), `exit` (hermes, hestia: may carry other hosts'
+# full-tunnel traffic), `lan` (hestia's home prefix), `tukl` (own RPTU config).
+# Hosts keep an always-on split tunnel to the hub on the `olympus` interface
+# (UDP 51820); only the mesh supernet goes through it. Full-tunnel egress is a
+# runtime choice (`vpn egress ...`, see cli.nix), never a nix setting.
 #
-# Key material:
-#   - private keys live in agenix (secrets/wg-<host>.age), one per host, each
-#     decryptable by every host via the shared id_priv recipient.
-#   - public keys are NOT secret and live in the `vpn.nodes` registry below. After
-#     generating the keypairs (see the plan / `wg genkey | wg pubkey`), paste
-#     each host's public key in place of the REPLACE_ME_* placeholders.
+# Addressing (o = node octet, x = exit's octet):
+#   mesh              10.100.0.o            fdaa:e184:83f::o       supernet /16, /48
+#   o's source via x  10.100.(10+x).o       fdaa:e184:83f:(10+x)::o  range of x: /24, /64
+#   phones (wg-easy)  10.100.1.0/24 on wg0  fdcc:ad94:bacf:61a4::cafe:0/112
+# The hub's peer for o allows its mesh /32+/128, its sources for every other
+# exit, and its `lan`; so the source address alone tells the hub which exit a
+# packet wants.
+#
+# Routing (both families unless noted; lower pref wins):
+#   where  pref   rule                                   table
+#   hub    2000   main, suppress_prefixlength 0          mesh routes beat the rest
+#   hub    3000+x from <x's range>                       2000+x: default dev vpn-<x>
+#   hub    3500   from <phone> (vpn-phone, per phone)    2000+x, or prohibit
+#   exit   4900   fwmark 0x2000/0x2000                   2300: default dev vpn-exit
+#   exit   4950   iif vpn-exit                           main
+#   host   5000   fwmark 0x1000/0x1000                   main (mesh socket: never tunnelled)
+#   host   5100   to <lan> (v4; vpn-home)                2200: <lan> dev olympus
+#   host   5200   main, suppress_prefixlength 0          (egress unit: local routes first)
+#   host   5300   all                                    2100: default dev olympus
+#
+# GRE relays host exits: a WireGuard interface lets only one peer hold
+# 0.0.0.0/0, so the hub cannot give each exit its own default route. Instead
+# `vpn-<x>` (hub) and `vpn-exit` (exit) are a GRE pair over the mesh addresses
+# (mtu 1396); table 2000+x sends x's source range into it. The exit
+# masquerades out its uplink and returns replies via 4900 (connection mark
+# 0x2000, set in prerouting). GRE is accepted on `olympus` by extraCommands.
+#
+# nft: `vpn-hub` (hub) gates phones on wg0: internet and phones always, mesh
+# hosts and the home lan only for addresses in the vpn-phone sets; it also
+# rejects the hub's own traffic to the lan unless vpn-home is on. `vpn-exit`
+# (exits) refuses relayed traffic to private ranges, the exit's own lan
+# (`vpn-languard` refills it) and its own services, and lets nothing open
+# connections into the mesh. Both tables reload atomically and have no stop.
+#
+# Units (hosts; wheel starts/stops them without sudo, host.userManagedUnits):
+#   wireguard-olympus      the mesh; the units below are bound to it
+#   vpn-egress-<olympus|x> one active at most, conflict with each other and tukl;
+#                          vpn-egress-watch@ announces a dead exit (traffic is dropped)
+#   wg-quick-tukl          tukl, dialled by the host itself
+#   vpn-home               host: route the lan over the mesh; hub: lift its reject
+# Hub: vpn-hub-nft, vpn-phones (re-applies on wg-easy db writes), vpn-home.
+# `vpn status|egress|home|mesh` wraps the host side; phones are managed on the
+# hub with `sudo vpn-phone list | <phone> egress|hosts|home ... | apply`.
+#
+# Key material: private keys are agenix (secrets/wg-<host>.age, tukl's per its
+# registry entry), referenced by path only; public keys live in the registry.
+# DNS records: vpn.dklaassen.de A (+ AAAA if dialled over v6) -> olympus; it
+# serves the mesh (:51820) and wg-easy (:51821, see ../wg-easy).
+#
+# Known limits:
+#   - In a full tunnel DNS is whatever resolver the local network handed out
+#     (tukl pushes its own); it is not forced through the exit.
+#   - Phones get v6 only via an exit: olympus has no global v6 (see networking.nat).
+#   - Both desktops dial the same tukl config until each has its own; never
+#     bring it up on both at once.
 
 let
   base4 = "10.100";
@@ -811,7 +854,7 @@ in
     };
 
     # ---------------------------------------------------------------------------
-    # SERVER (olympus) — plain wireguard interface + NAT for full-tunnel egress
+    # HUB (olympus) — mesh server, NAT, GRE links to the exits
     # ---------------------------------------------------------------------------
     networking.wireguard.interfaces.olympus = lib.mkMerge [
       (lib.mkIf isServer {
@@ -919,12 +962,8 @@ in
     # ---------------------------------------------------------------------------
     # Egress — opt-in full tunnel
     # ---------------------------------------------------------------------------
-    # "Direct" means no egress unit is active. Starting one routes everything but
-    # the mesh through the exit (rules 5200/5300, table 2100); units conflict with
-    # each other and with wg-quick-tukl, so at most one is up. The watcher makes a
-    # dead exit loud: traffic is dropped, never silently sent direct.
-    #   systemctl start vpn-egress-olympus   (stop to go direct)
-    #   systemctl start vpn-egress-hestia    (through another host; see Exits)
+    # "Direct" means no egress unit is active; `vpn egress` wraps start/stop.
+    # The watcher makes a dead exit loud: traffic is dropped, never sent direct.
     systemd.services = lib.mkMerge [
       (lib.mkIf (!isServer) (
         {
@@ -1025,33 +1064,17 @@ in
     # ---------------------------------------------------------------------------
     # Phone plane (hub) — per-phone egress and access
     # ---------------------------------------------------------------------------
-    # wg-easy phones exit through olympus by default, see no mesh host and no home
-    # LAN. `vpn-phone` changes that per phone (rules 3500 route a phone's source
-    # into an exit's table; the vpn-hub nft sets open the mesh hosts / home LAN):
-    #   sudo vpn-phone list
-    #   sudo vpn-phone <name> egress hestia      (olympus | hermes | hestia)
-    #   sudo vpn-phone <name> hosts on|off       (mesh hosts)
-    #   sudo vpn-phone <name> home on|off        (hestia's LAN)
-    # Choices live in ${phoneStateDir}/state.json keyed by public key. A phone
-    # whose exit is unknown is blocked (prohibit), and one whose exit is down
-    # loses its traffic — neither falls back to olympus. `vpn-phones.service` re-applies
-    # whenever wg-easy's db changes; the hub reload re-applies too.
+    # Defaults: exit through olympus, no mesh hosts, no home LAN. Choices live in
+    # ${phoneStateDir}/state.json keyed by public key. A phone whose exit is
+    # unknown is blocked (prohibit), one whose exit is down loses its traffic;
+    # neither falls back to olympus.
     systemd.tmpfiles.rules = lib.mkIf isServer [ "d ${phoneStateDir} 0700 root root -" ];
     environment.systemPackages = lib.mkIf isServer [ phoneCli ];
 
     # ---------------------------------------------------------------------------
     # Exits — hosts that carry other hosts' full-tunnel traffic
     # ---------------------------------------------------------------------------
-    # A host egressing "through hestia" sends from a per-exit source address
-    # (10.100.(10+x).o). The hub routes that range into a GRE link to the exit
-    # (rules 3000+x, tables 2000+x); the exit decapsulates on `vpn-exit`, masquerades
-    # out its own uplink, and returns replies through the same link (connection
-    # mark 0x2000, table 2300). GRE because a WireGuard peer can hold 0.0.0.0/0
-    # for only one interface: the hub cannot give every exit its own default route.
-    # An exit refuses its own LAN and private ranges (lan4/lan6, refilled by
-    # `vpn-languard`), its own services (input drop), and lets nothing start a
-    # connection into the mesh. Needs a loose/off rpfilter: strict drops the
-    # decapsulated traffic.
+    # Exit side of the GRE relay (see header): forwarding, rpfilter, vpn-exit nft.
     boot.kernel.sysctl = lib.mkIf self.exit {
       # NetworkManager handles RAs in userspace here (accept_ra = 0 on the links),
       # so forwarding does not cost the host its v6 default route.
@@ -1074,7 +1097,7 @@ in
           }
         ];
 
-    # keep NetworkManager off the mesh and (later) GRE ifaces on the desktops
+    # keep NetworkManager off the mesh and the GRE links on the desktops
     networking.networkmanager.unmanaged = lib.mkIf (!isServer) [
       "interface-name:olympus"
       "interface-name:vpn-*"
@@ -1085,8 +1108,8 @@ in
     # ---------------------------------------------------------------------------
     # Modeled declaratively from the upstream wg-quick config. Only the private
     # key is secret: it lives in agenix and is referenced via privateKeyFile so
-    # it never lands in the Nix store. On-demand:
-    #   systemctl start wg-quick-tukl   (stop to disconnect)
+    # it never lands in the Nix store. Not autostarted: `vpn egress tukl` (or
+    # `systemctl start wg-quick-tukl`) dials it, conflicting with the egress units.
     age.secrets.wg-tukl = lib.mkIf (self.tukl != null) {
       file = "${secretsPath}/${self.tukl.secret}.age";
       mode = "0400";
