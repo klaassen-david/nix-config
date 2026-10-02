@@ -419,6 +419,7 @@ let
       pkgs.gawk
       pkgs.gnugrep
       pkgs.util-linux
+      pkgs.conntrack-tools
     ];
     text = ''
       db=${cfg.phones.db}
@@ -535,11 +536,17 @@ let
 
       # Rules are diffed, not reset: adds precede deletes, so a phone never
       # passes through a moment without its rule (which would leak it to olympus).
+      #
+      # A conntrack entry outlives the rule that admitted it (the forward chain
+      # accepts established flows, NAT keeps its mapping), so whatever a phone
+      # lost or changed is also dropped from conntrack.
       apply() {
-        local rows sets="" want have spec
+        local rows sets="" want have spec newel changed revoked a fam
         rows=$(clients)
         want=$(mktemp)
         have=$(mktemp)
+        newel=$(mktemp)
+        changed=$(mktemp)
         while IFS=$us read -r pk a4 a6 name enabled; do
           [ "$enabled" = 1 ] || continue
           egress=$(get "$pk" egress olympus)
@@ -553,11 +560,12 @@ let
             [ -z "$a6" ] || echo "6 $a6/128 $target" >> "$want"
           fi
           if [ "$(get "$pk" hosts false)" = true ]; then
-            [ -z "$a4" ] || sets+="add element inet vpn-hub phone_hosts { $a4 }"$'\n'
-            [ -z "$a6" ] || sets+="add element inet vpn-hub phone_hosts6 { $a6 }"$'\n'
+            [ -z "$a4" ] || { sets+="add element inet vpn-hub phone_hosts { $a4 }"$'\n'; echo "phone_hosts $a4" >> "$newel"; }
+            [ -z "$a6" ] || { sets+="add element inet vpn-hub phone_hosts6 { $a6 }"$'\n'; echo "phone_hosts6 $a6" >> "$newel"; }
           fi
           if [ "$(get "$pk" home false)" = true ] && [ -n "$a4" ]; then
             sets+="add element inet vpn-hub phone_home { $a4 }"$'\n'
+            echo "phone_home $a4" >> "$newel"
           fi
         done <<< "$rows"
         for f in 4 6; do
@@ -570,6 +578,11 @@ let
           if [[ $4 =~ ^[0-9]+$ ]]; then spec=(lookup "$4"); else spec=("$4"); fi
           ip -"$2" rule "$1" from "$3" "''${spec[@]}" pref 3500
         }
+        { comm -13 "$have" "$want"; comm -23 "$have" "$want"; } | awk '{ sub("/.*", "", $2); print $2 }' > "$changed"
+        revoked=$(for a in phone_hosts phone_hosts6 phone_home; do
+          nft -j list set inet vpn-hub "$a" \
+            | jq -r --arg s "$a" '.nftables[] | select(.set) | .set.elem // [] | .[] | "\($s) \(.)"'
+        done | { grep -vxFf "$newel" || true; } | cut -d' ' -f2)
         comm -13 "$have" "$want" | while read -r f src target; do rule add "$f" "$src" "$target"; done
         comm -23 "$have" "$want" | while read -r f src target; do rule del "$f" "$src" "$target"; done
         rm -f "$want" "$have"
@@ -579,6 +592,13 @@ let
       flush set inet vpn-hub phone_home
       $sets
       NFT
+        for a in $({ cat "$changed"; printf '%s\n' "$revoked"; } | sort -u); do
+          fam=ipv4
+          if [[ $a == *:* ]]; then fam=ipv6; fi
+          conntrack -f "$fam" -D -s "$a" > /dev/null 2>&1 || true
+          conntrack -f "$fam" -D -d "$a" > /dev/null 2>&1 || true
+        done
+        rm -f "$newel" "$changed"
       }
 
       # resolve <phone> to a public key
@@ -1176,7 +1196,9 @@ in
             Type = "simple";
             ExecStart = "${phonesWatch}/bin/vpn-phones-watch";
             Restart = "on-failure";
+            RestartSec = 5;
           };
+          startLimitIntervalSec = 0;
         };
       })
       # home LAN through the mesh: table 2200, rule 5100 (v4 only)

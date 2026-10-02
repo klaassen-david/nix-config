@@ -754,5 +754,20 @@ pkgs.testers.runNixOSTest {
         assert out == "203.0.113.20", f"expected phone egress via hestia, got {out!r}"
         olympus.succeed("sqlite3 /var/lib/wg-easy/wg-easy.db \"DELETE FROM clients_table WHERE name <> 'phone1'\"")
         olympus.succeed("vpn-phone phone1 egress olympus")
+
+    with subtest("phone: revoking hosts or changing egress ends established flows"):
+        olympus.succeed("vpn-phone phone1 hosts on")
+        phone.succeed("(ping -i 0.2 10.100.0.2 > /tmp/ping.log 2>&1 &)")
+        olympus.wait_until_succeeds("conntrack -L -s 10.100.1.2 -d 10.100.0.2 2>&1 | grep -q icmp")
+        olympus.succeed("vpn-phone phone1 hosts off")
+        olympus.succeed("test -z \"$(conntrack -L -s 10.100.1.2 2>/dev/null)\"")
+        phone.succeed("pkill ping")
+        out = phone.succeed(curl).strip()
+        assert out == "203.0.113.10", f"expected phone egress via olympus, got {out!r}"
+        olympus.succeed("conntrack -L -s 10.100.1.2 2>/dev/null | grep -q 198.51.100.1")
+        olympus.succeed("vpn-phone phone1 egress hestia")
+        olympus.succeed("test -z \"$(conntrack -L -s 10.100.1.2 2>/dev/null)\"")
+        olympus.succeed("vpn-phone phone1 egress olympus")
+        olympus.succeed("systemctl show -p RestartUSec -p StartLimitIntervalUSec vpn-phones.service | grep -x -e RestartUSec=5s -e StartLimitIntervalUSec=0")
   '';
 }
