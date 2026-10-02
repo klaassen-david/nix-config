@@ -70,10 +70,10 @@ in
         default = false;
         description = "run the LAN Samba file share (smbd + wsdd discovery) for Windows interop";
       };
-      onDemandSshServer = mkOption {
+      sshServer = mkOption {
         type = types.bool;
         default = config.host.role != "vps";
-        description = "configure sshd but leave it stopped at boot, toggled by hand with `sudo systemctl start|stop sshd` (common/modules/ssh-on-demand); desktops only — headless.nix runs a permanent sshd instead";
+        description = "key-only sshd started at boot, reachable only over the mesh and from the home LAN, stoppable by hand with `systemctl stop sshd` (common/modules/ssh-server); desktops only — headless.nix runs its own sshd instead";
       };
       binaryCachePush = mkOption {
         type = types.bool;
@@ -114,7 +114,7 @@ in
 
     # Units that dk may start/stop without sudo or a password. Unlike the rest of
     # the struct this is not set per host: each module appends the units it owns
-    # (wireguard its wg-quick clients, ssh-on-demand its sshd), and
+    # (wireguard its wg-quick clients, ssh-server its sshd), and
     # common/modules/polkit-units turns the merged list into one polkit rule.
     userManagedUnits = mkOption {
       type = types.listOf types.str;
@@ -308,10 +308,9 @@ in
         message = "host.lid_state must be set when host.capabilities.lid is true";
       }
       {
-        # headless.nix already runs a permanent, key-only sshd; the module's
-        # `wantedBy = mkForce []` would disarm it without a word
-        assertion = config.host.capabilities.onDemandSshServer -> config.host.role != "vps";
-        message = ''host.capabilities.onDemandSshServer is incompatible with host.role = "vps" (headless.nix runs a permanent sshd)'';
+        # headless.nix already runs its own sshd; a second definition would clash
+        assertion = config.host.capabilities.sshServer -> config.host.role != "vps";
+        message = ''host.capabilities.sshServer is incompatible with host.role = "vps" (headless.nix runs a permanent sshd)'';
       }
       {
         assertion = !(config.host.role == "vps" && config.host.gpu != "none");

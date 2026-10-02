@@ -7,9 +7,9 @@
   ...
 }:
 
-# on-demand sshd (common/modules/ssh-on-demand): the daemon is off at boot and
-# flipped by hand, so the bar is the only thing that says whether the machine is
-# currently reachable. Blue glyph = listening, struck-through white = stopped.
+# sshd (common/modules/ssh-server): starts at boot but can be stopped by hand,
+# so the bar is the only thing that says whether the machine is currently
+# reachable. Blue glyph = listening, struck-through white = stopped.
 #
 # service_status reads ActiveState off org.freedesktop.systemd1 and repaints
 # when it changes — no `interval`, unlike the custom blocks. It talks to the

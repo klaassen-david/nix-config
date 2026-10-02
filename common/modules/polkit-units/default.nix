@@ -1,8 +1,8 @@
 # Password-less systemctl for hand-toggled units
 # ==============================================
-# Several services here are deliberately off at boot and started by hand —
-# the wg-quick client tunnels (modules/wireguard) and the on-demand sshd
-# (modules/ssh-on-demand). Reaching for `sudo` (or a password prompt) every time
+# Several services here are toggled by hand —
+# the wg-quick client tunnels (modules/wireguard) and the desktop sshd
+# (modules/ssh-server). Reaching for `sudo` (or a password prompt) every time
 # is friction on units that are *designed* to be flipped, so this grants dk the
 # exact verbs on the exact units instead:
 #
