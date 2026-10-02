@@ -13,9 +13,11 @@
 # interface (10.100.1.0/24; v6 fdcc:ad94:bacf:61a4::cafe:0/112) that olympus
 # sees directly. Phones are routed by the host — forwarding/NAT/filtering are
 # the host's job via the wireguard module. v15 config lives in the sqlite db
-# `/var/lib/wg-easy/wg-easy.db`; the one-time v14→v15 migration is the setup
-# wizard (user uploads the old wg0.json via the web UI). Admin login is behind
-# the SSO gate (../nginx).
+# `/var/lib/wg-easy/wg-easy.db`. Admin login is its own, behind the SSO gate
+# (../nginx). One-time v14→v15 migration: the setup wizard at vpn.dklaassen.de
+# → create the admin → "existing configuration" → upload the old wg0.json
+# (keys and v4 addresses carry over) → host vpn.dklaassen.de, port 51821; then
+# `systemctl restart podman-wg-easy` so the ExecStartPre below applies.
 
 let
   image = "ghcr.io/wg-easy/wg-easy:15"; # pinned; do not use :latest
