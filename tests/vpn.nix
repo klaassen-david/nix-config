@@ -801,5 +801,30 @@ pkgs.testers.runNixOSTest {
         out = hermes.execute(curl)[1].strip()
         assert out == "", f"expected a dropped connection, got {out!r}"
         hermes.succeed("vpn egress direct")
+
+    with subtest("A6: gatewayed routes pushed into main cannot pull traffic around the tunnel"):
+        watch = "vpn-egress-watch@vpn-egress-olympus.service"
+        hermes.succeed("vpn egress olympus")
+        hermes.succeed("ip route show table 2150 | grep -F 10.100.0.0/16")
+        hermes.succeed("ip route show table 2150 | grep -F 203.0.113.0/24")
+        hermes.fail("ip route show table 2150 | grep default")
+        hermes.succeed("ip route add 0.0.0.0/1 via 203.0.113.1 dev eth1")
+        hermes.succeed("ip route add 128.0.0.0/1 via 203.0.113.1 dev eth1")
+        hermes.sleep(3)
+        hermes.fail("ip route show table 2150 | grep -E '^(0.0.0.0|128.0.0.0)/1 '")
+        out = hermes.succeed(curl).strip()
+        assert out == "203.0.113.10", f"expected egress via olympus, got {out!r}"
+        hermes.sleep(40)
+        hermes.fail(f"journalctl -u '{watch}' | grep 'path left'")
+        # an on-link route appearing later is picked up by the follower
+        hermes.succeed("ip route add 198.18.0.0/24 dev eth1")
+        hermes.wait_until_succeeds("ip route show table 2150 | grep -F 198.18.0.0/24")
+        hermes.succeed("ip route del 198.18.0.0/24 dev eth1")
+        hermes.wait_until_fails("ip route show table 2150 | grep -F 198.18.0.0/24")
+        hermes.succeed("ip route del 0.0.0.0/1 via 203.0.113.1 dev eth1")
+        hermes.succeed("ip route del 128.0.0.0/1 via 203.0.113.1 dev eth1")
+        hermes.succeed("vpn egress direct")
+        hermes.fail("systemctl is-active vpn-onlink.service")
+        hermes.fail("ip route show table 2150 | grep .")
   '';
 }

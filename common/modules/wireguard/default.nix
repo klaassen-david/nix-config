@@ -35,7 +35,7 @@
 #   exit   4950   iif vpn-exit                           main
 #   host   5000   fwmark 0x1000/0x1000                   main (mesh socket: never tunnelled)
 #   host   5100   to <lan> (v4; vpn-home)                2200: <lan> dev olympus
-#   host   5200   main, suppress_prefixlength 0          (egress unit: local routes first)
+#   host   5200   all                                    2150: on-link routes of main (egress: own lan, mesh first)
 #   host   5300   all                                    2100: default dev olympus
 #
 # GRE relays host exits: a WireGuard interface lets only one peer hold
@@ -703,6 +703,63 @@ let
   };
 
   owner = "/run/vpn-egress";
+  systemctl = "${config.systemd.package}/bin/systemctl";
+
+  # Table 2150 (rule 5200): the on-link routes of main, i.e. what stays direct in
+  # a full tunnel (own lan, mesh, home). Gatewayed routes are left out on purpose:
+  # a rogue DHCP server could push `0.0.0.0/1 via <it>` and, with a
+  # suppress_prefixlength rule, pull traffic around the tunnel (TunnelVision).
+  onlink = pkgs.writeShellApplication {
+    name = "vpn-onlink";
+    runtimeInputs = [
+      pkgs.iproute2
+      pkgs.jq
+      pkgs.coreutils
+      pkgs.gnugrep
+      pkgs.gnused
+      pkgs.gawk
+    ];
+    text = ''
+      # replace first, delete stale after, so a refill never opens a gap
+      fill() { # <-4|-6> <min prefix length> <host prefix length>
+        local want have
+        want=$(mktemp)
+        have=$(mktemp)
+        ip -j "$1" route show table main | jq -r --argjson min "$2" --argjson full "$3" '
+          .[] | select(.dst != "default" and .gateway == null and .dev != null and .nexthops == null
+                       and (.type // "unicast") == "unicast")
+              | select((.dst | if test("/") then split("/")[1] | tonumber else $full end) >= $min)
+              | "\(.dst) dev \(.dev)\(if .prefsrc then " src " + .prefsrc else "" end) metric \(.metric // 0)"' \
+          | sort -u > "$want"
+        sed 's/^/route replace /; s/$/ table 2150/' "$want" | ip -force "$1" -batch - || true
+        awk '{ print $1, $NF }' "$want" | sort -u > "$want.k"
+        { ip -j "$1" route show table 2150 2>/dev/null || true; } | jq -r '.[]? | "\(.dst) \(.metric // 0)"' | sort -u > "$have"
+        comm -13 "$want.k" "$have" | while read -r dst metric; do
+          ip "$1" route del "$dst" metric "$metric" table 2150 || true
+        done
+        rm -f "$want" "$want.k" "$have"
+      }
+      fill_all() {
+        fill -4 8 32
+        fill -6 48 128
+      }
+
+      case $1 in
+        fill) fill_all ;;
+        clear)
+          ip -4 route flush table 2150 2>/dev/null || true
+          ip -6 route flush table 2150 2>/dev/null || true
+          ;;
+        watch)
+          # events of other tables (incl. our own 2150 writes) print " table "
+          ip -o monitor route | grep --line-buffered -v ' table ' | while read -r _; do
+            while read -r -t 1 _; do :; done
+            fill_all
+          done
+          ;;
+      esac
+    '';
+  };
 
   # Egress table 2100 is consulted by rules 5200/5300 while the unit is active.
   # It carries a blackhole default (worst metric): if the tunnel route vanishes
@@ -729,6 +786,7 @@ let
     {
       start = pkgs.writeShellScript "vpn-egress-start" ''
         set -euo pipefail
+        ${systemctl} start vpn-onlink.service
         echo ${name} > ${owner}
         # fail closed first: whatever goes wrong below, nothing leaks
         ${each (f: "${ip} ${f} route replace blackhole default metric 4294967295 table 2100")}
@@ -740,7 +798,7 @@ let
         ${ip} -6 route replace default dev olympus src ${src6} metric 100 table 2100
         ${each (f: ''
           ${ip} ${f} rule del pref 5200 || true
-          ${ip} ${f} rule add pref 5200 lookup main suppress_prefixlength 0
+          ${ip} ${f} rule add pref 5200 lookup 2150
           ${ip} ${f} rule del pref 5300 || true
           ${ip} ${f} rule add pref 5300 lookup 2100
         '')}
@@ -756,6 +814,7 @@ let
             ${ip} ${f} route flush table 2100 || true
           '')}
           rm -f ${owner}
+          ${systemctl} stop --no-block vpn-onlink.service || true
         fi
         ${lib.concatMapStringsSep "\n" (a: "${ip} ${addrFlags a}addr del ${a} dev olympus || true") extra}
       '';
@@ -812,6 +871,7 @@ let
     name = "vpn-egress-watch";
     runtimeInputs = [
       pkgs.iputils
+      pkgs.iproute2
       pkgs.util-linux
       pkgs.coreutils
     ];
@@ -833,8 +893,26 @@ let
         fi
       }
 
+      # the probe must still be routed into the tunnel, not around it
+      reason=""
+      healthy() {
+        local got
+        got=$(ip route get ${cfg.probe} 2>&1 || true)
+        case $got in
+          *" dev olympus "* | *" dev tukl "*) ;;
+          *)
+            reason="path left the tunnel (route to the probe: $(echo "$got" | head -n1))"
+            return 1
+            ;;
+        esac
+        if ! ping -c1 -W5 -n ${cfg.probe} >/dev/null 2>&1; then
+          reason="no internet through the exit — traffic is dropped"
+          return 1
+        fi
+      }
+
       while true; do
-        if ping -c1 -W5 -n ${cfg.probe} >/dev/null 2>&1; then
+        if healthy; then
           fails=0
           if [ "$down" = 1 ]; then
             down=0
@@ -847,8 +925,8 @@ let
           if [ "$fails" -ge 2 ] && [ "$down" = 0 ]; then
             down=1
             touch "$marker"
-            echo "$unit: no internet through the exit — traffic is dropped"
-            notify critical "VPN exit down" "$unit: no internet, traffic is dropped — systemctl stop $unit to go direct"
+            echo "$unit: $reason"
+            notify critical "VPN exit down" "$unit: $reason — 'vpn egress direct' goes direct"
           fi
         fi
         sleep 15 &
@@ -1172,6 +1250,14 @@ in
     systemd.services = lib.mkMerge [
       (lib.mkIf (!isServer) (
         {
+          # filled and followed while an egress is selected (started/stopped by its scripts)
+          vpn-onlink.serviceConfig = {
+            ExecStartPre = "${onlink}/bin/vpn-onlink fill";
+            ExecStart = "${onlink}/bin/vpn-onlink watch";
+            ExecStopPost = "${onlink}/bin/vpn-onlink clear";
+            Restart = "always";
+            RestartSec = 1;
+          };
           vpn-egress-olympus = egressUnit "vpn-egress-olympus" {
             src4 = self.ip;
             src6 = self.ip6;
