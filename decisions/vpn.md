@@ -50,8 +50,9 @@ stoppable by hand (bar / `systemctl stop sshd`).
 reaches the hosts like any other node.
 
 **Failure semantics** [AGENT 2026-10-02, from the security review]: egress
-fails closed — a mesh restart or a failed switch keeps the egress slot
-blackholed until it recovers or `vpn egress direct`; `vpn mesh off` is an
+fails closed — a mesh restart, a failed switch, or a plain stop/restart/crash
+of an exit unit keeps the egress slot blackholed (`blocked`) until it recovers
+or `vpn egress direct` [AGENT 2026-10-02, adversarial audit H1]; `vpn mesh off` is an
 explicit return to direct. A wg-easy v15 admin is root-equivalent on olympus
 (host netns + NET_ADMIN); accepted with wg-easy's hooks cleared on every db
 change, and the setup wizard finished right after deploy. Restricting the SSO
