@@ -100,6 +100,12 @@
 #     probe's path, not every destination.
 #   - After the hub's mesh restarts, spokes re-handshake on their next keepalive:
 #     up to 1-2 minutes of dropped traffic.
+#   - Relayed traffic is refused the exit's LAN, not the home router's WAN
+#     address: services the router exposes there (hairpin/port forwards) stay
+#     reachable through hestia. TODO.md tracks adding the WAN address.
+#   - An exit carries its own network position: a phone relayed through hermes
+#     on campus reaches what the RPTU network lets that host reach.
+#   - The egress selection lives in /run: every boot starts direct.
 
 let
   base4 = "10.100";
