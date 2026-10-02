@@ -19,7 +19,6 @@ let
     "wg-olympus.age"
     "wg-hermes.age"
     "wg-hestia.age"
-    "wg-tukl.age"
     "wg-tukl-hermes.age"
     "wg-tukl-hestia.age"
     "smb-dk.age"
