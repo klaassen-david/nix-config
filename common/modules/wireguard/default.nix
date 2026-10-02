@@ -28,7 +28,8 @@
 #
 # Routing (both families unless noted; lower pref wins):
 #   where  pref   rule                                   table
-#   hub    2000   main, suppress_prefixlength 0          mesh routes beat the rest
+#   hub    2000   to <mesh, phones, lans>: main, suppress_prefixlength 0
+#                                                        their routes beat the exit tables
 #   hub    3000+x from <x's range>                       2000+x: default dev vpn-<x>
 #   hub    3500   from <phone> (vpn-phone, per phone)    2000+x, or prohibit
 #   exit   4900   fwmark 0x2000/0x2000                   2300: default dev vpn-exit
@@ -60,19 +61,22 @@
 #
 # nft: `vpn-hub` (hub) gates phones on wg0: phones reach phones and the
 # internet (not private, CGNAT or link-local ranges behind the uplink); mesh
-# hosts and the home lan only for addresses in the vpn-phone sets. New
-# connections from the uplink into the mesh, wg0 or the GRE links are dropped.
-# Hosts may open connections to phones (only wg0 ingress is gated). It also
-# rejects the hub's own traffic to the lan unless vpn-home is on. `vpn-exit`
-# (exits) forwards with policy drop: relayed traffic (from `vpn-exit`) to
-# anywhere but the mesh, tukl, private ranges and the exit's own lan
-# (`vpn-languard` refills it, `vpn-languard-watch` on route and address
-# changes, v6 widened to /56), plus mesh/phone sources to the lan on its owner;
-# only those are masqueraded, and the exit's own services are shut to relayed
-# traffic. Both tables reload atomically and have no stop. Their gate units
-# (`vpn-hub-nft`, `vpn-exit-nft`) run before network-pre.target and
-# `wireguard-olympus` (hub: also `podman-wg-easy`) requires them. Apply changes
-# with `systemctl reload`: a restart would take the mesh down with it.
+# hosts and the home lan only for addresses in the vpn-phone sets. From the
+# uplink into the mesh, wg0 or the GRE links only replies pass (established,
+# related; the rest, invalid included, is dropped). Hosts may open connections
+# to phones (only wg0 ingress is gated). It also rejects the hub's own traffic
+# to the lan unless vpn-home is on. `vpn-exit` (exits) forwards with policy
+# drop: relayed traffic (from `vpn-exit`) to anywhere but the mesh, tukl,
+# private ranges and the exit's own lan (`vpn-languard` supplies the sets, v6
+# widened to /56; `vpn-exit-load` loads them in the gate's own transaction and
+# `vpn-languard-watch` follows route and address changes), plus mesh/phone
+# sources to the lan on its owner; only those are masqueraded. The exit's own
+# services are shut to relayed traffic, and on the lan owner to phones (mesh
+# hosts only) at its lan address. Both tables reload atomically and have no
+# stop. Their gate units (`vpn-hub-nft`, `vpn-exit-nft`) run before
+# network-pre.target and `wireguard-olympus` (hub: also `podman-wg-easy`)
+# requires them. Apply changes with `systemctl reload`: a restart would take
+# the mesh down with it.
 #
 # Units (hosts; wheel starts/stops them without sudo, host.userManagedUnits):
 #   wireguard-olympus      the mesh; vpn-home is bound to it, the egress units only
@@ -198,10 +202,32 @@ let
     ${ip} link set ${dev} mtu ${greMtu} up
   '';
 
+  # Delete every rule at a pref (a pref can hold several rules).
+  ruleFlush =
+    pref:
+    lib.concatMapStringsSep "\n" (f: "while ${ip} ${f} rule del pref ${pref} 2>/dev/null; do :; done") [
+      "-4"
+      "-6"
+    ];
+  # Prefixes the hub reaches through main: the mesh, the phones, the home lans.
+  hubMain4 = lib.unique ([ "${base4}.0.0/16" cfg.phones.subnet ] ++ map (n: n.lan) lanNodes);
+  hubMain6 = lib.unique [
+    "${base6}::/48"
+    cfg.phones.subnet6
+  ];
+
   # Hub: one GRE link per exit, its own table, and a rule sending the exit's
-  # source range into it. Rule 2000 lets the mesh routes (prefix > 0) win first.
+  # source range into it. Rule 2000 lets main's routes (prefix > 0) win first,
+  # but only towards the mesh, phones and lans: any other main route (an
+  # on-link prefix at the provider, say) must not catch an exit's traffic.
   hubSetup = ''
-    ${ruleAdd "pref 2000 lookup main suppress_prefixlength 0"}
+    ${ruleFlush "2000"}
+    ${lib.concatMapStringsSep "\n" (
+      p: ruleAddIn "-4" "pref 2000 to ${p} lookup main suppress_prefixlength 0"
+    ) hubMain4}
+    ${lib.concatMapStringsSep "\n" (
+      p: ruleAddIn "-6" "pref 2000 to ${p} lookup main suppress_prefixlength 0"
+    ) hubMain6}
     ${lib.concatMapStringsSep "\n" (x: ''
       ${greAdd "vpn-${x.name}" self.ip x.ip}
       ${routeDefault "vpn-${x.name}" (2000 + x.octet)}
@@ -220,7 +246,7 @@ let
     ) exits
   );
   hubShutdown = ''
-    ${ruleDel "pref 2000"}
+    ${ruleFlush "2000"}
     ${lib.concatMapStringsSep "\n" (x: ''
       ${ruleDel "pref ${toString (3000 + x.octet)}"}
       ${ip} link del vpn-${x.name} || true
@@ -254,7 +280,7 @@ let
   # wireguard-olympus requires it, so no packet is forwarded ungated. Changes
   # are applied by reload: restarting the gate would bounce the mesh too.
   nftUnit =
-    file: after: {
+    load: after: {
       wantedBy = [ "multi-user.target" ];
       wants = [ "network-pre.target" ];
       before = [ "network-pre.target" ];
@@ -262,8 +288,8 @@ let
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
-        ExecStart = [ "${nft} -f ${file}" ] ++ after;
-        ExecReload = [ "${nft} -f ${file}" ] ++ after;
+        ExecStart = [ load ] ++ after;
+        ExecReload = [ load ] ++ after;
       };
     };
 
@@ -287,9 +313,11 @@ let
         type filter hook forward priority filter; policy accept;
         oifname "vpn-*" tcp flags syn tcp option maxseg size set rt mtu
 
-        # nothing from the internet opens connections into the mesh or the phones
-        iifname "${cfg.uplink}" oifname { "olympus", "${phoneIf}" } ct state new counter drop
-        iifname "${cfg.uplink}" oifname "vpn-*" ct state new counter drop
+        # from the internet only replies enter the mesh, the phones and the GRE links
+        iifname "${cfg.uplink}" oifname { "olympus", "${phoneIf}" } ct state { established, related } accept
+        iifname "${cfg.uplink}" oifname { "olympus", "${phoneIf}" } counter drop
+        iifname "${cfg.uplink}" oifname "vpn-*" ct state { established, related } accept
+        iifname "${cfg.uplink}" oifname "vpn-*" counter drop
 
         iifname "${phoneIf}" ct state established,related accept
         # phones get the internet, not the provider's private side or metadata service
@@ -330,6 +358,10 @@ let
       chain input {
         type filter hook input priority filter; policy accept;
         iifname "vpn-exit" drop
+        ${lib.optionalString (self.lan != null)
+          # home-lan access is for passing through: only mesh hosts may talk to this host's own lan address
+          ''iifname "olympus" ip daddr ${self.lan} ip saddr != ${base4}.0.0/24 counter drop''
+        }
       }
 
       # Default drop: forwarding is on host-wide, so LAN neighbours or spoofed
@@ -378,7 +410,8 @@ let
   '';
 
   # Refills lan4/lan6 with every routed prefix behind a real link, so the exit can
-  # refuse its own LAN whatever network it is on.
+  # refuse its own LAN whatever network it is on. `--print` emits the `add
+  # element` lines instead of loading them (for vpn-exit-load).
   languard = pkgs.writeShellApplication {
     name = "vpn-languard";
     runtimeInputs = [
@@ -389,10 +422,12 @@ let
       pkgs.python3
     ];
     text = ''
+      print=0
+      if [ "''${1:-}" = --print ]; then print=1; fi
       fill() {
         local set=$1 elems
         elems=$(sort -u | paste -sd, -)
-        echo "flush set inet vpn-exit $set"
+        if [ "$print" = 0 ]; then echo "flush set inet vpn-exit $set"; fi
         if [ -n "$elems" ]; then echo "add element inet vpn-exit $set { $elems }"; fi
       }
       routes='.[] | select(.dst != "default" and .dev != null and (.dev | test("^(lo|olympus|vpn-.*)$") | not))'
@@ -401,13 +436,29 @@ let
         ip -j -6 route show table main \
           | jq -r "$routes | select(.dst | test(\"^(fe[89ab][0-9a-f]:|ff)\"; \"i\") | not) | .dst" \
           | python3 ${widen6} | fill lan6
-      } | nft -f -
+      } | if [ "$print" = 1 ]; then cat; else nft -f -; fi
+    '';
+  };
+
+  # Loads the exit gate with the current lan4/lan6 elements in the same nft
+  # transaction, so the sets are never empty, not even during a reload.
+  exitLoad = pkgs.writeShellApplication {
+    name = "vpn-exit-load";
+    runtimeInputs = [
+      pkgs.nftables
+      pkgs.coreutils
+      languard
+    ];
+    text = ''
+      elems=$(vpn-languard --print)
+      { cat ${exitRuleset}; printf '%s\n' "$elems"; } | nft -f -
     '';
   };
 
   # Keeps the sets current: joining another network must not leave its lan open
-  # to relayed traffic. The first event refills at once; a burst is coalesced
-  # and followed by one more refill.
+  # to relayed traffic. The monitor starts before the first refill, so a change
+  # in between is not missed; a burst of events is coalesced and followed by
+  # one more refill.
   languardWatch = pkgs.writeShellApplication {
     name = "vpn-languard-watch";
     runtimeInputs = [
@@ -416,14 +467,17 @@ let
       languard
     ];
     text = ''
-      vpn-languard || true
-      ip -o monitor route address | while read -r _; do
+      ip -o monitor route address | {
+        sleep 1 # the monitor has subscribed by now
         vpn-languard || true
-        if read -r -t 1 _; then
-          while read -r -t 1 _; do :; done
+        while read -r _; do
           vpn-languard || true
-        fi
-      done
+          if read -r -t 1 _; then
+            while read -r -t 1 _; do :; done
+            vpn-languard || true
+          fi
+        done
+      }
     '';
   };
 
@@ -1433,7 +1487,7 @@ in
       ))
       (lib.mkIf isServer {
         # a reload empties local_home: restart vpn-home (partOf) to refill it
-        vpn-hub-nft = lib.recursiveUpdate (nftUnit hubRuleset [
+        vpn-hub-nft = lib.recursiveUpdate (nftUnit "${nft} -f ${hubRuleset}" [
           "${phoneCli}/bin/vpn-phone apply"
           "-${config.systemd.package}/bin/systemctl --no-block try-restart vpn-home.service"
         ]) { serviceConfig.ExecStartPre = hubBlackholes; };
@@ -1499,7 +1553,7 @@ in
         };
       })
       (lib.mkIf self.exit {
-        vpn-exit-nft = nftUnit exitRuleset [ "${languard}/bin/vpn-languard" ];
+        vpn-exit-nft = nftUnit "${exitLoad}/bin/vpn-exit-load" [ ];
         wireguard-olympus = {
           requires = [ "vpn-exit-nft.service" ];
           after = [ "vpn-exit-nft.service" ];

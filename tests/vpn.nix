@@ -142,6 +142,28 @@ let
 
   addr = address: prefixLength: { inherit address prefixLength; };
 
+  # A bare TCP RST for a connection that does not exist: conntrack calls it
+  # invalid, not new. Usage: rst.py <src> <dst>
+  rawRst = pkgs.writeText "rst.py" ''
+    import socket
+    import struct
+    import sys
+
+    src, dst = sys.argv[1:3]
+    s = socket.inet_aton(src)
+    d = socket.inet_aton(dst)
+    hdr = struct.pack("!HHLLBBHHH", 4444, 22, 1000, 0, 5 << 4, 0x04, 0, 0, 0)
+    pseudo = s + d + struct.pack("!BBH", 0, socket.IPPROTO_TCP, len(hdr))
+    data = pseudo + hdr
+    total = sum(struct.unpack("!16H", data))
+    while total >> 16:
+        total = (total & 0xFFFF) + (total >> 16)
+    hdr = hdr[:16] + struct.pack("!H", ~total & 0xFFFF) + hdr[18:]
+    sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
+    sock.bind((src, 0))
+    sock.sendto(hdr, (dst, 0))
+  '';
+
   # wg-easy stand-in on olympus: plain wg0 plus the slice of its sqlite db that
   # vpn-phone reads.
   phone6 = "fdcc:ad94:bacf:61a4::cafe";
@@ -208,7 +230,10 @@ pkgs.testers.runNixOSTest {
     internet =
       { ... }:
       {
-        environment.systemPackages = [ pkgs.netcat ];
+        environment.systemPackages = [
+          pkgs.netcat
+          pkgs.python3
+        ];
         virtualisation.vlans = [ 1 ];
         networking.useDHCP = lib.mkForce false;
         networking.interfaces.eth1 = {
@@ -295,6 +320,7 @@ pkgs.testers.runNixOSTest {
           interface = "eth1";
         };
         networking.firewall.checkReversePath = false;
+        environment.systemPackages = [ pkgs.netcat ];
         networking.wg-quick.interfaces.wg0 = {
           address = [
             "10.100.1.2/32"
@@ -729,7 +755,7 @@ pkgs.testers.runNixOSTest {
         internet.execute("ping -c3 -W1 10.100.0.2")
         hestia.sleep(3)
         hestia.fail("grep -q 'ICMP echo request' /tmp/hub.cap")
-        olympus.succeed("nft list chain inet vpn-hub forward | grep '\"eth1\".*\"olympus\"' | grep -v 'packets 0 '")
+        olympus.succeed("nft list chain inet vpn-hub forward | grep '\"eth1\".*\"olympus\".*drop' | grep -v 'packets 0 '")
         internet.succeed("ip route del 10.100.0.2/32")
 
     with subtest("sshd: reachable over the mesh and from the home LAN, closed to the internet"):
@@ -923,5 +949,82 @@ pkgs.testers.runNixOSTest {
         olympus.succeed("vpn-phone apply")
         out = phone.succeed(curl).strip()
         assert out == "203.0.113.10", f"expected phone egress via olympus, got {out!r}"
+    with subtest("B2/M4: a host that owns no lan is mesh-only; a claimed home prefix opens nothing"):
+        internet.succeed("ip addr add 192.168.178.99/32 dev lo")
+        hermes.succeed("ip route add 192.168.178.99/32 via 203.0.113.1")
+        hestia.succeed("ip route add 192.168.178.99/32 via 192.168.178.2")
+        internet.fail("nc -z -w2 -s 192.168.178.99 203.0.113.30 22")
+        # the owner still takes the real lan
+        homerouter.succeed("nc -z -w2 192.168.178.32 22")
+        hermes.fail("iptables -S nixos-fw | grep -F 192.168.178")
+        hestia.succeed("iptables -S nixos-fw | grep -F 192.168.178.0/24")
+        hermes.succeed("ip route del 192.168.178.99/32")
+        hestia.succeed("ip route del 192.168.178.99/32")
+        internet.succeed("ip addr del 192.168.178.99/32 dev lo")
+
+    with subtest("B2/M5: a phone with home on reaches the lan, not the exit host's own services"):
+        olympus.succeed("vpn-phone phone1 hosts off")
+        olympus.succeed("vpn-phone phone1 home on")
+        phone.wait_until_succeeds("ping -c1 -W2 192.168.178.2")
+        phone.fail("nc -z -w2 192.168.178.32 22")
+        phone.fail("ping -c1 -W2 192.168.178.32")
+        # hosts on: the mesh address is the way to the host itself
+        olympus.succeed("vpn-phone phone1 hosts on")
+        phone.wait_until_succeeds("nc -z -w2 10.100.0.2 22")
+        olympus.succeed("vpn-phone phone1 hosts off")
+        olympus.succeed("vpn-phone phone1 home off")
+        # a mesh host still reaches hestia's lan address
+        hermes.succeed("nc -z -w2 10.100.0.2 22")
+
+    with subtest("B2/L1: invalid packets from the uplink never enter the mesh"):
+        internet.succeed("ip route add 10.100.0.2/32 via 203.0.113.10")
+        hestia.succeed("rm -f /tmp/inv.cap")
+        hestia.execute("nohup timeout 15 tcpdump -nl -i olympus 'tcp and dst port 22 and src 203.0.113.1' >/tmp/inv.cap 2>&1 &")
+        hestia.sleep(2)
+        internet.succeed("python3 ${rawRst} 203.0.113.1 10.100.0.2")
+        internet.succeed("python3 ${rawRst} 203.0.113.1 10.100.0.2")
+        hestia.sleep(3)
+        hestia.fail("grep -q 'Flags \\[R\\]' /tmp/inv.cap")
+        # the same packet towards the hub itself shows the sender works
+        olympus.succeed("rm -f /tmp/inv.cap")
+        olympus.execute("nohup timeout 10 tcpdump -nl -i eth1 'tcp and dst port 22 and src 203.0.113.1' >/tmp/inv.cap 2>&1 &")
+        olympus.sleep(2)
+        internet.succeed("python3 ${rawRst} 203.0.113.1 203.0.113.10")
+        olympus.sleep(2)
+        olympus.succeed("grep -q 'Flags \\[R\\]' /tmp/inv.cap")
+        internet.succeed("ip route del 10.100.0.2/32")
+
+    with subtest("B2/L2: reloading the exit gate never leaves lan4 empty"):
+        hestia.succeed("""
+          ( for i in $(seq 400); do
+              nft list set inet vpn-exit lan4 | grep -q 192.168.178.0/24 || echo EMPTY
+            done ) >/tmp/lan4.log 2>&1 &
+          echo $! >/tmp/lan4.pid
+        """)
+        for _ in range(5):
+            hestia.succeed("systemctl reload vpn-exit-nft.service")
+        hestia.succeed("while kill -0 $(cat /tmp/lan4.pid) 2>/dev/null; do sleep 0.2; done")
+        hestia.succeed("test ! -s /tmp/lan4.log")
+
+    with subtest("B2/L5: an on-link prefix at the hub does not capture an exit's traffic"):
+        olympus.succeed("ip link add dum0 type dummy; ip link set dum0 up; ip addr add 192.0.2.10/24 dev dum0")
+        internet.succeed("ip addr add 192.0.2.1/32 dev lo")
+        for f, n in [("-4", 3), ("-6", 2)]:
+            olympus.succeed(f"ip {f} rule show | grep -c '^2000:.*to .*suppress_prefixlength 0' | grep -qx {n}")
+        olympus.succeed("vpn-phone phone1 egress hestia")
+        out = phone.succeed("curl -s --max-time 5 http://192.0.2.1/").strip()
+        assert out == "203.0.113.20", f"expected 192.0.2.1 via hestia, got {out!r}"
+        # the hub's own traffic keeps using the on-link route
+        olympus.succeed("ip route get 192.0.2.1 | grep -w dum0")
+        olympus.succeed("vpn-phone phone1 egress olympus")
+        olympus.succeed("ip link del dum0")
+        internet.succeed("ip addr del 192.0.2.1/32 dev lo")
+
+    with subtest("B2/L6: the languard watcher misses nothing around its start"):
+        hestia.succeed("systemctl restart vpn-languard-watch.service")
+        hestia.succeed("ip link add dum1 type dummy; ip link set dum1 up; ip addr add 10.78.0.1/24 dev dum1")
+        hestia.wait_until_succeeds("nft list set inet vpn-exit lan4 | grep 10.78.0.0/24")
+        hestia.succeed("ip link del dum1")
+        hestia.wait_until_fails("nft list set inet vpn-exit lan4 | grep 10.78.0.0/24")
   '';
 }
