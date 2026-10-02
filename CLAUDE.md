@@ -64,7 +64,7 @@ Rulings and rejected alternatives: `decisions/vpn.md`; mechanics (addressing, ta
 - **tukl** is dialled directly by each host with its own RPTU config (`tukl` field in the registry, key `wg-tukl-<host>.age`). Never relayed, never offered to phones.
 - **Home network** (hestia's LAN, real addresses) is a separate switch — `vpn home on|off` on hermes, `sudo systemctl start|stop vpn-home` on olympus — never implied by choosing hestia as exit. While on, it wins over a local LAN using the same prefix.
 - **Phones** stay in wg-easy v15 (host network namespace; UI adds/removes them, no rebuild). Per-phone egress (olympus or a host), host reachability and home access are set on olympus with `sudo vpn-phone …`, keyed by the phone's public key; a new phone gets olympus's uplink, no hosts, no home. A phone whose exit is down has its traffic dropped; hosts may reach phones. A wg-easy admin is root-equivalent on olympus and the SSO gate admits any Nextcloud account — see the `modules/wg-easy` header.
-- **sshd** runs on the hosts at boot, key-only, port 22 only on the mesh and from the home LAN (`modules/ssh-server`); stoppable like the other units.
+- **sshd** runs on the hosts at boot, key-only, port 22 only on the mesh and, on the lan owner (hestia), from the home LAN (`modules/ssh-server`); stoppable like the other units.
 - `checks.vpn` (`tests/vpn.nix`) is a multi-VM test (hub, two hosts, home router, phone, "internet") run by `nix flake check`. It does not cover tukl (no RPTU), the real wg-easy container, NetworkManager, polkit or notifications — check those on hardware.
 
 ## Backups

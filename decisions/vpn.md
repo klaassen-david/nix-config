@@ -36,8 +36,11 @@ over the units, and an i3status block showing the current exit.
 
 **Hosts connect automatically** [USER 2026-10-02]: the mesh comes up at boot
 and sshd runs on the hosts by default. Scope [AGENT 2026-10-02]: key-only, and
-port 22 accepted only on the mesh interface and from the home LAN prefix (keeps
-the `.local` LAN fast path); café/university networks see a closed port. Still
+port 22 accepted only on the mesh interface and, on the host that owns the home
+LAN (hestia), from that prefix (keeps the `.local` LAN fast path; amended
+[AGENT 2026-10-02]: the other hosts were mesh-or-home-prefix, which anyone on a
+foreign network can satisfy by claiming the prefix); café/university networks
+see a closed port. Still
 stoppable by hand (bar / `systemctl stop sshd`).
 
 **Exit offline**: traffic is dropped; hosts additionally show a notification.
