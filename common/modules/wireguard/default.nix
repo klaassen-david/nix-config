@@ -45,15 +45,24 @@
 # masquerades out its uplink and returns replies via 4900 (connection mark
 # 0x2000, set in prerouting). GRE is accepted on `olympus` by extraCommands.
 #
-# nft: `vpn-hub` (hub) gates phones on wg0: internet and phones always, mesh
-# hosts and the home lan only for addresses in the vpn-phone sets; it also
-# rejects the hub's own traffic to the lan unless vpn-home is on. `vpn-exit`
+# The exit tables 2000+x also hold a blackhole default (metric 4294967295),
+# installed with `vpn-hub-nft` and never removed: a vanished vpn-<x> link drops
+# its sources instead of letting them fall through to the hub's uplink.
+#
+# nft: `vpn-hub` (hub) gates phones on wg0: phones reach phones and the
+# internet (not private, CGNAT or link-local ranges behind the uplink); mesh
+# hosts and the home lan only for addresses in the vpn-phone sets. New
+# connections from the uplink into the mesh, wg0 or the GRE links are dropped.
+# It also rejects the hub's own traffic to the lan unless vpn-home is on. `vpn-exit`
 # (exits) forwards with policy drop: relayed traffic (from `vpn-exit`) to
 # anywhere but the mesh, tukl, private ranges and the exit's own lan
 # (`vpn-languard` refills it, `vpn-languard-watch` on route and address
 # changes, v6 widened to /56), plus mesh/phone sources to the lan on its owner;
 # only those are masqueraded, and the exit's own services are shut to relayed
-# traffic. Both tables reload atomically and have no stop.
+# traffic. Both tables reload atomically and have no stop. Their gate units
+# (`vpn-hub-nft`, `vpn-exit-nft`) run before network-pre.target and
+# `wireguard-olympus` (hub: also `podman-wg-easy`) requires them. Apply changes
+# with `systemctl reload`: a restart would take the mesh down with it.
 #
 # Units (hosts; wheel starts/stops them without sudo, host.userManagedUnits):
 #   wireguard-olympus      the mesh; the units below are bound to it
@@ -255,7 +264,14 @@ let
         type filter hook forward priority filter; policy accept;
         oifname "vpn-*" tcp flags syn tcp option maxseg size set rt mtu
 
+        # nothing from the internet opens connections into the mesh or the phones
+        iifname "${cfg.uplink}" oifname { "olympus", "${phoneIf}" } ct state new counter drop
+        iifname "${cfg.uplink}" oifname "vpn-*" ct state new counter drop
+
         iifname "${phoneIf}" ct state established,related accept
+        # phones get the internet, not the provider's private side or metadata service
+        iifname "${phoneIf}" oifname "${cfg.uplink}" ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10, 169.254.0.0/16 } counter drop
+        iifname "${phoneIf}" oifname "${cfg.uplink}" ip6 daddr { fc00::/7, fe80::/10 } counter drop
         iifname "${phoneIf}" oifname { "${cfg.uplink}", "${phoneIf}" } accept
         iifname "${phoneIf}" oifname "vpn-*" accept
         ${lib.optionalString (hostSpokes != [ ]) ''

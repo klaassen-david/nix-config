@@ -687,5 +687,26 @@ pkgs.testers.runNixOSTest {
         phone.wait_until_succeeds(f"{curl} | grep -x 203.0.113.30", timeout=180)
         hestia.wait_until_succeeds("ping -c1 -W2 10.100.0.1", timeout=180)
         olympus.succeed("vpn-phone phone1 egress olympus")
+
+    with subtest("hub: phones reach the internet, not private or metadata ranges behind the uplink"):
+        internet.succeed("ip addr add 169.254.169.254/32 dev lo; ip addr add 10.55.0.1/32 dev lo")
+        out = phone.succeed(curl).strip()
+        assert out == "203.0.113.10", f"expected phone egress via olympus, got {out!r}"
+        phone.fail("curl -s --max-time 5 http://169.254.169.254/")
+        phone.fail("curl -s --max-time 5 http://10.55.0.1/")
+        olympus.succeed("nft list chain inet vpn-hub forward | grep 169.254.0.0/16 | grep -v 'packets 0 '")
+        # olympus itself is not subject to the phone gate
+        olympus.succeed("curl -s --max-time 5 http://10.55.0.1/")
+
+    with subtest("hub: the internet cannot open connections into the mesh"):
+        internet.succeed("ip route add 10.100.0.2/32 via 203.0.113.10")
+        hestia.succeed("rm -f /tmp/hub.cap")
+        hestia.execute("nohup timeout 12 tcpdump -nl -i olympus -c1 'icmp and src 203.0.113.1' >/tmp/hub.cap 2>&1 &")
+        hestia.sleep(2)
+        internet.execute("ping -c3 -W1 10.100.0.2")
+        hestia.sleep(3)
+        hestia.fail("grep -q 'ICMP echo request' /tmp/hub.cap")
+        olympus.succeed("nft list chain inet vpn-hub forward | grep '\"eth1\".*\"olympus\"' | grep -v 'packets 0 '")
+        internet.succeed("ip route del 10.100.0.2/32")
   '';
 }
