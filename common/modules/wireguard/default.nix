@@ -35,8 +35,17 @@
 #   exit   4950   iif vpn-exit                           main
 #   host   5000   fwmark 0x1000/0x1000                   main (mesh socket: never tunnelled)
 #   host   5100   to <lan> (v4; vpn-home)                2200: <lan> dev olympus
-#   host   5200   all                                    2150: on-link routes of main (egress: own lan, mesh first)
-#   host   5300   all                                    2100: default dev olympus
+#   host   5200   all (egress or tukl selected)          2150: on-link routes of main (own lan, mesh, home)
+#   host   5300   all (egress or tukl selected)          2100: default dev olympus|tukl, else blackhole;
+#                                                        prohibit <home lan>
+#
+# The egress slot (5200/5300, table 2100) is shared by the egress units and tukl
+# (wg-quick `Table = off`, its scripts fill the slot). Table 2150 holds only
+# on-link routes (no gateway, prefix >= /8, /48), kept by `vpn-onlink` while a
+# slot is taken: a route pushed into main by the local network (DHCP option 121)
+# cannot steer traffic around the tunnel. A mesh restart or a failed switch leaves
+# the blackhole in force: traffic drops until the selection is back or `vpn egress
+# direct` / `vpn mesh off` clears it.
 #
 # GRE relays host exits: a WireGuard interface lets only one peer hold
 # 0.0.0.0/0, so the hub cannot give each exit its own default route. Instead
@@ -65,10 +74,12 @@
 # with `systemctl reload`: a restart would take the mesh down with it.
 #
 # Units (hosts; wheel starts/stops them without sudo, host.userManagedUnits):
-#   wireguard-olympus      the mesh; the units below are bound to it
+#   wireguard-olympus      the mesh; vpn-home is bound to it, the egress units only
+#                          want it (a restart re-attaches the selected egress)
 #   vpn-egress-<olympus|x> one active at most, conflict with each other and tukl;
 #                          vpn-egress-watch@ announces a dead exit (traffic is dropped)
-#   wg-quick-tukl          tukl, dialled by the host itself
+#   wg-quick-tukl          tukl, dialled by the host itself, in the same slot
+#   vpn-egress-reset       tears the slot down (`vpn egress direct`)
 #   vpn-home               host: route the lan over the mesh; hub: lift its reject
 # Hub: vpn-hub-nft, vpn-phones (re-applies on wg-easy db writes), vpn-home.
 # `vpn status|egress|home|mesh` wraps the host side; phones are managed on the
