@@ -34,6 +34,12 @@ local LAN on the device; reaching both at once is not needed.
 `vpn egress <direct|olympus|host|tukl>`, `vpn home on|off`, `vpn mesh on|off`)
 over the units, and an i3status block showing the current exit.
 
+**Hosts connect automatically** [USER 2026-10-02]: the mesh comes up at boot
+and sshd runs on the hosts by default. Scope [AGENT 2026-10-02]: key-only, and
+port 22 accepted only on the mesh interface and from the home LAN prefix (keeps
+the `.local` LAN fast path); café/university networks see a closed port. Still
+stoppable by hand (bar / `systemctl stop sshd`).
+
 **Exit offline**: traffic is dropped; hosts additionally show a notification.
 
 **olympus** keeps its own traffic on its uplink — no exit, no filtered split
