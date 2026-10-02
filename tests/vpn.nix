@@ -885,5 +885,43 @@ pkgs.testers.runNixOSTest {
         hermes.succeed("vpn mesh on")
         hermes.wait_until_succeeds("ping -c1 -W2 10.100.0.1")
         assert short(hermes) == "direct", short(hermes)
+
+    with subtest("C2: odd spellings and duplicate addresses neither break apply nor leave stale set entries"):
+        db = "/var/lib/wg-easy/wg-easy.db"
+        ka, kb, kc = "A" * 43 + "=", "B" * 43 + "=", "C" * 43 + "="
+        olympus.succeed(
+            f"sqlite3 {db} \""
+            f"INSERT INTO clients_table VALUES "
+            f"('{ka}', '10.100.1.20', 'FDCC:AD94:BACF:61A4:0000:0000:CAFE:0014', 'upper', 1, 'wg0'), "
+            f"('{kb}', '10.100.1.30', '${phone6}:1e', 'dup1', 1, 'wg0'), "
+            f"('{kc}', '10.100.1.30', '${phone6}:1f', 'dup2', 1, 'wg0');\""
+        )
+        err = olympus.succeed("vpn-phone apply 2>&1 >/dev/null")
+        assert err.count("used by another row") == 2, err
+        olympus.succeed("vpn-phone upper hosts on")
+        olympus.succeed("vpn-phone upper hosts on")
+        olympus.succeed("nft list set inet vpn-hub phone_hosts6 | grep -q 'fdcc:ad94:bacf:61a4::cafe:14'")
+        olympus.succeed("nft list set inet vpn-hub phone_hosts | grep -q 10.100.1.20")
+        olympus.succeed("vpn-phone upper egress hestia")
+        olympus.succeed("vpn-phone upper egress hestia")
+        olympus.succeed("ip -6 rule show pref 3500 | grep -c 'fdcc:ad94:bacf:61a4::cafe:14' | grep -x 1")
+        olympus.succeed("ip rule show pref 3500 | grep -c 10.100.1.20 | grep -x 1")
+        olympus.fail("ip rule show pref 3500 | grep -e 10.100.1.30")
+        # a rule that already exists, or one that vanished behind its back
+        olympus.succeed("ip -6 rule del from fdcc:ad94:bacf:61a4::cafe:14/128 pref 3500")
+        olympus.succeed("ip rule add from 10.100.1.20/32 lookup 2012 pref 3500 || true")
+        olympus.succeed("vpn-phone upper egress hestia")
+        olympus.succeed("ip -6 rule show pref 3500 | grep -c 'fdcc:ad94:bacf:61a4::cafe:14' | grep -x 1")
+        olympus.succeed("vpn-phone upper hosts off")
+        olympus.fail("nft list set inet vpn-hub phone_hosts6 | grep -q cafe:14")
+        olympus.fail("nft list set inet vpn-hub phone_hosts | grep -q 10.100.1.20")
+        olympus.succeed("vpn-phone upper egress olympus")
+        olympus.fail("ip rule show pref 3500 | grep -e 10.100.1.20 -e 10.100.1.30")
+        olympus.fail("ip -6 rule show pref 3500 | grep -e cafe:14")
+        olympus.succeed("ip rule show pref 3500 | grep -c 10.100.1.2 || true")
+        olympus.succeed(f"sqlite3 {db} \"DELETE FROM clients_table WHERE name <> 'phone1'\"")
+        olympus.succeed("vpn-phone apply")
+        out = phone.succeed(curl).strip()
+        assert out == "203.0.113.10", f"expected phone egress via olympus, got {out!r}"
   '';
 }
