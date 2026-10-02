@@ -128,7 +128,7 @@ Ranked by value-to-effort. Each expands in its own section below.
   terminal the same face. Verify: `ghostty +show-face` reports the resolved
   face.
 
-- [ ] **bar: reuse the status viewer for the wg-quick tunnels** `[auto]`
+- [x] **bar: reuse the status viewer for the wg-quick tunnels** `[auto]`
   `unit-status-view` takes the unit as an argument — its own header says the
   tunnels can reuse it verbatim (`unit-status-view.nix:29-30`) — and the
   tunnels are hand-toggled units in `host.userManagedUnits`
@@ -136,6 +136,9 @@ Ranked by value-to-effort. Each expands in its own section below.
   per client interface, modelled on the sshd one
   (`i3status-rust.nix:309-347`), is a few lines each and makes "is the VPN up"
   answerable from the bar.
+  Closed 2026-10-02 on `vpn-egress`, `i3status: show the vpn exit`: superseded —
+  the wg-quick olympus tunnel is gone; one block shows `vpn status` (exit, home,
+  down). Verified: `nix build .#checks.x86_64-linux.hermes`.
 
 ## Theming — stylix
 

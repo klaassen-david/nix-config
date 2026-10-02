@@ -33,6 +33,7 @@ let
   blocks =
     [ (block ./blocks/net.nix) ]
     ++ lib.optional host.capabilities.onDemandSshServer (block ./blocks/ssh-server.nix)
+    ++ [ (block ./blocks/vpn-exit.nix) ]
     ++ map block [
       ./blocks/disk-space.nix
       ./blocks/memory.nix
