@@ -1449,8 +1449,10 @@ in
             ];
             inherit (cfg) endpoint;
             persistentKeepalive = 25;
-            # retries DNS forever, so booting offline is fine
             dynamicEndpointRefreshSeconds = 300;
+            # wg retries only temporary DNS errors; a hard one (no resolver yet at
+            # boot or mid-switch) exits the unit, which the ExecStartPre below covers
+            dynamicEndpointRefreshRestartSeconds = 10;
           }
         ];
         # rules are deleted first so a re-run after a crashed stop stays idempotent
@@ -1524,6 +1526,17 @@ in
     systemd.services = lib.mkMerge [
       (lib.mkIf (!isServer) (
         {
+          # Hold the peer unit until the endpoint resolves, so neither an offline
+          # boot nor the moment a switch replaces the network setup leaves the
+          # mesh without its peer (and `switch-to-configuration` without a failure).
+          wireguard-olympus-peer-olympus-refresh.serviceConfig = {
+            ExecStartPre = pkgs.writeShellScript "vpn-wait-endpoint" ''
+              until ${pkgs.glibc.getent}/bin/getent ahosts ${lib.head (lib.splitString ":" cfg.endpoint)} >/dev/null; do
+                sleep 2
+              done
+            '';
+            TimeoutStartSec = "infinity";
+          };
           # follows the local links while the slot is taken (started by its scripts, stopped by reset)
           vpn-onlink.serviceConfig = {
             Type = "notify";
