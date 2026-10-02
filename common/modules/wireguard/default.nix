@@ -423,6 +423,8 @@ let
     text = ''
       db=${cfg.phones.db}
       state=${phoneStateDir}/state.json
+      subnet4=${cfg.phones.subnet}
+      subnet6=${cfg.phones.subnet6}
       # exit name -> routing table on the hub
       declare -A tables=(${lib.concatMapStrings (x: " [${x.name}]=${toString (2000 + x.octet)}") exits} )
 
@@ -443,12 +445,76 @@ let
         exit 1
       fi
 
-      # public_key, v4, v6, name, enabled (tab separated); nothing while wg-easy has no db yet
-      clients() {
-        if [ -e "$db" ]; then
-          sqlite3 -readonly -separator $'\t' "$db" \
-            "SELECT public_key, ipv4_address, ipv6_address, name, enabled FROM clients_table WHERE interface_id = '${cfg.phones.interface}';"
+      # The db is written by wg-easy admins, so every field is validated before
+      # it reaches ip or nft; malformed rows are skipped with a warning.
+      us=$'\x1f'
+      ip4int() {
+        local IFS=. a b c d
+        read -r a b c d <<< "$1"
+        echo $(( (a << 24) | (b << 16) | (c << 8) | d ))
+      }
+      valid4() { # <addr> within ${cfg.phones.subnet}
+        local o oct net=''${subnet4%/*} len=''${subnet4#*/} mask
+        [[ $1 =~ ^(0|[1-9][0-9]{0,2})(\.(0|[1-9][0-9]{0,2})){3}$ ]] || return 1
+        IFS=. read -ra oct <<< "$1"
+        for o in "''${oct[@]}"; do [ "$o" -le 255 ] || return 1; done
+        mask=$(( (0xFFFFFFFF << (32 - len)) & 0xFFFFFFFF ))
+        [ $(( $(ip4int "$1") & mask )) -eq $(( $(ip4int "$net") & mask )) ]
+      }
+      groups6() { # <addr>: eight decimal 16-bit groups, or fail
+        local a=$1 h=() t=() g=() n i
+        [[ $a =~ ^[0-9a-fA-F:]+$ && $a != *:::* ]] || return 1
+        if [[ $a == *::* ]]; then
+          [[ ''${a#*::} != *::* ]] || return 1
+          IFS=: read -ra h <<< "''${a%%::*}"
+          IFS=: read -ra t <<< "''${a#*::}"
+          n=$(( 8 - ''${#h[@]} - ''${#t[@]} ))
+          [ "$n" -ge 1 ] || return 1
+          g=("''${h[@]}")
+          for ((i = 0; i < n; i++)); do g+=(0); done
+          g+=("''${t[@]}")
+        else
+          IFS=: read -ra g <<< "$a"
         fi
+        [ "''${#g[@]}" -eq 8 ] || return 1
+        for i in "''${g[@]}"; do
+          [[ $i =~ ^[0-9a-fA-F]{1,4}$ ]] || return 1
+          printf '%d ' "$((16#$i))"
+        done
+      }
+      valid6() { # <addr> within ${cfg.phones.subnet6}
+        local net=''${subnet6%/*} len=''${subnet6#*/} a n i bits mask
+        a=$(groups6 "$1") || return 1
+        n=$(groups6 "$net") || return 1
+        read -ra a <<< "$a"
+        read -ra n <<< "$n"
+        for i in 0 1 2 3 4 5 6 7; do
+          bits=$(( len - 16 * i ))
+          if [ "$bits" -gt 16 ]; then bits=16; elif [ "$bits" -lt 0 ]; then bits=0; fi
+          mask=$(( (0xFFFF << (16 - bits)) & 0xFFFF ))
+          [ $(( a[i] & mask )) -eq $(( n[i] & mask )) ] || return 1
+        done
+      }
+
+      # public_key, v4, v6, name, enabled (US separated; empty fields stay
+      # empty); nothing while wg-easy has no db yet
+      clients() {
+        local json pk a4 a6 name enabled
+        [ -e "$db" ] || return 0
+        json=$(sqlite3 -readonly -json -cmd '.timeout 5000' "$db" \
+          "SELECT public_key, ipv4_address, ipv6_address, name, enabled FROM clients_table WHERE interface_id = '${cfg.phones.interface}';")
+        [ -n "$json" ] || return 0
+        jq -r '.[] | (map_values(if . == null then "" else tostring | gsub("[[:cntrl:]]"; "?") end)
+            | [.public_key, .ipv4_address, .ipv6_address, .name]) + [if .enabled == 1 then "1" else "0" end]
+            | join("\u001f")' <<< "$json" \
+          | while IFS=$us read -r pk a4 a6 name enabled; do
+              if [[ $pk =~ ^[A-Za-z0-9+/]{43}=$ ]] && { [ -n "$a4" ] || [ -n "$a6" ]; } \
+                && { [ -z "$a4" ] || valid4 "$a4"; } && { [ -z "$a6" ] || valid6 "$a6"; }; then
+                printf '%s\n' "$pk$us$a4$us$a6$us$name$us$enabled"
+              else
+                echo "vpn-phone: skipping malformed client row '$name'" >&2
+              fi
+            done
       }
 
       get() { # <pk> <key> <default>
@@ -474,8 +540,8 @@ let
         rows=$(clients)
         want=$(mktemp)
         have=$(mktemp)
-        while IFS=$'\t' read -r pk a4 a6 name enabled; do
-          [ -n "$pk" ] && [ "$enabled" != 0 ] || continue
+        while IFS=$us read -r pk a4 a6 name enabled; do
+          [ "$enabled" = 1 ] || continue
           egress=$(get "$pk" egress olympus)
           if [ "$egress" != olympus ]; then
             target=''${tables[$egress]:-}
@@ -518,7 +584,7 @@ let
       # resolve <phone> to a public key
       resolve() {
         local hits
-        hits=$(clients | awk -F'\t' -v p="$1" '$4 == p || $2 == p { print $1 }')
+        hits=$(clients | awk -F "$us" -v p="$1" '$4 == p || $2 == p { print $1 }')
         case $(printf '%s' "$hits" | grep -c . || true) in
           1) echo "$hits" ;;
           0) echo "vpn-phone: no such phone: $1" >&2; return 1 ;;
@@ -535,9 +601,10 @@ let
         list)
           [ $# -eq 1 ] || usage
           {
-            echo -e "NAME\tIPV4\tIPV6\tENABLED\tEGRESS\tHOSTS\tHOME"
-            clients | while IFS=$'\t' read -r pk a4 a6 name enabled; do
-              echo -e "$name\t$a4\t$a6\t$enabled\t$(get "$pk" egress olympus)\t$(get "$pk" hosts false)\t$(get "$pk" home false)"
+            printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' NAME IPV4 IPV6 ENABLED EGRESS HOSTS HOME
+            clients | while IFS=$us read -r pk a4 a6 name enabled; do
+              printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "''${a4:--}" "''${a6:--}" "$enabled" \
+                "$(get "$pk" egress olympus)" "$(get "$pk" hosts false)" "$(get "$pk" home false)"
             done
           } | column -t -s $'\t'
           ;;

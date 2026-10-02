@@ -732,5 +732,27 @@ pkgs.testers.runNixOSTest {
         hermes.succeed("nc -z -w2 10.100.0.2 22")
         homerouter.succeed("nc -z -w2 192.168.178.32 22")
         internet.fail("nc -z -w2 203.0.113.30 22")
+    with subtest("phone: malformed db rows are skipped, never reach nft or ip"):
+        olympus.succeed("vpn-phone phone1 egress hestia")
+        olympus.succeed(
+            "sqlite3 /var/lib/wg-easy/wg-easy.db \""
+            "INSERT INTO clients_table VALUES "
+            "('${keys.hermes.public}', '10.100.1.5 }; delete table inet vpn-hub', '${phone6}:5', 'evil' || char(10) || 'x' || char(9) || 'y', 1, 'wg0'), "
+            "('${keys.hermes.public}', '10.100.2.7', '${phone6}:6', 'outside', 1, 'wg0'), "
+            "('${keys.hermes.public}', '10.100.1.8', 'fdcc:ad94:bacf:61a5::cafe:8', 'outside6', 1, 'wg0'), "
+            "('not-a-key', '10.100.1.9', '${phone6}:9', 'badkey', 1, 'wg0'), "
+            "('${keys.hermes.public}', '10.100.1.10', '${phone6}:a', 'enabled-true', 'true', 'wg0');\""
+        )
+        err = olympus.succeed("vpn-phone apply 2>&1 >/dev/null")
+        assert err.count("skipping malformed") >= 4, err
+        olympus.succeed("nft list table inet vpn-hub")
+        olympus.succeed("ip rule show | grep 3500 | grep -c 10.100.1.2")
+        olympus.fail("ip rule show | grep -E '10.100.(1.(5|8|9|10)|2.7)'")
+        listing = olympus.succeed("vpn-phone list 2>/dev/null")
+        assert "phone1" in listing and "evil" not in listing, listing
+        out = phone.succeed(curl).strip()
+        assert out == "203.0.113.20", f"expected phone egress via hestia, got {out!r}"
+        olympus.succeed("sqlite3 /var/lib/wg-easy/wg-easy.db \"DELETE FROM clients_table WHERE name <> 'phone1'\"")
+        olympus.succeed("vpn-phone phone1 egress olympus")
   '';
 }
