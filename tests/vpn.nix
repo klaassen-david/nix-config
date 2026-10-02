@@ -188,8 +188,15 @@ let
             CREATE TABLE clients_table (public_key text, ipv4_address text, ipv6_address text,
                                         name text, enabled integer, interface_id text);
             INSERT INTO clients_table VALUES
-              ('${keys.phone.public}', '10.100.1.2', '${phone6}:2', 'phone1', 1, 'wg0');"
+              ('${keys.phone.public}', '10.100.1.2', '${phone6}:2', 'phone1', 1, 'wg0');
+            CREATE TABLE hooks_table (id text, pre_up text, post_up text, pre_down text, post_down text);
+            INSERT INTO hooks_table (id) VALUES ('wg0');"
         '';
+      };
+      # stands in for the container, to see the watcher restart it
+      systemd.services.podman-wg-easy = {
+        wantedBy = [ "multi-user.target" ];
+        serviceConfig.ExecStart = "${pkgs.coreutils}/bin/sleep infinity";
       };
     };
 in
@@ -769,5 +776,14 @@ pkgs.testers.runNixOSTest {
         olympus.succeed("test -z \"$(conntrack -L -s 10.100.1.2 2>/dev/null)\"")
         olympus.succeed("vpn-phone phone1 egress olympus")
         olympus.succeed("systemctl show -p RestartUSec -p StartLimitIntervalUSec vpn-phones.service | grep -x -e RestartUSec=5s -e StartLimitIntervalUSec=0")
+
+    with subtest("phone: wg-easy interface hooks are cleared and wg-easy restarted"):
+        db = "/var/lib/wg-easy/wg-easy.db"
+        before = olympus.succeed("systemctl show -p InvocationID --value podman-wg-easy.service").strip()
+        olympus.succeed(f"sqlite3 {db} \"UPDATE hooks_table SET post_up = 'touch /tmp/hook-ran'\"")
+        olympus.wait_until_succeeds(f"test \"$(sqlite3 {db} 'SELECT count(*) FROM hooks_table WHERE length(post_up) > 0')\" = 0")
+        olympus.wait_until_succeeds("journalctl -u vpn-phones.service -p err -o cat | grep -q 'interface hooks are set'")
+        olympus.wait_until_succeeds(f"test \"$(systemctl show -p InvocationID --value podman-wg-easy.service)\" != {before}")
+        olympus.succeed("systemctl is-active vpn-phones.service")
   '';
 }

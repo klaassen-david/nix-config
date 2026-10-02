@@ -667,14 +667,36 @@ let
     runtimeInputs = [
       pkgs.inotify-tools
       pkgs.coreutils
+      pkgs.sqlite
+      pkgs.systemd
       phoneCli
     ];
     text = ''
+      db=${cfg.phones.db}
+      # Interface hooks run as root on the hub (wg-easy: host netns, NET_ADMIN),
+      # so none may persist: clear them and restart wg-easy so no bring-up
+      # outlives a hook an admin set.
+      check_hooks() {
+        local n
+        [ -e "$db" ] || return 0
+        n=$(sqlite3 -readonly -cmd '.timeout 5000' "$db" "SELECT count(*) FROM hooks_table WHERE coalesce(pre_up, ''') || coalesce(post_up, ''') || coalesce(pre_down, ''') || coalesce(post_down, ''') <> ''';") || return 0
+        [ "$n" != 0 ] || return 0
+        echo "<3>wg-easy interface hooks are set (root code on olympus), clearing them"
+        sqlite3 -cmd '.timeout 5000' "$db" "${cfg.phones.clearHooksSql}"
+        if systemctl cat podman-wg-easy.service > /dev/null 2>&1; then
+          systemctl restart podman-wg-easy.service
+        else
+          echo "<4>podman-wg-easy.service does not exist, not restarting"
+        fi
+      }
+
+      check_hooks
       vpn-phone apply
       inotifywait -m -q -e modify -e moved_to --exclude '-shm$' --format x ${dirOf cfg.phones.db} | while read -r _; do
         # let a burst of writes settle
         while read -r -t 1 _; do :; done
         echo "wg-easy db changed, applying"
+        check_hooks
         vpn-phone apply
       done
     '';
@@ -1005,6 +1027,13 @@ in
       type = lib.types.str;
       default = "fdcc:ad94:bacf:61a4::cafe:0/112";
       description = "wg-easy phone v6 subnet; exits masquerade it like the mesh.";
+    };
+    phones.clearHooksSql = lib.mkOption {
+      internal = true;
+      readOnly = true;
+      type = lib.types.str;
+      default = "UPDATE hooks_table SET pre_up='', post_up='', pre_down='', post_down='' WHERE id='${cfg.phones.interface}';";
+      description = "SQL that empties wg-easy's interface hooks; shared by the watcher and the wg-easy module.";
     };
     privateKeyFile = lib.mkOption {
       internal = true;
