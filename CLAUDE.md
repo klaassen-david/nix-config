@@ -62,8 +62,8 @@ Rulings and rejected alternatives: `decisions/vpn.md`; mechanics (addressing, ta
 - **Egress** is chosen per host at runtime, never in nix: `vpn egress direct|olympus|<host>|tukl`, backed by mutually exclusive `vpn-egress-*` units (+ `wg-quick-tukl`). `vpn status` and the i3status block show the exit and flag `inconsistent`. A dead exit drops traffic (never falls back to direct) and notifies. olympus itself has no exit.
 - **Host exits** relay through olympus over GRE (the hub cannot hold more than one `0.0.0.0/0` peer per WireGuard interface, so each exit gets its own encapsulated link). Exit hosts forward and NAT, and refuse to let relayed traffic reach their own services or LAN.
 - **tukl** is dialled directly by each host with its own RPTU config (`tukl` field in the registry; both hosts still share `wg-tukl.age` until each has `wg-tukl-<host>.age` — never up on both at once). Never relayed, never offered to phones.
-- **Home network** (hestia's LAN) is a separate switch: `vpn home on|off`, never implied by choosing hestia as exit.
-- **Phones** stay in wg-easy v15 (host network namespace; UI adds/removes them, no rebuild). Per-phone egress (olympus or a host), host reachability and home access are set on olympus with `sudo vpn-phone …`, keyed by the phone's public key.
+- **Home network** (hestia's LAN, real addresses) is a separate switch — `vpn home on|off` on hermes, `sudo systemctl start|stop vpn-home` on olympus — never implied by choosing hestia as exit. While on, it wins over a local LAN using the same prefix.
+- **Phones** stay in wg-easy v15 (host network namespace; UI adds/removes them, no rebuild). Per-phone egress (olympus or a host), host reachability and home access are set on olympus with `sudo vpn-phone …`, keyed by the phone's public key; a new phone gets olympus's uplink, no hosts, no home. A phone whose exit is down has its traffic dropped.
 - `checks.vpn` (`tests/vpn.nix`) is a multi-VM test of all of the above and runs as part of `nix flake check`.
 
 ## Backups
