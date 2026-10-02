@@ -62,15 +62,15 @@ Ranked by value-to-effort. Each expands in its own section below.
   `headless.nix:40-49` already restricts users and disables password/root
   login. Not set anywhere: `KexAlgorithms`, `Ciphers`, `MACs` allowlists,
   `AllowAgentForwarding no`, `AllowTcpForwarding` scoping, `MaxAuthTries`.
-  Apply the same block to the desktops' on-demand sshd rather than only
-  olympus. Verify: `nix eval` the rendered `sshd_config`.
+  Apply the same block to the desktops' sshd (since 2026-10-02 it runs at boot,
+  mesh + home LAN only, `modules/ssh-server`) rather than only olympus.
+  Verify: `nix eval` the rendered `sshd_config`.
 
 - [ ] **desktops disable reverse-path filtering** `[auto]` eval / `[manual]` VPN
   `common/desktop.nix:47` sets `checkReversePath = false`; `headless.nix:37`
-  keeps it `true`. Usually a workaround for a VPN/multi-homing edge — the
-  wg-quick clients are full-tunnel, which is precisely the case that *doesn't*
-  need it. Try `"loose"` (or removing the line) and check the tunnels still
-  come up.
+  keeps it `true`. Since the 2026-10-02 vpn rework the desktops are exits and
+  `modules/wireguard` asserts it is not `true` (strict drops GRE-decapsulated
+  relay traffic); `"loose"` is compatible. Try `"loose"` and run `checks.vpn`.
 
 - [ ] **exits: refuse the home router's WAN address too** `[auto]` eval / `[manual]` VPN
   Relayed traffic through hestia is refused the home LAN (`lan4`/`lan6`) but
