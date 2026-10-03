@@ -15,9 +15,10 @@
 # wifi-keepalive: default logind suspends the instant the lid shuts, tearing down
 # wifi. Instead logind ignores the lid and we drive suspend ourselves via acpid —
 # on close we stay awake (wifi up) until the network drops or 3 minutes elapse,
-# then suspend-then-hibernate (the host sets HibernateDelaySec). Reopening the
-# lid aborts it. An external display counts as "docked" → we never suspend,
-# matching systemd's default HandleLidSwitchDocked = "ignore".
+# then suspend (plain s2idle; hibernation is manual only,
+# decisions/hibernate-swapfile.md). Reopening the lid aborts it. An external
+# display counts as "docked" → we never suspend, matching systemd's default
+# HandleLidSwitchDocked = "ignore".
 
 lib.mkIf config.host.capabilities.wifi (
   lib.mkMerge [
@@ -59,7 +60,7 @@ lib.mkIf config.host.capabilities.wifi (
       };
 
       systemd.services.lid-suspend-delay = {
-        description = "Hold wifi up after lid close, then suspend-then-hibernate (max 3 min, or on network drop)";
+        description = "Hold wifi up after lid close, then suspend (max 3 min, or on network drop)";
         serviceConfig = {
           Type = "oneshot";
           # Must exceed the 180 s wait loop, else the oneshot start-timeout kills it.
@@ -85,7 +86,7 @@ lib.mkIf config.host.capabilities.wifi (
               i=$((i + 1))
             done
             # Reached only via timeout or network drop, both with the lid still shut.
-            ${pkgs.systemd}/bin/systemctl suspend-then-hibernate
+            ${pkgs.systemd}/bin/systemctl suspend
           '';
         };
       };

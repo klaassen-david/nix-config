@@ -54,9 +54,10 @@ changes (old ruling stays in the file as history).
 - [power-log-scope](decisions/power-log-scope.md) — the power logger runs on
   hermes only [USER 2026-09-30]
 - [hibernate-swapfile](decisions/hibernate-swapfile.md) — hermes hibernates
-  into a 32 GiB swapfile on `/`; lid close suspends, hibernating after 1 h —
-  never while an external display is connected; only the power button
-  resumes; no frozen screen while the image is written [USER 2026-09-30]
+  into a 32 GiB swapfile on `/`, by hand only (`systemctl hibernate`, plus
+  upower's HybridSleep at 2 %): lid close plain-suspends, never while an
+  external display is connected; only the power button resumes; no frozen
+  screen while the image is written [USER 2026-09-30, amended 2026-10-03]
 - [vpn](decisions/vpn.md) — egress per device: hosts toggle direct / olympus
   / another host (relayed via olympus) / tukl (direct, own RPTU config) at
   runtime over an always-on split mesh; phones stay on wg-easy, egress and host

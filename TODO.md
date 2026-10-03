@@ -240,9 +240,13 @@ transitions. What is left, roughly by impact:
   the power LED goes off, a keypress does nothing, the power button resumes.
   [USER 2026-09-30] Lid close now runs `suspend-then-hibernate`,
   `HibernateDelaySec = "1h"` (decisions/hibernate-swapfile.md); the docked
-  early-exit stays ahead of it. **Close when**: the retest above passes, and a
-  lid shut on battery for > 1 h comes back via the power button from
-  hibernation (`journalctl -b -g 'hibernat'` shows the switch; resume keeps the boot).
+  early-exit stays ahead of it.
+  [USER 2026-10-03] Reverted: no automatic hibernation. Lid close is plain
+  `systemctl suspend` and `HibernateDelaySec` is unset; hibernation is manual
+  (`systemctl hibernate`), which the swapfile + `HibernateMode = "shutdown"`
+  still serve. So s2idle drain on a forgotten closed lid is back — the item
+  stands, minus `suspend-then-hibernate` as the fix. **Close when**: the retest
+  above passes.
 
 - [ ] **panel self-refresh (PSR) is disabled** `[manual]` hangs / static-screen drain
   [AGENT 2026-09-26] hermes boots with `amdgpu.dcdebugmask=0x10`
@@ -315,23 +319,23 @@ transitions. What is left, roughly by impact:
   in `decisions/` and close them here.
 
 - [ ] **no screen locker** `[USER]` to decide
-  Nothing locks the session (no swayidle/swaylock), so resume from suspend or
-  hibernation — now where a lid left shut > 1 h ends up — lands on an
-  unlocked desktop. Candidate: swayidle `before-sleep` → swaylock, with
+  Nothing locks the session (no swayidle/swaylock), so resume from a lid-close
+  suspend lands on an unlocked desktop. Candidate: swayidle `before-sleep` → swaylock, with
   fingerprint unlock via fprintd.
 
-- [ ] **power-log: the suspend→hibernate leg is unlogged** `[auto]`
+- [ ] **power-log: the suspend→hibernate leg is unlogged** `[auto]` dormant
   `powerDownCommands`/`resumeCommands` fire once per
-  `suspend-then-hibernate`, so for a lid shut > 1 h `power-report`'s suspend
-  drain averages the s2idle hour with the hibernated time. Fix: a
-  `/etc/systemd/system-sleep` hook sampling when `SYSTEMD_SLEEP_ACTION` is
-  `hibernate` (new `kind`), paired in the report. Verify: after a > 1 h lid
-  close on battery the report shows the s2idle leg on its own.
+  `suspend-then-hibernate`, so its suspend and hibernate legs land in one
+  `power-report` average. [USER 2026-10-03] Nothing runs
+  `suspend-then-hibernate` automatically any more, so this only bites a manual
+  one. Fix if it comes back: a `/etc/systemd/system-sleep` hook sampling when
+  `SYSTEMD_SLEEP_ACTION` is `hibernate` (new `kind`), paired in the report.
 
-- [ ] **hibernate on AC too?** `[USER]` to rule
-  `HibernateDelaySec = "1h"` also counts on AC (systemd's
-  `HibernateOnACPower` default); `HibernateOnACPower = false` (systemd ≥ 257)
-  would hibernate on battery only (decisions/hibernate-swapfile.md).
+- [x] **hibernate on AC too?** `[USER]` moot 2026-10-03
+  `HibernateDelaySec` is unset and nothing hibernates automatically
+  (decisions/hibernate-swapfile.md), so `HibernateOnACPower` has nothing to
+  gate. Verify after the next switch: `grep -i hibernate
+  /etc/systemd/sleep.conf` shows only `HibernateMode`.
 
 ## Performance & build
 
