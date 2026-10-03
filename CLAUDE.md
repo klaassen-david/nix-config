@@ -107,7 +107,7 @@ and `empty_pattern` (`{ ... }:` is the module header idiom).
 
 The flake builds from the **git tree**, so Nix ignores untracked files entirely. After creating any *new* file (a module under `common/modules/`, a new `*.age` secret, etc.), make it visible with `git add -N <path>` — *intent-to-add*: registers the path (and its working-tree content) so Nix sees it, **without** staging it for commit. This is the one git-staging operation that's allowed automatically; never `git add` content, `git rm`, or `git commit` without explicit instruction.
 
-When commits *are* requested: many small commits, one logical change each — a fix and its revert-worthy siblings never share a commit with unrelated cleanup. Message is one line, lowercase, prefixed with the module/host it touches (`sway: drop …`, `hestia: install …`), stating the *what* (the *why* belongs in the code comment or the decision file), plus the `Co-Authored-By: Claude` trailer.
+When commits *are* requested: many small commits, one logical change each — a fix and its revert-worthy siblings never share a commit with unrelated cleanup. A change's own documentation is part of that one logical change: the module comments, the `decisions/` file and index line, and the `TODO.md` entry it closes go in the *same* commit as the code — don't split docs out. Message is one line, lowercase, prefixed with the module/host it touches (`sway: drop …`, `hestia: install …`), stating the *what* (the *why* belongs in the code comment or the decision file), plus the `Co-Authored-By: Claude` trailer.
 
 Forgetting `-N` fails in two different ways:
 - a new **`.nix`** file → `nix flake check` errors loudly: *"Path '…' in the repository … is not tracked by Git"*.
