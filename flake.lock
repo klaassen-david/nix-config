@@ -255,6 +255,22 @@
     },
     "nixpkgs_3": {
       "locked": {
+        "lastModified": 1790046670,
+        "narHash": "sha256-MYiI+CzL0tuWgRPjGsKCDHqYs2T3OzMlMQWOYWG0qso=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "6774f7bc253789b113a4f39285dc0fa100abeacc",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "6774f7bc253789b113a4f39285dc0fa100abeacc",
+        "type": "github"
+      }
+    },
+    "nixpkgs_4": {
+      "locked": {
         "lastModified": 1789286504,
         "narHash": "sha256-eiEK7cKZORNEvX0GeF3RtNEF/JXhgf2RqSp3230q13E=",
         "owner": "nixos",
@@ -287,6 +303,29 @@
         "owner": "nix-community",
         "repo": "nixvim",
         "type": "github"
+      }
+    },
+    "orchestrator": {
+      "inputs": {
+        "home-manager": [
+          "home-manager"
+        ],
+        "nixpkgs": "nixpkgs_3"
+      },
+      "locked": {
+        "lastModified": 1791135408,
+        "narHash": "sha256-7JaNjz5FCWcQ7bwkOnvAodve590G58NB/1ZN27ZMP8k=",
+        "ref": "plan/switchover",
+        "rev": "2f25a94e463955562bdd1c6773033f049ab2ed45",
+        "revCount": 298,
+        "type": "git",
+        "url": "file:///home/dk/code/orchestrator"
+      },
+      "original": {
+        "ref": "plan/switchover",
+        "rev": "2f25a94e463955562bdd1c6773033f049ab2ed45",
+        "type": "git",
+        "url": "file:///home/dk/code/orchestrator"
       }
     },
     "pyproject-build-systems": {
@@ -366,6 +405,7 @@
         "nixos-hardware": "nixos-hardware",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "nixvim": "nixvim",
+        "orchestrator": "orchestrator",
         "render-markdown-nvim": "render-markdown-nvim",
         "zen-browser": "zen-browser"
       }
@@ -430,7 +470,7 @@
     "zen-browser": {
       "inputs": {
         "home-manager": "home-manager_3",
-        "nixpkgs": "nixpkgs_3"
+        "nixpkgs": "nixpkgs_4"
       },
       "locked": {
         "lastModified": 1790101991,

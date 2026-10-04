@@ -85,6 +85,8 @@
   };
   services.blueman.enable = true;
   users.users.dk.extraGroups = [ "bluetooth" ];
+  # The orchestrator's worker (home-manager/modules/orch): task units outlive a logout.
+  users.users.dk.linger = true;
   services.pipewire = {
     wireplumber.enable = true;
     wireplumber.extraConfig = {

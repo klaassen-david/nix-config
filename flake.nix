@@ -36,6 +36,12 @@
       url = "github:klaassen-david/claude-swap?ref=dk/main";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
+    # The orchestrator (home-manager/modules/orch), pinned to a deployable commit. git+file, not
+    # git+ssh to olympus: `sudo nixos-rebuild` fetches as root, which has no ssh key for it.
+    orchestrator = {
+      url = "git+file:///home/dk/code/orchestrator?ref=plan/switchover&rev=2f25a94e463955562bdd1c6773033f049ab2ed45";
+      inputs.home-manager.follows = "home-manager";
+    };
     # Fork of the nixpkgs plugin, for `pipe_table.cell = "wrapped"`
     render-markdown-nvim = {
       url = "github:klaassen-david/render-markdown.nvim/wrapped-cells";
@@ -108,7 +114,10 @@
         hermes = mkHost {
           host = "hermes";
           hostModules = [ nixos-hardware.nixosModules.framework-16-7040-amd ];
-          hmModules = [ ./home-manager/modules/desktop ];
+          hmModules = [
+            ./home-manager/modules/desktop
+            ./home-manager/modules/orch
+          ];
         };
 
         # tower

@@ -1,0 +1,47 @@
+{
+  pkgs,
+  host,
+  inputs,
+  ...
+}:
+
+# The orchestrator's worker (~/code/orchestrator, its docs/deploy-worker.md): the user units
+# orch-worker.{socket,service} and orch.slice with the task slices it admits work into, and
+# `orch` on PATH. hermes only, worker role only; agentd follows with the orchestrator's
+# switchover, hestia once it is deployed there.
+#
+# The input is pinned to a commit `orch deployable <rev>` accepts (gate `full` passed on that
+# tree). To update: pick a newer deployable commit, change `rev` in flake.nix, then
+# `nix flake update orchestrator`.
+#
+# Needs lingering (`users.users.dk.linger` in the host's configuration.nix); the module's
+# build fails without it, so a logout can't end running tasks.
+
+let
+  orch = inputs.orchestrator.packages.${pkgs.stdenv.hostPlatform.system};
+in
+{
+  imports = [ inputs.orchestrator.homeManagerModules.default ];
+
+  services.orch = {
+    enable = true;
+    host = host.hostName; # task ids T-<host>-…
+    ceilingGiB = 26; # hermes: MemTotal 30 GiB less 4, as ostt3's ostt.slice
+    # 100 GiB absolute: 15 % of hermes's 1.8 TiB / would hold every task back.
+    diskFloor = {
+      gib = 100;
+      percent = 0;
+    };
+    plugins = [ orch.orch-plugin-rust ];
+    projects = {
+      ostt3 = {
+        path = "/home/dk/code/ostt3";
+        flake = "git+file:///home/dk/code/ostt3?ref=main";
+      };
+      orchestrator = {
+        path = "/home/dk/code/orchestrator";
+        flake = "git+file:///home/dk/code/orchestrator?ref=main";
+      };
+    };
+  };
+}

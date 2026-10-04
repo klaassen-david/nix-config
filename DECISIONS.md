@@ -68,3 +68,6 @@ changes (old ruling stays in the file as history).
   wpa_supplicant, not iwd: iwd deauthenticates past its hard-coded 1200 TU
   association comeback and the MFP-requiring Bbox asks 1953; the MT7922 also
   gets `disable_aspm=1` [USER 2026-10-04]
+- [orchestrator-worker](decisions/orchestrator-worker.md) — hermes runs the
+  orchestrator's worker (`home-manager/modules/orch`, worker role) with
+  lingering on; input is `git+file` pinned to a deployable rev [USER 2026-10-04]
