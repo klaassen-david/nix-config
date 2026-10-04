@@ -63,6 +63,22 @@
         "type": "github"
       }
     },
+    "crane": {
+      "locked": {
+        "lastModified": 1790899423,
+        "narHash": "sha256-THGtz65UGJU+sonZidRboyCMk+9DclpMF7pwL4uDV4M=",
+        "owner": "ipetkov",
+        "repo": "crane",
+        "rev": "47b6b27ed9a3a9181415e4367d0c30ab2a0e0250",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ipetkov",
+        "repo": "crane",
+        "rev": "47b6b27ed9a3a9181415e4367d0c30ab2a0e0250",
+        "type": "github"
+      }
+    },
     "darwin": {
       "inputs": {
         "nixpkgs": [
@@ -307,23 +323,24 @@
     },
     "orchestrator": {
       "inputs": {
+        "crane": "crane",
         "home-manager": [
           "home-manager"
         ],
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1791135408,
-        "narHash": "sha256-7JaNjz5FCWcQ7bwkOnvAodve590G58NB/1ZN27ZMP8k=",
+        "lastModified": 1791152720,
+        "narHash": "sha256-Lg3A+2SjKRyPFGzqO23Ri0O82Urc2JrJjj+RRawI3og=",
         "ref": "plan/switchover",
-        "rev": "2f25a94e463955562bdd1c6773033f049ab2ed45",
-        "revCount": 298,
+        "rev": "36fa730a2732ca1d5abe10f4bf2fe4ddaa9d7365",
+        "revCount": 379,
         "type": "git",
         "url": "file:///home/dk/code/orchestrator"
       },
       "original": {
         "ref": "plan/switchover",
-        "rev": "2f25a94e463955562bdd1c6773033f049ab2ed45",
+        "rev": "36fa730a2732ca1d5abe10f4bf2fe4ddaa9d7365",
         "type": "git",
         "url": "file:///home/dk/code/orchestrator"
       }

@@ -69,5 +69,5 @@ changes (old ruling stays in the file as history).
   association comeback and the MFP-requiring Bbox asks 1953; the MT7922 also
   gets `disable_aspm=1` [USER 2026-10-04]
 - [orchestrator-worker](decisions/orchestrator-worker.md) — hermes runs the
-  orchestrator's worker (`home-manager/modules/orch`, worker role) with
-  lingering on; input is `git+file` pinned to a deployable rev [USER 2026-10-04]
+  orchestrator's worker and agentd (`home-manager/modules/orch`) with
+  lingering on; input is `git+file` pinned to a deployable rev [USER 2026-10-05]

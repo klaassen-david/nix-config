@@ -15,6 +15,11 @@ supervising agent at the user's request; the user switches.
   `ostt.slice` and `orch.slice` each cap close to all of RAM. Don't run heavy work
   through both at once.
 
+**Amended** [USER 2026-10-05]: hermes also runs agentd (`roles = [ "worker" "agentd" ]`), in
+the same switch as the worker's fixes, so the soak runs while agentd works instead of before it
+(the orchestrator's `DECISIONS.md`, 63 and the speed-up list of 2026-10-05). The pin moved to
+`36fa730`.
+
 **Input** [AGENT 2026-10-04]: `git+file:///home/dk/code/orchestrator`, pinned
 by `ref` and `rev` to a commit `orch deployable <rev>` accepts.
 - Rejected: `git+ssh` to `olympus:git/orchestrator.git`. `sudo nixos-rebuild`

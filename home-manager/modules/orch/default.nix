@@ -5,10 +5,11 @@
   ...
 }:
 
-# The orchestrator's worker (~/code/orchestrator, its docs/deploy-worker.md): the user units
-# orch-worker.{socket,service} and orch.slice with the task slices it admits work into, and
-# `orch` on PATH. hermes only, worker role only; agentd follows with the orchestrator's
-# switchover, hestia once it is deployed there.
+# The orchestrator (~/code/orchestrator, its docs/deploy-worker.md) on hermes: the worker
+# (orch-worker.{socket,service}, orch.slice with its task slices) and agentd (orch-agentd.*,
+# runner units in orch-runners.slice, the local dashboard on 127.0.0.1:7468, `orch dashboard`
+# prints its login URL), and `orch` on PATH. agentd reads the harness's own logins from
+# ~/.config/orch/accounts.toml (`orch accounts`); it never uses cswap. hestia once deployed there.
 #
 # The input is pinned to a commit `orch deployable <rev>` accepts (gate `full` passed on that
 # tree). To update: pick a newer deployable commit, change `rev` in flake.nix, then
@@ -26,6 +27,10 @@ in
   services.orch = {
     enable = true;
     host = host.hostName; # task ids T-<host>-…
+    roles = [
+      "worker"
+      "agentd"
+    ];
     ceilingGiB = 26; # hermes: MemTotal 30 GiB less 4, as ostt3's ostt.slice
     # 100 GiB absolute: 15 % of hermes's 1.8 TiB / would hold every task back.
     diskFloor = {
