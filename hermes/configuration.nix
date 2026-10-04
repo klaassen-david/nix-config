@@ -134,6 +134,14 @@
     enable = true;
   };
 
+  # Keyboard module's F10 (without Fn) is HID airplane mode (usage 0x100c6 →
+  # KEY_RFKILL), which the kernel's rfkill-input acts on: it toggles every radio.
+  # Mapped to nothing. F11 (Print) and F12 (KEY_CONFIG) have no binding anyway.
+  services.udev.extraHwdb = ''
+    evdev:input:b0003v32ACp*
+     KEYBOARD_KEY_100c6=reserved
+  '';
+
   services.fwupd.enable = true;
   systemd.services.fp-led-brightness = {
     description = "Set fingerprint LED brightness";
