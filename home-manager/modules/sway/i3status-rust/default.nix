@@ -52,10 +52,7 @@ let
 in
 {
   home.packages =
-    (with pkgs; [
-      iwgtk # net block, middle click
-    ])
-    ++ [ helpers.unitStatusView ]
+    [ helpers.unitStatusView ]
     ++ lib.optional host.capabilities.battery powerProfile.reconcile;
 
   systemd.user.services.power-profile-reconcile = lib.mkIf host.capabilities.battery {

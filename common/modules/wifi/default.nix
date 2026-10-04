@@ -5,11 +5,12 @@
   ...
 }:
 
-# WiFi for hosts with host.capabilities.wifi: NetworkManager driving the iwd
-# backend. iwd owns association/roaming (better than wpa_supplicant), but we
-# leave IP config to NetworkManager (EnableNetworkConfiguration = false) so DHCP
-# and DNS still flow through NM. powersave is off to avoid latency spikes; MAC is
-# randomised per-scan but stable per-connection.
+# WiFi for hosts with host.capabilities.wifi: NetworkManager driving the
+# wpa_supplicant backend (decisions/wifi-backend.md). iwd caps an association
+# comeback at a hard-coded 1200 TU and deauthenticates past it, so an
+# MFP-requiring AP that asks for more drops the link on every re-association;
+# wpa_supplicant waits and retries up to 60000 TU. powersave is off to avoid
+# latency spikes; MAC is randomised per-scan but stable per-connection.
 #
 # When the host also has a lid (host.capabilities.lid), we add lid-close
 # wifi-keepalive: default logind suspends the instant the lid shuts, tearing down
@@ -24,12 +25,10 @@ lib.mkIf config.host.capabilities.wifi (
   lib.mkMerge [
     {
       networking = {
-        wireless.enable = false;
-        wireless.iwd.settings.General.EnableNetworkConfiguration = false;
         networkmanager = {
           enable = true;
           wifi = {
-            backend = "iwd";
+            backend = "wpa_supplicant";
             powersave = false;
             scanRandMacAddress = true;
             macAddress = "stable";

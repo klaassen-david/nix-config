@@ -64,6 +64,8 @@
   # (common/modules/wifi). Hibernation is `systemctl hibernate` by hand.
 
   boot.kernelModules = [ "ryzen_smu" ];
+  # MT7922 (mt7921e): ASPM on this card costs latency and drops links.
+  boot.extraModprobeConfig = "options mt7921e disable_aspm=1";
   boot.initrd.kernelModules = [ "amdgpu" ];
   hardware = {
     graphics.enable = true;

@@ -64,3 +64,7 @@ changes (old ruling stays in the file as history).
   reachability set per phone on olympus; home-LAN access is a separate
   per-device switch, no remapping; a dead exit drops traffic
   [USER 2026-09-30]
+- [wifi-backend](decisions/wifi-backend.md) — hermes drives NetworkManager with
+  wpa_supplicant, not iwd: iwd deauthenticates past its hard-coded 1200 TU
+  association comeback and the MFP-requiring Bbox asks 1953; the MT7922 also
+  gets `disable_aspm=1` [USER 2026-10-04]
