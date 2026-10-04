@@ -63,6 +63,18 @@
             '';
           }
         );
+        # Blank every output until the next input; swayidle exits on resume.
+        screenOff = lib.getExe (
+          pkgs.writeShellApplication {
+            name = "screen-off";
+            runtimeInputs = [ pkgs.swayidle ];
+            text = ''
+              exec swayidle -w \
+                timeout 1 'swaymsg "output * power off"' \
+                resume "swaymsg 'output * power on'; kill $$"
+            '';
+          }
+        );
       in
       {
         terminal = "ghostty";
@@ -103,29 +115,36 @@
         };
 
         bars = [ ];
-        keybindings = lib.mkOptionDefault {
-          "XF86AudioMute" = "exec swayosd-client --output-volume mute-toggle";
-          "XF86AudioRaiseVolume" = "exec swayosd-client --output-volume raise";
-          "XF86AudioLowerVolume" = "exec swayosd-client --output-volume lower";
-          "XF86AudioPlay" = "exec playerctl play-pause";
-          "XF86AudioPause" = "exec playerctl play-pause";
-          "XF86AudioPrev" = "exec playerctl previous";
-          "XF86AudioNext" = "exec playerctl next";
-          "XF86MonBrightnessDown" = "exec brightnessctl set 5%-";
-          "XF86MonBrightnessUp" = "exec brightnessctl set 5%+";
-          "Ctrl+XF86MonBrightnessDown" =
-            "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n -5000";
-          "Ctrl+XF86MonBrightnessUp" =
-            "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n +5000";
-          "Shift+XF86MonBrightnessDown" =
-            "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateBrightness d -0.1";
-          "Shift+XF86MonBrightnessUp" =
-            "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateBrightness d +0.1";
-          "${modifier}+n" = "exec swaync-client -t -sw";
-          "${modifier}+p" = "exec grimshot copy area";
-          "${modifier}+shift+p" = "exec grimshot copy screen";
-          "${modifier}+ctrl+p" = "exec grimshot copy window";
-        };
+        keybindings = lib.mkOptionDefault (
+          {
+            "XF86AudioMute" = "exec swayosd-client --output-volume mute-toggle";
+            "XF86AudioRaiseVolume" = "exec swayosd-client --output-volume raise";
+            "XF86AudioLowerVolume" = "exec swayosd-client --output-volume lower";
+            "XF86AudioPlay" = "exec playerctl play-pause";
+            "XF86AudioPause" = "exec playerctl play-pause";
+            "XF86AudioPrev" = "exec playerctl previous";
+            "XF86AudioNext" = "exec playerctl next";
+            "XF86MonBrightnessDown" = "exec brightnessctl set 5%-";
+            "XF86MonBrightnessUp" = "exec brightnessctl set 5%+";
+            "Ctrl+XF86MonBrightnessDown" =
+              "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n -5000";
+            "Ctrl+XF86MonBrightnessUp" =
+              "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n +5000";
+            "Shift+XF86MonBrightnessDown" =
+              "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateBrightness d -0.1";
+            "Shift+XF86MonBrightnessUp" =
+              "exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateBrightness d +0.1";
+            "${modifier}+n" = "exec swaync-client -t -sw";
+            "${modifier}+p" = "exec grimshot copy area";
+            "${modifier}+shift+p" = "exec grimshot copy screen";
+            "${modifier}+ctrl+p" = "exec grimshot copy window";
+          }
+          # The Framework 16's F9 (without Fn) sends Super+P. --to-code: under
+          # dvorak that keycode is `l`.
+          // lib.optionalAttrs (host.role == "laptop") {
+            "--to-code Mod4+p" = "exec ${screenOff}";
+          }
+        );
       };
 
     extraConfig = lib.mkOrder 1000 (
