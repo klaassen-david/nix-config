@@ -113,7 +113,10 @@
         # laptop
         hermes = mkHost {
           host = "hermes";
-          hostModules = [ nixos-hardware.nixosModules.framework-16-7040-amd ];
+          hostModules = [
+            nixos-hardware.nixosModules.framework-16-7040-amd
+            ./common/modules/remote-builder
+          ];
           hmModules = [
             ./home-manager/modules/desktop
             ./home-manager/modules/orch
@@ -123,6 +126,7 @@
         # tower
         hestia = mkHost {
           host = "hestia";
+          hostModules = [ ./common/modules/remote-builder ];
           hmModules = [ ./home-manager/modules/desktop ];
         };
       };

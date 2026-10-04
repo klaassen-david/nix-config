@@ -71,3 +71,6 @@ changes (old ruling stays in the file as history).
 - [orchestrator-worker](decisions/orchestrator-worker.md) — hermes runs the
   orchestrator's worker and agentd (`home-manager/modules/orch`) with
   lingering on; input is `git+file` pinned to a deployable rev [USER 2026-10-05]
+- [remote-builder](decisions/remote-builder.md) — hermes builds on hestia over
+  the mesh (ssh-ng as dk, host key pinned, local fallback), VM tests included
+  [USER 2026-10-05]
