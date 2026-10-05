@@ -19,7 +19,8 @@ supervising agent at the user's request; the user switches.
 the same switch as the worker's fixes, so the soak runs while agentd works instead of before it
 (the orchestrator's `DECISIONS.md`, 63 and the speed-up list of 2026-10-05). The pin moved to
 `36fa730`, then (2026-10-05) to `cc3c81e` (the worker survives the user manager
-re-executing; switching to it is the orchestrator's rollback drill, X5).
+re-executing), then to `b428736` (an agent's gate runs inside a worker task); switching to it
+is the orchestrator's rollback drill, X5.
 
 **Input** [AGENT 2026-10-04]: `git+file:///home/dk/code/orchestrator`, pinned
 by `ref` and `rev` to a commit `orch deployable <rev>` accepts.
