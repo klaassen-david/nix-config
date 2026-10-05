@@ -52,5 +52,11 @@ lib.mkMerge [
   })
   (lib.mkIf (config.host.hostName == "hestia") {
     nix.settings.trusted-users = [ "dk" ];
+    # Builds for hermes fill the store with paths nothing references once their results went
+    # back (2026-10-05: / reached 98 % in a day). Nix collects them itself while it builds:
+    # below 30 GiB free it deletes dead paths until 80 GiB are free. Only dead paths; every
+    # generation and gcroot stays.
+    nix.settings.min-free = 30 * 1024 * 1024 * 1024;
+    nix.settings.max-free = 80 * 1024 * 1024 * 1024;
   })
 ]
