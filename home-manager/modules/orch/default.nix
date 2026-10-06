@@ -43,6 +43,16 @@ in
         url = "wss://orch.dklaassen.de/link/v1";
         tokenFile = "/run/agenix/orch-link-${host.hostName}";
       };
+      # Accept windows and leases (fleet L3). Trees move over ssh with this worker's own key
+      # (common/modules/orch); the peer's endpoint serves snapshots of the repositories under
+      # endpointAllow.
+      fleet = {
+        sshKeyFile = "/run/agenix/orch-fleet-${host.hostName}";
+        endpointAllow = [
+          "/home/dk/code"
+          "/home/dk/.local/share/orch/clones"
+        ];
+      };
     }
     (lib.mkIf (host.hostName == "hermes") {
       roles = [
@@ -50,6 +60,11 @@ in
         "agentd"
       ];
       ceilingGiB = 26; # MemTotal 30 GiB less 4, as ostt3's ostt.slice
+      # Closing the lid ends the accept window and gives idempotent leased tasks back.
+      fleet = {
+        sleepInhibitor = true;
+        peers.hestia = "dk@hestia";
+      };
       projects = {
         ostt3 = {
           path = "/home/dk/code/ostt3";
@@ -67,6 +82,11 @@ in
       # clones, trees, warm targets; / has 457 GiB, /mnt/games 1.4 TiB. dk owns /mnt/games, so
       # the worker makes the directory.
       dataRoot = "/mnt/games/orch";
+      # Pulls hermes's waiting tasks whenever it has room, without an accept window.
+      fleet = {
+        acceptsAlways = true;
+        peers.hermes = "dk@hermes";
+      };
     })
   ];
 }

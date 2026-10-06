@@ -25,6 +25,8 @@ let
     "restic-repo-pass.age"
     "orch-link-hermes.age"
     "orch-link-hestia.age"
+    "orch-fleet-hermes.age"
+    "orch-fleet-hestia.age"
   ];
 in
 builtins.listToAttrs (

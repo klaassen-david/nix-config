@@ -1,5 +1,6 @@
 {
   config,
+  lib,
   secretsPath,
   ...
 }:
@@ -12,19 +13,50 @@
 #   dk, whose worker reads it at every connect. The same file is olympus's token for this host.
 # - orch.dklaassen.de resolves to olympus's mesh address: the vhost admits only the VPN's
 #   networks, so the worker must come through the mesh, never through the public address.
+# - Leases (fleet L3): this worker's ssh key (orch-fleet-<host>.age) fetches leased tasks' trees
+#   from the peer; the peer's public key (common/keys/orch-fleet-<peer>.pub) gets dk's
+#   authorized_keys line with the forced command `orch git-endpoint`, which serves snapshot refs
+#   and nothing else. The line is added only once the .pub file is in git (`git add -N`);
+#   until then the build warns.
 let
   name = config.host.hostName;
+  # The hosts that run a worker; each one's peers are the others.
+  workers = [
+    "hermes"
+    "hestia"
+  ];
+  peers = lib.filter (h: h != name) workers;
   # The mesh's v4 addressing, as common/modules/wireguard derives it from `octet`.
   olympusIp = "10.100.0.${toString config.vpn.nodes.olympus.octet}";
+  pubKey = peer: ../../keys + "/orch-fleet-${peer}.pub";
+  havePub = peer: builtins.pathExists (pubKey peer);
+  inherit (config.home-manager.users.dk.services.orch.fleet) gitEndpoint;
 in
 {
   users.users.dk.linger = true;
 
-  age.secrets."orch-link-${name}" = {
-    file = "${secretsPath}/orch-link-${name}.age";
-    owner = "dk";
-    mode = "0400";
+  age.secrets = {
+    "orch-link-${name}" = {
+      file = "${secretsPath}/orch-link-${name}.age";
+      owner = "dk";
+      mode = "0400";
+    };
+    "orch-fleet-${name}" = {
+      file = "${secretsPath}/orch-fleet-${name}.age";
+      owner = "dk";
+      mode = "0400";
+    };
   };
 
   networking.hosts.${olympusIp} = [ "orch.dklaassen.de" ];
+
+  # Adds to common.nix's keyFiles; the forced command binds only the peers' fleet keys.
+  users.users.dk.openssh.authorizedKeys.keys = map (
+    peer: ''restrict,command="${gitEndpoint}" ${lib.removeSuffix "\n" (builtins.readFile (pubKey peer))}''
+  ) (lib.filter havePub peers);
+
+  warnings = map (
+    peer:
+    "orch: common/keys/orch-fleet-${peer}.pub is missing (or not in git); ${peer}'s worker can't fetch trees from ${name} yet."
+  ) (lib.filter (p: !havePub p) peers);
 }

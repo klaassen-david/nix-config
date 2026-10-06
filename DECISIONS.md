@@ -78,5 +78,6 @@ changes (old ruling stays in the file as history).
   [USER 2026-10-05]
 - [orchestrator-fleet](decisions/orchestrator-fleet.md) — the orchestrator's
   coordinator runs on olympus behind `orch.dklaassen.de` (SSO, VPN only; the
-  hosts reach it through the mesh), one link token per worker host
-  [AGENT 2026-10-06]
+  hosts reach it through the mesh), one link token per worker host; hestia
+  accepts hermes's tasks always, hermes in windows, trees fetched over ssh with
+  a per-host key forced to `orch git-endpoint` [AGENT 2026-10-06]
