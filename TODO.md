@@ -48,6 +48,16 @@ Ranked by value-to-effort. Each expands in its own section below.
   is `[auto]`-checkable; "is the offsite copy actually offsite" is not.
   [USER to pick target]
 
+- [ ] **crash-capture on laptops — lift the lid gate?** `[manual]` (hermes-only)
+  hermes runs `host.debug.crashCapture` since a PID-1 panic during shutdown on
+  2026-10-06 left only a pstore tail (journal unsynced for the last 5 min).
+  On `capabilities.lid` hosts `common/modules/crash-capture` skips
+  `hung_task_panic` (report only) and `RuntimeWatchdogSec`. To lift the
+  watchdog gate: arm it by hand (`systemctl edit` → `RuntimeWatchdogSec=30s`),
+  then lid-close suspend and `systemctl hibernate` each resume without a reset.
+  To lift the hung-task gate: no `blocked for more than` in
+  `journalctl -k -g hung_task` across a month of orch builds.
+
 - [ ] **host/disk alerting** `[auto]` units / `[manual]` delivery
   No uptime, disk-usage, or service-failure alerting on olympus at all. The
   backup jobs have a pattern to copy (`backup-alert@` + the stamp directory

@@ -28,6 +28,9 @@
       lid = true;
     };
     chargeLimitPercent = 60;
+    # 2026-10-06: PID 1 died during shutdown (pstore: panic in do_exit); the
+    # journal's last 5 minutes, sway crash included, never reached disk.
+    debug.crashCapture = true;
 
     # LID0/state is confirmed present on the Framework 16; the token is "open"/"closed".
     lid_state = pkgs.writeShellScript "lid-state" ''

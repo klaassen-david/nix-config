@@ -29,11 +29,18 @@
 #    to (2): soft enough → panic + dump; hard enough → watchdog reset with no dump
 #    but at least no manual hard reset.
 #
+# Journal — sync every 30s, not journald's 5m default: a panic or reset loses
+#    whatever is unsynced, which is exactly the run-up to the crash.
+#
 # Inspect a captured crash after it reboots:  ls /var/lib/systemd/pstore/
 { config, lib, ... }:
 
 let
   cfg = config.host.debug.crashCapture;
+  # laptops get the capture without the two self-resets: an I/O stall under a
+  # build must not reboot a machine in use, and the watchdog is unproven across
+  # suspend/hibernate (TODO.md, "crash-capture on laptops").
+  inherit (config.host.capabilities) lid;
 in
 {
   config = lib.mkIf cfg {
@@ -50,7 +57,8 @@ in
       # Not a slow disk — that drive sustains 1.3 GB/s and only ~650 MiB across
       # 2252 files was dirty fleet-wide. Writeback was blocked on something never
       # identified, which is what all_cpu_backtrace below is here to catch.
-      "kernel.hung_task_panic" = 1;
+      # lid: report only — the warning + backtraces still reach the journal.
+      "kernel.hung_task_panic" = if lid then 0 else 1;
       "kernel.hung_task_timeout_secs" = 60;
       # dump every CPU's stack before panicking. check_hung_task() panics on the
       # *first* blocked task, so the default (0) captures the victim waiting on
@@ -70,6 +78,8 @@ in
     # and a total lockup stops the pets so the timer resets the box. Recovery-only
     # — a watchdog cold reset leaves no pstore dump; the panic path above is what
     # captures. 30s tolerates brief load spikes / heavy swap before resetting.
-    systemd.settings.Manager.RuntimeWatchdogSec = "30s";
+    systemd.settings.Manager.RuntimeWatchdogSec = lib.mkIf (!lid) "30s";
+
+    services.journald.settings.Journal.SyncIntervalSec = "30s";
   };
 }
