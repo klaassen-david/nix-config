@@ -74,3 +74,7 @@ changes (old ruling stays in the file as history).
 - [remote-builder](decisions/remote-builder.md) — hermes builds on hestia over
   the mesh (ssh-ng as dk, host key pinned, local fallback), VM tests included
   [USER 2026-10-05]
+- [orchestrator-fleet](decisions/orchestrator-fleet.md) — the orchestrator's
+  coordinator runs on olympus behind `orch.dklaassen.de` (SSO, VPN only; the
+  hosts reach it through the mesh), one link token per worker host
+  [AGENT 2026-10-06]

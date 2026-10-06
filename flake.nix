@@ -116,6 +116,7 @@
           hostModules = [
             nixos-hardware.nixosModules.framework-16-7040-amd
             ./common/modules/remote-builder
+            ./common/modules/orch
           ];
           hmModules = [
             ./home-manager/modules/desktop

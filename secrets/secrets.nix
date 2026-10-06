@@ -23,6 +23,8 @@ let
     "wg-tukl-hestia.age"
     "smb-dk.age"
     "restic-repo-pass.age"
+    "orch-link-hermes.age"
+    "orch-link-hestia.age"
   ];
 in
 builtins.listToAttrs (

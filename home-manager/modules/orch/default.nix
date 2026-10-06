@@ -38,6 +38,12 @@ in
       percent = 0;
     };
     plugins = [ orch.orch-plugin-rust ];
+    # The link to the coordinator on olympus (common/modules/orch-coordinator); the token is
+    # this host's agenix secret (common/modules/orch).
+    coordinator = {
+      url = "wss://orch.dklaassen.de/link/v1";
+      tokenFile = "/run/agenix/orch-link-${host.hostName}";
+    };
     projects = {
       ostt3 = {
         path = "/home/dk/code/ostt3";
