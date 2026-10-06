@@ -93,6 +93,10 @@ in
         acceptsAlways = true;
         peers.hermes = "dk@hermes";
       };
+      # Tasks of hermes's projects leased here: the worker knows the project by name and builds
+      # its dev shell from the leased tree. No checkout or flake here (hestia has no copy of the
+      # repository and can't reach olympus's).
+      projects.orchestrator = { };
     })
   ];
 }

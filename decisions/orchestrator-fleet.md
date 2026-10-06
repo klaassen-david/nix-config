@@ -26,6 +26,11 @@ clones only.
 - No new port: sshd is already on the mesh (`common/modules/ssh-server`), and both hosts have
   each other's host keys in dk's `known_hosts`.
 
+**hestia knows the orchestrator project** (2026-10-06): `projects.orchestrator = { }` in hestia's
+`services.orch`, by name only, so tasks of hermes's agents leased to hestia (gates, tests) are
+known as the project's and get its dev shell, built from the leased tree. No `path` or `flake`:
+hestia has no checkout, and it can't reach olympus's repository (no known host key).
+
 **Rejected:**
 - a public DNS record pointing at 10.100.0.1 instead of the hosts lines: it serves phones too,
   but nothing needs that yet;
