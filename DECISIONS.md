@@ -70,7 +70,9 @@ changes (old ruling stays in the file as history).
   gets `disable_aspm=1` [USER 2026-10-04]
 - [orchestrator-worker](decisions/orchestrator-worker.md) — hermes runs the
   orchestrator's worker and agentd (`home-manager/modules/orch`) with
-  lingering on; input is `git+file` pinned to a deployable rev [USER 2026-10-05]
+  lingering on; input is `git+file` pinned to a deployable rev [USER 2026-10-05];
+  hestia runs the worker only, data on `/mnt/games/orch`, ceiling 27 GiB
+  [AGENT 2026-10-06]
 - [remote-builder](decisions/remote-builder.md) — hermes builds on hestia over
   the mesh (ssh-ng as dk, host key pinned, local fallback), VM tests included
   [USER 2026-10-05]

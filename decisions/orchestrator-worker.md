@@ -24,6 +24,17 @@ is the orchestrator's rollback drill, X5. From `2434a6b` (2026-10-05) the input 
 which the switchover plan shares; the supervisor deploys by home-manager activation (its
 DECISIONS 82), the system switch stays the user's.
 
+**Amended** [AGENT 2026-10-06]: hestia runs the worker too, worker role only, with the fleet
+deploy (decisions/orchestrator-fleet.md): `ceilingGiB = 27` (MemTotal 31 GiB less 4),
+`dataRoot = "/mnt/games/orch"` (the orchestrator's Q11), the disk floor 100 GiB absolute as on
+hermes (15 % of the 1.4 TiB `/mnt/games` would be 210 GiB). The per-host values live in
+`home-manager/modules/orch`, keyed on `host.hostName`; lingering, the link token and the
+coordinator's address in `common/modules/orch`.
+- hestia's `/` has 457 GiB with ~68 GiB free, below its 100 GiB floor: the worker's results,
+  logs and dev environments there get tended every minute. Trees and clones are on
+  `/mnt/games`.
+- No projects on hestia yet: ostt3's come with the orchestrator's `ostt3-adoption` (Q12).
+
 **Input** [AGENT 2026-10-04]: `git+file:///home/dk/code/orchestrator`, pinned
 by `ref` and `rev` to a commit `orch deployable <rev>` accepts.
 - Rejected: `git+ssh` to `olympus:git/orchestrator.git`. `sudo nixos-rebuild`
@@ -32,5 +43,5 @@ by `ref` and `rev` to a commit `orch deployable <rev>` accepts.
   the orchestrator's `gate full` tested; only home-manager follows.
 
 **Revisit if:** the orchestrator moves to GitHub or olympus becomes fetchable as
-root; agentd's role is added (the orchestrator's switchover); hestia is
-deployed (`dataRoot = "/mnt/games/orch"`, its own ceiling).
+root; agentd moves to hestia (the orchestrator's `DECISIONS.md`, 17), whose clones
+under `dataRoot` then go into its `fleet.endpointAllow`.

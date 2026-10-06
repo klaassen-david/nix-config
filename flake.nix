@@ -127,8 +127,14 @@
         # tower
         hestia = mkHost {
           host = "hestia";
-          hostModules = [ ./common/modules/remote-builder ];
-          hmModules = [ ./home-manager/modules/desktop ];
+          hostModules = [
+            ./common/modules/remote-builder
+            ./common/modules/orch
+          ];
+          hmModules = [
+            ./home-manager/modules/desktop
+            ./home-manager/modules/orch
+          ];
         };
       };
       devShells.x86_64-linux.default = nixpkgs-unstable.legacyPackages.x86_64-linux.mkShell {
