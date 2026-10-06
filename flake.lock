@@ -330,17 +330,17 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1791265980,
-        "narHash": "sha256-lUjMkK/xDeyqO+hqJEmGF8vQ9/Vz3IbOz51SGDJdJa8=",
-        "ref": "plan/fleet",
-        "rev": "ea7d1c662977261cba3205ae5e41ed61ba4436fa",
-        "revCount": 737,
+        "lastModified": 1791283025,
+        "narHash": "sha256-U5iqMe+5N6tVyiuTr5LAdeJgckjUIQPIUdPcGfuxqd8=",
+        "ref": "main",
+        "rev": "e3b1f38d7c623c004d2b2cda2d0cbd20725825a8",
+        "revCount": 770,
         "type": "git",
         "url": "file:///home/dk/code/orchestrator"
       },
       "original": {
-        "ref": "plan/fleet",
-        "rev": "ea7d1c662977261cba3205ae5e41ed61ba4436fa",
+        "ref": "main",
+        "rev": "e3b1f38d7c623c004d2b2cda2d0cbd20725825a8",
         "type": "git",
         "url": "file:///home/dk/code/orchestrator"
       }
