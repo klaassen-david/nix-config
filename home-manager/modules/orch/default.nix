@@ -32,7 +32,7 @@ in
       host = host.hostName; # task ids T-<host>-…
       # 100 GiB absolute per filesystem: 15 % of hermes's 1.8 TiB / or of hestia's 1.4 TiB
       # /mnt/games would hold most tasks back.
-      diskFloor = {
+      diskFloor = lib.mkDefault {
         gib = 100;
         percent = 0;
       };
@@ -82,6 +82,12 @@ in
       # clones, trees, warm targets; / has 457 GiB, /mnt/games 1.4 TiB. dk owns /mnt/games, so
       # the worker makes the directory.
       dataRoot = "/mnt/games/orch";
+      # The floor holds on every filesystem the worker writes: results, logs and dev shells stay
+      # on / (~68 GiB free on 2026-10-06, nix min-free 30 GiB), so 100 GiB would hold every task.
+      diskFloor = {
+        gib = 20;
+        percent = 0;
+      };
       # Pulls hermes's waiting tasks whenever it has room, without an accept window.
       fleet = {
         acceptsAlways = true;
