@@ -22,3 +22,10 @@ VPS, no KVM).
 
 **Revisit if:** hestia's load from builds disturbs its own work or ostt3's
 measurements (`measure` lock), or a third build host appears.
+
+**Switched off on hermes for now (2026-10-07):** `remoteBuilder.useHestia = false` in
+`hermes/configuration.nix`. hermes reaches hestia over Wi-Fi only, and a remote build's round
+trip costs more than building on hermes (a trivial derivation 13-28 s remote against ~7 s local;
+the orchestrator's `docs/gate-times.md` and `docs/research/iteration-time.md`). The module and
+hestia's side are unchanged: setting it to `true` and switching hermes brings the remote builds
+back, once the two are on a fast link.

@@ -13,6 +13,11 @@
 
   powerManagement.enable = true;
 
+  # Builds stay on hermes while it reaches hestia over Wi-Fi only (a remote build's round
+  # trip costs more than the build). On a fast link (Ethernet) set this to true and switch:
+  # hestia then builds for hermes again (common/modules/remote-builder).
+  remoteBuilder.useHestia = false;
+
   host = {
     hostName = "hermes";
     role = "laptop";

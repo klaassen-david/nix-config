@@ -12,6 +12,10 @@
 #   lets hestia fetch from the caches itself instead of through hermes.
 # - hestia (server): dk is a trusted Nix user, which a remote builder's user must
 #   be. dk already has sudo there, so this grants nothing new.
+#
+# The switch: `remoteBuilder.useHestia` (hermes/configuration.nix). Off while hermes reaches
+# hestia over Wi-Fi only: a remote build's round trip there costs more than building on hermes
+# (orchestrator docs/gate-times.md, 2026-10-07). On again on a fast link (Ethernet).
 { config, lib, ... }:
 
 let
@@ -20,8 +24,15 @@ let
   hestiaIp = "10.100.0.${toString hestia.octet}";
   hestiaHostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPIuarjxJW72kpLAPnfnU5lGbxGQBSKot8aimJiaGTIe";
 in
-lib.mkMerge [
-  (lib.mkIf (config.host.hostName == "hermes") {
+{
+  options.remoteBuilder.useHestia = lib.mkOption {
+    type = lib.types.bool;
+    default = true;
+    description = "Whether hermes sends its builds to hestia (off on a slow link).";
+  };
+
+  config = lib.mkMerge [
+  (lib.mkIf (config.host.hostName == "hermes" && config.remoteBuilder.useHestia) {
     nix.distributedBuilds = true;
     nix.buildMachines = [
       {
@@ -50,6 +61,13 @@ lib.mkMerge [
         ConnectTimeout 5
     '';
   })
+  # Without hestia, hermes builds everything itself; its Nix builds run outside the
+  # orchestrator's memory ledger, beside the agents and their tasks: at most three at once, five
+  # cores each (a gate starts up to six; the rest wait in the daemon).
+  (lib.mkIf (config.host.hostName == "hermes" && !config.remoteBuilder.useHestia) {
+    nix.settings.max-jobs = 3;
+    nix.settings.cores = 5;
+  })
   (lib.mkIf (config.host.hostName == "hestia") {
     nix.settings.trusted-users = [ "dk" ];
     # Builds for hermes fill the store with paths nothing references once their results went
@@ -59,4 +77,5 @@ lib.mkMerge [
     nix.settings.min-free = 30 * 1024 * 1024 * 1024;
     nix.settings.max-free = 80 * 1024 * 1024 * 1024;
   })
-]
+];
+}
