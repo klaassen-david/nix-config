@@ -41,3 +41,12 @@ killing anything. With `useHestia = false`: nix-daemon `MemoryHigh` 8G / `Memory
 
 Amended the same day: 4 cores per build got rustc OOM-killed in the daemon three times in
 15 min (hermes kept 14 GiB free); now `cores` 3 and `MemoryHigh` 9G / `MemoryMax` 10G.
+
+**Back on over Wi-Fi** [USER 2026-10-07]: building alone, hermes livelocked. `max-jobs` holds
+per client connection, not per daemon, and every gate step is a client: 13 steps ran ~12
+builders at once inside nix-daemon's 10 GiB, which `MemoryHigh` 9G throttled for an hour without
+an OOM kill. Remote builds are bounded by the builder's slots across all clients, so
+`useHestia = true` again. hermes keeps nix-daemon `MemoryMax` 10G / `MemorySwapMax` 1G /
+`OOMPolicy = continue` (no `MemoryHigh`) and orch.slice `MemorySwapMax` 2G in both modes; the
+orch ceiling is 26 GiB with hestia, 14 without. Revisit if: a global limit on local builds
+(hermes as its own remote builder, or one in the orchestrator's worker).

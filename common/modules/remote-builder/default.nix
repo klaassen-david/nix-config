@@ -61,23 +61,24 @@ in
         ConnectTimeout 5
     '';
   })
-  # Without hestia, hermes builds everything itself; its Nix builds run outside the
-  # orchestrator's memory ledger, beside the agents and their tasks: at most two at once, three
-  # cores each (a gate starts up to six; the rest wait in the daemon). The daemon gets a memory
-  # budget of its own, beside orch.slice's (home-manager/modules/orch): unbounded, it reached
-  # 24 GiB beside a full ledger and froze hermes in swap on 2026-10-07. Over the budget the kernel
-  # kills a builder inside the daemon (that build fails), not the box; `OOMPolicy = continue`
-  # keeps the daemon and its other builds. Four cores per build
-  # ran its rustc processes (~1.3 GiB each for the big crates) over 9 GiB three times in 15 min.
-  (lib.mkIf (config.host.hostName == "hermes" && !config.remoteBuilder.useHestia) {
-    nix.settings.max-jobs = 2;
-    nix.settings.cores = 3;
+  # hermes's local Nix builds run outside the orchestrator's memory ledger, beside the agents and
+  # their tasks, so the daemon gets a budget of its own beside orch.slice's
+  # (home-manager/modules/orch): unbounded, it reached 24 GiB and froze hermes in swap on
+  # 2026-10-07. Over it the kernel kills a builder (that build fails), not the box; `OOMPolicy =
+  # continue` keeps the daemon and its other builds. No `MemoryHigh`: just under `MemoryMax` it
+  # throttled a dozen builders for an hour without killing one.
+  (lib.mkIf (config.host.hostName == "hermes") {
     systemd.services.nix-daemon.serviceConfig = {
-      MemoryHigh = "9G";
       MemoryMax = "10G";
       MemorySwapMax = "1G";
       OOMPolicy = "continue";
     };
+  })
+  # Without hestia, hermes builds everything itself. `max-jobs` holds per client, not per daemon
+  # (every gate step is a client), so only the remote builder's slots bound a gate's builds.
+  (lib.mkIf (config.host.hostName == "hermes" && !config.remoteBuilder.useHestia) {
+    nix.settings.max-jobs = 2;
+    nix.settings.cores = 3;
   })
   (lib.mkIf (config.host.hostName == "hestia") {
     nix.settings.trusted-users = [ "dk" ];

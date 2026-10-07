@@ -103,9 +103,7 @@ in
     })
   ];
 
-  # Building without hestia, hermes has no memory to spare for orch.slice's swap: at its ceiling
-  # the kernel kills inside the slice instead of thrashing the box (froze hermes on 2026-10-07).
-  systemd.user.slices.orch.Slice = lib.mkIf (
-    host.hostName == "hermes" && !osConfig.remoteBuilder.useHestia
-  ) { MemorySwapMax = "2G"; };
+  # At its ceiling the kernel kills inside orch.slice instead of thrashing hermes in swap (froze
+  # it on 2026-10-07).
+  systemd.user.slices.orch.Slice = lib.mkIf (host.hostName == "hermes") { MemorySwapMax = "2G"; };
 }
