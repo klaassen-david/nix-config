@@ -61,7 +61,7 @@ in
         "agentd"
       ];
       # MemTotal 30 GiB less 4, as ostt3's ostt.slice. Building without hestia, nix-daemon takes
-      # up to 9 GiB beside it (common/modules/remote-builder), so the ceiling drops to 14.
+      # up to 10 GiB beside it (common/modules/remote-builder), so the ceiling drops to 14.
       ceilingGiB = if osConfig.remoteBuilder.useHestia then 26 else 14;
       # Closing the lid ends the accept window and gives idempotent leased tasks back.
       fleet = {

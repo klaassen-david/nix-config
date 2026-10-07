@@ -62,18 +62,19 @@ in
     '';
   })
   # Without hestia, hermes builds everything itself; its Nix builds run outside the
-  # orchestrator's memory ledger, beside the agents and their tasks: at most two at once, four
+  # orchestrator's memory ledger, beside the agents and their tasks: at most two at once, three
   # cores each (a gate starts up to six; the rest wait in the daemon). The daemon gets a memory
   # budget of its own, beside orch.slice's (home-manager/modules/orch): unbounded, it reached
   # 24 GiB beside a full ledger and froze hermes in swap on 2026-10-07. Over the budget the kernel
   # kills a builder inside the daemon (that build fails), not the box; `OOMPolicy = continue`
-  # keeps the daemon and its other builds.
+  # keeps the daemon and its other builds. Four cores per build
+  # ran its rustc processes (~1.3 GiB each for the big crates) over 9 GiB three times in 15 min.
   (lib.mkIf (config.host.hostName == "hermes" && !config.remoteBuilder.useHestia) {
     nix.settings.max-jobs = 2;
-    nix.settings.cores = 4;
+    nix.settings.cores = 3;
     systemd.services.nix-daemon.serviceConfig = {
-      MemoryHigh = "8G";
-      MemoryMax = "9G";
+      MemoryHigh = "9G";
+      MemoryMax = "10G";
       MemorySwapMax = "1G";
       OOMPolicy = "continue";
     };

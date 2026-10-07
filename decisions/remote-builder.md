@@ -38,3 +38,6 @@ killing anything. With `useHestia = false`: nix-daemon `MemoryHigh` 8G / `Memory
 `MemorySwapMax` 1G with `OOMPolicy = continue`, `max-jobs` 2 and `cores` 4; orch.slice's ceiling
 14 GiB (26 with hestia) and `MemorySwapMax` 2G; the orchestrator runs at most 6 agents [USER
 2026-10-07]. An over-budget build is killed and fails; the box stays up.
+
+Amended the same day: 4 cores per build got rustc OOM-killed in the daemon three times in
+15 min (hermes kept 14 GiB free); now `cores` 3 and `MemoryHigh` 9G / `MemoryMax` 10G.
