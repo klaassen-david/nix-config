@@ -3,6 +3,7 @@
   pkgs,
   host,
   inputs,
+  osConfig,
   ...
 }:
 
@@ -59,7 +60,9 @@ in
         "worker"
         "agentd"
       ];
-      ceilingGiB = 26; # MemTotal 30 GiB less 4, as ostt3's ostt.slice
+      # MemTotal 30 GiB less 4, as ostt3's ostt.slice. Building without hestia, nix-daemon takes
+      # up to 9 GiB beside it (common/modules/remote-builder), so the ceiling drops to 14.
+      ceilingGiB = if osConfig.remoteBuilder.useHestia then 26 else 14;
       # Closing the lid ends the accept window and gives idempotent leased tasks back.
       fleet = {
         sleepInhibitor = true;
@@ -99,4 +102,10 @@ in
       projects.orchestrator = { };
     })
   ];
+
+  # Building without hestia, hermes has no memory to spare for orch.slice's swap: at its ceiling
+  # the kernel kills inside the slice instead of thrashing the box (froze hermes on 2026-10-07).
+  systemd.user.slices.orch.Slice = lib.mkIf (
+    host.hostName == "hermes" && !osConfig.remoteBuilder.useHestia
+  ) { MemorySwapMax = "2G"; };
 }

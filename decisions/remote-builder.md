@@ -29,3 +29,12 @@ trip costs more than building on hermes (a trivial derivation 13-28 s remote aga
 the orchestrator's `docs/gate-times.md` and `docs/research/iteration-time.md`). The module and
 hestia's side are unchanged: setting it to `true` and switching hermes brings the remote builds
 back, once the two are on a fast link.
+
+**Memory budgets while building alone** [AGENT 2026-10-07]: hermes froze at 09:42 (journal
+cut mid-line, no pstore record, hard reset) two minutes after 18 orchestrator agents resumed.
+Its nix-daemon, outside the orchestrator's ledger, reached 24 GiB beside orch.slice's 22.6 GiB
+(MemTotal 30.6 GiB), and 56 GiB of swap (swapfile, zram, partition) let it thrash instead of
+killing anything. With `useHestia = false`: nix-daemon `MemoryHigh` 8G / `MemoryMax` 9G /
+`MemorySwapMax` 1G with `OOMPolicy = continue`, `max-jobs` 2 and `cores` 4; orch.slice's ceiling
+14 GiB (26 with hestia) and `MemorySwapMax` 2G; the orchestrator runs at most 6 agents [USER
+2026-10-07]. An over-budget build is killed and fails; the box stays up.
