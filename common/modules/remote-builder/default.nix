@@ -69,10 +69,14 @@ in
   # throttled a dozen builders for an hour without killing one. The budget and orch.slice's
   # ceiling together stay ~5 GiB under MemTotal (30.6 GiB) for the desktop and the system: at 10 +
   # 26 they didn't, and hermes froze again on 2026-10-07 22:07 before either reached its limit.
-  # With hestia only `preferLocalBuild` derivations build here. systemd-oomd kills a builder after
-  # 20 s of heavy memory pressure, before the box stalls.
+  # systemd-oomd kills a builder after 20 s of heavy memory pressure, before the box stalls.
+  # With hestia, a build still runs here whenever hestia's slots are full (max-jobs `auto` let a
+  # full gate boot five VM tests here at 92 °C on 2026-10-07): one local job per client, and the
+  # daemon's CPU capped at 4 of the 16 cores (8 without hestia), beside orch-tasks.slice's 8.
   (lib.mkIf (config.host.hostName == "hermes") {
+    nix.settings.max-jobs = lib.mkIf config.remoteBuilder.useHestia 1;
     systemd.services.nix-daemon.serviceConfig = {
+      CPUQuota = if config.remoteBuilder.useHestia then "400%" else "800%";
       MemoryMax = if config.remoteBuilder.useHestia then "6G" else "10G";
       MemorySwapMax = "1G";
       OOMPolicy = "continue";

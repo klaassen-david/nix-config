@@ -106,9 +106,12 @@ in
 
   # At its ceiling the kernel kills inside orch.slice instead of thrashing hermes in swap (froze
   # it on 2026-10-07). Under 20 s of heavy memory pressure, systemd-oomd kills a task first.
+  # Tasks get 8 of the 16 cores, beside nix-daemon's cap (common/modules/remote-builder), so the
+  # desktop and the agents keep some and the laptop stays below its thermal limit.
   systemd.user.slices = lib.mkIf (host.hostName == "hermes") {
     orch.Slice.MemorySwapMax = "2G";
     orch-tasks.Slice = {
+      CPUQuota = "800%";
       ManagedOOMMemoryPressure = "kill";
       ManagedOOMMemoryPressureLimit = "50%";
       ManagedOOMMemoryPressureDurationSec = "20s";

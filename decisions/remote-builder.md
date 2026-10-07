@@ -58,3 +58,8 @@ together more than MemTotal (30.6 GiB), so the box ran out before either cgroup 
 limit, and swapped instead of killing. Now the two sum to 25 GiB in both modes (orch 19 + nix 6
 with hestia, 15 + 10 without), and systemd-oomd kills inside orch-tasks.slice or nix-daemon after
 20 s at 50 % memory pressure.
+
+**CPU caps** [AGENT 2026-10-07]: with hestia on and `max-jobs = auto`, a build runs on hermes
+whenever hestia's slots are full: a full gate booted five VM tests on hermes (load 36, Tctl
+92 °C). Now hermes keeps one local job per client with hestia, nix-daemon's `CPUQuota` is 400 %
+(800 % without hestia), and orch-tasks.slice's is 800 % of the 16 cores.
