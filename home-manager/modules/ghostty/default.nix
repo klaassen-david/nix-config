@@ -11,6 +11,8 @@
       gtk-tabs-location = "hidden";
       keybind = [
         "ctrl+shift+w=unbind"
+        # default toggle_fullscreen; alt+f does that too
+        "ctrl+enter=unbind"
       ];
     };
   };
