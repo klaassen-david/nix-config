@@ -39,7 +39,7 @@
     # The orchestrator (home-manager/modules/orch), pinned to a deployable commit. git+file, not
     # git+ssh to olympus: `sudo nixos-rebuild` fetches as root, which has no ssh key for it.
     orchestrator = {
-      url = "git+file:///home/dk/code/orchestrator?ref=main&rev=e3b1f38d7c623c004d2b2cda2d0cbd20725825a8";
+      url = "git+file:///home/dk/code/orchestrator?ref=main&rev=88d813c52f1a0ca58acf76a692a37ca14828e7da";
       inputs.home-manager.follows = "home-manager";
     };
     # Fork of the nixpkgs plugin, for `pipe_table.cell = "wrapped"`
