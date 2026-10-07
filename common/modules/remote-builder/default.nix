@@ -66,12 +66,19 @@ in
   # (home-manager/modules/orch): unbounded, it reached 24 GiB and froze hermes in swap on
   # 2026-10-07. Over it the kernel kills a builder (that build fails), not the box; `OOMPolicy =
   # continue` keeps the daemon and its other builds. No `MemoryHigh`: just under `MemoryMax` it
-  # throttled a dozen builders for an hour without killing one.
+  # throttled a dozen builders for an hour without killing one. The budget and orch.slice's
+  # ceiling together stay ~5 GiB under MemTotal (30.6 GiB) for the desktop and the system: at 10 +
+  # 26 they didn't, and hermes froze again on 2026-10-07 22:07 before either reached its limit.
+  # With hestia only `preferLocalBuild` derivations build here. systemd-oomd kills a builder after
+  # 20 s of heavy memory pressure, before the box stalls.
   (lib.mkIf (config.host.hostName == "hermes") {
     systemd.services.nix-daemon.serviceConfig = {
-      MemoryMax = "10G";
+      MemoryMax = if config.remoteBuilder.useHestia then "6G" else "10G";
       MemorySwapMax = "1G";
       OOMPolicy = "continue";
+      ManagedOOMMemoryPressure = "kill";
+      ManagedOOMMemoryPressureLimit = "50%";
+      ManagedOOMMemoryPressureDurationSec = "20s";
     };
   })
   # Without hestia, hermes builds everything itself. `max-jobs` holds per client, not per daemon

@@ -50,3 +50,11 @@ an OOM kill. Remote builds are bounded by the builder's slots across all clients
 `OOMPolicy = continue` (no `MemoryHigh`) and orch.slice `MemorySwapMax` 2G in both modes; the
 orch ceiling is 26 GiB with hestia, 14 without. Revisit if: a global limit on local builds
 (hermes as its own remote builder, or one in the orchestrator's worker).
+
+**Budgets that fit, and an oomd net** [AGENT 2026-10-07]: hermes froze again at 22:07 (journal
+cut, no pstore), five minutes after the worker's queue drained and admitted tasks up to its
+25 GiB ledger. With hestia back on, orch.slice's ceiling was 26 GiB beside nix-daemon's 10 GiB:
+together more than MemTotal (30.6 GiB), so the box ran out before either cgroup reached its own
+limit, and swapped instead of killing. Now the two sum to 25 GiB in both modes (orch 19 + nix 6
+with hestia, 15 + 10 without), and systemd-oomd kills inside orch-tasks.slice or nix-daemon after
+20 s at 50 % memory pressure.

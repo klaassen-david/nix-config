@@ -60,9 +60,10 @@ in
         "worker"
         "agentd"
       ];
-      # MemTotal 30 GiB less 4, as ostt3's ostt.slice. Building without hestia, nix-daemon takes
-      # up to 10 GiB beside it (common/modules/remote-builder), so the ceiling drops to 14.
-      ceilingGiB = if osConfig.remoteBuilder.useHestia then 26 else 14;
+      # With nix-daemon's budget beside it (6 GiB with hestia, 10 without;
+      # common/modules/remote-builder), ~5 GiB of MemTotal (30.6) stay for the desktop and the
+      # system. 26 with hestia froze hermes on 2026-10-07 22:07.
+      ceilingGiB = if osConfig.remoteBuilder.useHestia then 19 else 15;
       # Closing the lid ends the accept window and gives idempotent leased tasks back.
       fleet = {
         sleepInhibitor = true;
@@ -104,6 +105,13 @@ in
   ];
 
   # At its ceiling the kernel kills inside orch.slice instead of thrashing hermes in swap (froze
-  # it on 2026-10-07).
-  systemd.user.slices.orch.Slice = lib.mkIf (host.hostName == "hermes") { MemorySwapMax = "2G"; };
+  # it on 2026-10-07). Under 20 s of heavy memory pressure, systemd-oomd kills a task first.
+  systemd.user.slices = lib.mkIf (host.hostName == "hermes") {
+    orch.Slice.MemorySwapMax = "2G";
+    orch-tasks.Slice = {
+      ManagedOOMMemoryPressure = "kill";
+      ManagedOOMMemoryPressureLimit = "50%";
+      ManagedOOMMemoryPressureDurationSec = "20s";
+    };
+  };
 }

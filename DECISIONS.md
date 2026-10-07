@@ -77,8 +77,8 @@ changes (old ruling stays in the file as history).
   the mesh (ssh-ng as dk, host key pinned, local fallback), VM tests included
   [USER 2026-10-05]
   ; on over Wi-Fi too, since local builds have no global limit (max-jobs is per
-  client) [USER 2026-10-07]; hermes's nix-daemon capped at 10 GiB and orch.slice's swap at
-  2 GiB so builds can't freeze it
+  client) [USER 2026-10-07]; on hermes nix-daemon and orch.slice together stay 5 GiB under
+  its RAM, with little swap and a systemd-oomd net, so builds can't freeze it
 - [orchestrator-fleet](decisions/orchestrator-fleet.md) — the orchestrator's
   coordinator runs on olympus behind `orch.dklaassen.de` (SSO, VPN only; the
   hosts reach it through the mesh), one link token per worker host; hestia
