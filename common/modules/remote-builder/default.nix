@@ -99,6 +99,10 @@ in
     # generation and gcroot stays.
     nix.settings.min-free = 30 * 1024 * 1024 * 1024;
     nix.settings.max-free = 80 * 1024 * 1024 * 1024;
+    # Each build gets 8 of the 24 threads instead of all of them (cores = 0): an orchestrator
+    # `full` gate runs up to six Nix builds at once (cargo at -j24 each), and the VM tests beside
+    # them timed out under that load on 2026-10-08 (orchestrator's Fable report on `full`, A3).
+    nix.settings.cores = 8;
   })
 ];
 }
