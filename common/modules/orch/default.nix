@@ -34,6 +34,12 @@ let
 in
 {
   users.users.dk.linger = true;
+  # home-manager's activation finishes before dk's lingering user manager starts at boot. Without
+  # the ordering, a boot into a new generation can start the manager on the previous generation's
+  # unit links; home-manager then skips its reload ("User systemd daemon not running") and the
+  # orch daemons run the old build until the next switch (orchestrator vm-hot-update, 2026-10-08,
+  # nix/tests/hm-before-linger.nix). Only boot order changes; a switch is unaffected.
+  systemd.services.home-manager-dk.before = [ "user@1000.service" ];
 
   age.secrets = {
     "orch-link-${name}" = {
