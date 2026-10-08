@@ -64,6 +64,9 @@ in
       # common/modules/remote-builder), ~5 GiB of MemTotal (30.6) stay for the desktop and the
       # system. 26 with hestia froze hermes on 2026-10-07 22:07.
       ceilingGiB = if osConfig.remoteBuilder.useHestia then 19 else 15;
+      # Merge jobs' gates build their Nix checks in hestia's store: only status and errors come
+      # back over hermes's usually slow link, no outputs (orchestrator ruling 117).
+      agentd.gateNixStore = lib.mkIf osConfig.remoteBuilder.useHestia "ssh-ng://hestia";
       # Closing the lid ends the accept window and gives idempotent leased tasks back.
       fleet = {
         sleepInhibitor = true;
