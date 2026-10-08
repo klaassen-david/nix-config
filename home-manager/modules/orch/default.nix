@@ -114,9 +114,24 @@ in
   # desktop and the agents keep some and the laptop stays below its thermal limit.
   # The desktop (app.slice: browser, mail, terminals; session.slice: sway, the bar) is protected
   # up to MemoryLow, so under pressure the kernel reclaims from orch first.
+  # keep-old: a switch must never stop these two slices. Without it, the switch that introduced
+  # them stopped both, and with them every window and session service (2026-10-08 17:02); a
+  # changed MemoryLow applies on the switch's daemon-reload instead.
   systemd.user.slices = lib.mkIf (host.hostName == "hermes") {
-    app.Slice.MemoryLow = "6G";
-    session.Slice.MemoryLow = "512M";
+    app = {
+      Unit = {
+        Description = "User Application Slice";
+        X-SwitchMethod = "keep-old";
+      };
+      Slice.MemoryLow = "6G";
+    };
+    session = {
+      Unit = {
+        Description = "User Core Session Slice";
+        X-SwitchMethod = "keep-old";
+      };
+      Slice.MemoryLow = "512M";
+    };
     orch.Slice.MemorySwapMax = "2G";
     orch-tasks.Slice = {
       CPUQuota = "800%";
