@@ -60,10 +60,11 @@ in
         "worker"
         "agentd"
       ];
-      # With nix-daemon's budget beside it (6 GiB with hestia, 10 without;
-      # common/modules/remote-builder), ~5 GiB of MemTotal (30.6) stay for the desktop and the
-      # system. 26 with hestia froze hermes on 2026-10-07 22:07.
-      ceilingGiB = if osConfig.remoteBuilder.useHestia then 19 else 15;
+      # With nix-daemon's budget beside it (5 GiB with hestia, 10 without;
+      # common/modules/remote-builder), ~11 GiB of MemTotal (30.6) stay for the desktop, zram's
+      # own pages and the system: 26 with hestia froze hermes on 2026-10-07 22:07, and 19 + 6
+      # most likely on 2026-10-08 08:54 (Zen alone takes 3-5 GiB).
+      ceilingGiB = if osConfig.remoteBuilder.useHestia then 14 else 12;
       # Merge jobs' gates build their Nix checks in hestia's store: only status and errors come
       # back over hermes's usually slow link, no outputs (orchestrator ruling 117).
       agentd.gateNixStore = lib.mkIf osConfig.remoteBuilder.useHestia "ssh-ng://hestia";
@@ -111,7 +112,11 @@ in
   # it on 2026-10-07). Under 20 s of heavy memory pressure, systemd-oomd kills a task first.
   # Tasks get 8 of the 16 cores, beside nix-daemon's cap (common/modules/remote-builder), so the
   # desktop and the agents keep some and the laptop stays below its thermal limit.
+  # The desktop (app.slice: browser, mail, terminals; session.slice: sway, the bar) is protected
+  # up to MemoryLow, so under pressure the kernel reclaims from orch first.
   systemd.user.slices = lib.mkIf (host.hostName == "hermes") {
+    app.Slice.MemoryLow = "6G";
+    session.Slice.MemoryLow = "512M";
     orch.Slice.MemorySwapMax = "2G";
     orch-tasks.Slice = {
       CPUQuota = "800%";

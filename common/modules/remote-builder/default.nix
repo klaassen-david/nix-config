@@ -77,7 +77,7 @@ in
     nix.settings.max-jobs = lib.mkIf config.remoteBuilder.useHestia 1;
     systemd.services.nix-daemon.serviceConfig = {
       CPUQuota = if config.remoteBuilder.useHestia then "400%" else "800%";
-      MemoryMax = if config.remoteBuilder.useHestia then "6G" else "10G";
+      MemoryMax = if config.remoteBuilder.useHestia then "5G" else "10G";
       MemorySwapMax = "1G";
       OOMPolicy = "continue";
       ManagedOOMMemoryPressure = "kill";

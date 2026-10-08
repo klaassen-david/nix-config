@@ -80,6 +80,6 @@ in
     # captures. 30s tolerates brief load spikes / heavy swap before resetting.
     systemd.settings.Manager.RuntimeWatchdogSec = lib.mkIf (!lid) "30s";
 
-    services.journald.settings.Journal.SyncIntervalSec = "30s";
+    services.journald.settings.Journal.SyncIntervalSec = "5s";
   };
 }

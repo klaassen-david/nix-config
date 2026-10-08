@@ -63,3 +63,10 @@ with hestia, 15 + 10 without), and systemd-oomd kills inside orch-tasks.slice or
 whenever hestia's slots are full: a full gate booted five VM tests on hermes (load 36, Tctl
 92 °C). Now hermes keeps one local job per client with hestia, nix-daemon's `CPUQuota` is 400 %
 (800 % without hestia), and orch-tasks.slice's is 800 % of the 16 cores.
+
+**More room for the desktop** [AGENT 2026-10-08]: hermes froze a third time at 08:54 (journal cut
+30 s before; apps died, then sway, then the box). Two task cgroups had OOM-killed rustc minutes
+before; with orch.slice at 19 GiB and nix-daemon at 6 GiB only ~5.6 GiB of MemTotal remained for
+the desktop, zram's own pages and the kernel, while Zen alone takes 3-5 GiB. Now orch.slice 14
+GiB (12 without hestia), nix-daemon 5 GiB, app.slice `MemoryLow` 6 GiB and session.slice 512 MiB,
+and journald syncs every 5 s (crash-capture) so the next freeze keeps its last seconds.
