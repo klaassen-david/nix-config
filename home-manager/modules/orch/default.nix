@@ -73,6 +73,12 @@ in
         sleepInhibitor = true;
         peers.hestia = "dk@hestia";
       };
+      # Builds go to hestia; hermes's two slots serve only while hestia is out of reach or full
+      # (orchestrator incremental-builds IB6, R2, R7; DECISIONS 117).
+      worker = {
+        offload.enable = true;
+        warmSlots = 2;
+      };
       projects = {
         ostt3 = {
           path = "/home/dk/code/ostt3";
@@ -101,6 +107,7 @@ in
         acceptsAlways = true;
         peers.hermes = "dk@hermes";
       };
+      worker.warmSlots = 6; # IB6 R7: six warm build slots on hestia
       # Tasks of hermes's projects leased here: the worker knows the project by name and builds
       # its dev shell from the leased tree. No checkout or flake here (hestia has no copy of the
       # repository and can't reach olympus's).
