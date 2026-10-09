@@ -80,6 +80,8 @@ in
     # captures. 30s tolerates brief load spikes / heavy swap before resetting.
     systemd.settings.Manager.RuntimeWatchdogSec = lib.mkIf (!lid) "30s";
 
+    # a freeze keeps the journal up to its last 5 s; 30 s lost the run-up to hermes's
+    # 2026-10-08 freeze.
     services.journald.settings.Journal.SyncIntervalSec = "5s";
   };
 }

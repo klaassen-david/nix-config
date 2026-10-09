@@ -107,24 +107,14 @@
         # laptop
         hermes = mkHost {
           host = "hermes";
-          hostModules = [
-            nixos-hardware.nixosModules.framework-16-7040-amd
-            ./common/modules/remote-builder
-          ];
-          hmModules = [
-            ./home-manager/modules/desktop
-          ];
+          hostModules = [ nixos-hardware.nixosModules.framework-16-7040-amd ];
+          hmModules = [ ./home-manager/modules/desktop ];
         };
 
         # tower
         hestia = mkHost {
           host = "hestia";
-          hostModules = [
-            ./common/modules/remote-builder
-          ];
-          hmModules = [
-            ./home-manager/modules/desktop
-          ];
+          hmModules = [ ./home-manager/modules/desktop ];
         };
       };
       devShells.x86_64-linux.default = nixpkgs-unstable.legacyPackages.x86_64-linux.mkShell {

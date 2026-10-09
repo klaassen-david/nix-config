@@ -13,11 +13,6 @@
 
   powerManagement.enable = true;
 
-  # hestia builds for hermes, over Wi-Fi too: building alone, hermes ran a dozen gate builds at
-  # once (max-jobs holds per client), and only the remote builder's slots bound them
-  # (common/modules/remote-builder).
-  remoteBuilder.useHestia = true;
-
   host = {
     hostName = "hermes";
     role = "laptop";

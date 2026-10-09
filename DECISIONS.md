@@ -68,9 +68,3 @@ changes (old ruling stays in the file as history).
   wpa_supplicant, not iwd: iwd deauthenticates past its hard-coded 1200 TU
   association comeback and the MFP-requiring Bbox asks 1953; the MT7922 also
   gets `disable_aspm=1` [USER 2026-10-04]
-- [remote-builder](decisions/remote-builder.md) — hermes builds on hestia over
-  the mesh (ssh-ng as dk, host key pinned, local fallback), VM tests included
-  [USER 2026-10-05]
-  ; on over Wi-Fi too, since local builds have no global limit (max-jobs is per
-  client) [USER 2026-10-07]; on hermes nix-daemon and orch.slice together stay 5 GiB under
-  its RAM, with little swap and a systemd-oomd net, so builds can't freeze it
