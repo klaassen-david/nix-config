@@ -38,7 +38,9 @@ in
       {
         hostName = hestiaIp;
         protocol = "ssh-ng";
-        sshUser = "dk";
+        # hestia's dedicated trusted build user (nix.sshServe below), not dk: dk is an untrusted
+        # Nix user there, so tasks running as dk can't register store paths (orchestrator, 2026-10-09).
+        sshUser = "nix-ssh";
         sshKey = "/home/dk/.ssh/id_priv";
         system = "x86_64-linux";
         maxJobs = 8;
@@ -92,7 +94,20 @@ in
     nix.settings.cores = 3;
   })
   (lib.mkIf (config.host.hostName == "hestia") {
-    nix.settings.trusted-users = [ "dk" ];
+    # Remote builds from hermes come in as the dedicated user nix-ssh (forced `nix-daemon --stdio`,
+    # trusted, key-only: hermes root's id_priv). dk is no longer a trusted Nix user here: every
+    # orchestrator task runs as dk with the daemon socket in its sandbox, and a trusted client can
+    # register arbitrary paths as valid (skipping signatures), which would let a leased agent task
+    # forge a check's output (orchestrator review, 2026-10-09). Untrusted users still build.
+    nix.sshServe = {
+      enable = true;
+      protocol = "ssh-ng";
+      write = true;
+      trusted = true;
+      keys = [ (builtins.readFile ../../keys/id_priv.pub) ];
+    };
+    # sshd admits only dk otherwise (common ssh settings).
+    services.openssh.settings.AllowUsers = [ "nix-ssh" ];
     # Builds for hermes fill the store with paths nothing references once their results went
     # back (2026-10-05: / reached 98 % in a day). Nix collects them itself while it builds:
     # below 30 GiB free it deletes dead paths until 80 GiB are free. Only dead paths; every

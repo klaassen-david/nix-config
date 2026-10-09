@@ -67,7 +67,7 @@ in
       ceilingGiB = if osConfig.remoteBuilder.useHestia then 14 else 12;
       # Merge jobs' gates build their Nix checks in hestia's store: only status and errors come
       # back over hermes's usually slow link, no outputs (orchestrator ruling 117).
-      agentd.gateNixStore = lib.mkIf osConfig.remoteBuilder.useHestia "ssh-ng://hestia";
+      agentd.gateNixStore = lib.mkIf osConfig.remoteBuilder.useHestia "ssh-ng://nix-ssh@hestia";
       # Closing the lid ends the accept window and gives idempotent leased tasks back.
       fleet = {
         sleepInhibitor = true;
