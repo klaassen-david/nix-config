@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   pkgs,
   host,
@@ -8,11 +9,20 @@
 }:
 
 # The orchestrator (~/code/orchestrator, its docs/deploy-worker.md) on hermes and hestia: the
-# worker (orch-worker.{socket,service}, orch.slice with its task slices) and `orch` on PATH.
-# hermes also runs agentd (orch-agentd.*, runner units in orch-runners.slice, the local
-# dashboard on 127.0.0.1:7468, `orch dashboard` prints its login URL); agentd reads the
-# harness's own logins from ~/.config/orch/accounts.toml (`orch accounts`), never cswap. hestia
-# runs the worker only, its bulky data on /mnt/games (decisions/orchestrator-worker.md).
+# worker (orch-worker.{socket,service}, orch.slice with its task slices) and `orch` on PATH. The
+# development host (`orchDevHost` below) also runs agentd (orch-agentd.*, runner units in
+# orch-runners.slice, the local dashboard on 127.0.0.1:7468, `orch dashboard` prints its login
+# URL); agentd reads the harness's own logins from ~/.config/orch/accounts.toml (`orch
+# accounts`), never cswap. hestia's worker keeps its bulky data on /mnt/games
+# (decisions/orchestrator-worker.md).
+#
+# Hand-over (orchestrator DECISIONS 136, 137): change `orchDevHost`; pause every agent (runner
+# units outlive agentd) and switch the old host, which stops agentd; move ~/.local/state/orch/
+# agentd.db* and accounts/, ~/.local/share/orch (clones without their target/ dirs, merges,
+# records), ~/.config/orch/accounts.toml with its logins and the checkout ~/code/orchestrator to
+# the same paths on the new host; then switch the new host. Same paths on either host, so
+# agents' sessions resume by their cwd. The other host supervises over ssh (the API socket, the
+# dashboard port forwarded).
 #
 # The input is pinned to a commit `orch deployable <rev>` accepts (gate `full` passed on that
 # tree). To update: pick a newer deployable commit, change `rev` in flake.nix, then
@@ -23,6 +33,9 @@
 
 let
   orch = inputs.orchestrator.packages.${pkgs.stdenv.hostPlatform.system};
+  # The host that runs agentd: the hand-over switch.
+  orchDevHost = "hestia";
+  isDev = host.hostName == orchDevHost;
 in
 {
   imports = [ inputs.orchestrator.homeManagerModules.default ];
@@ -31,6 +44,7 @@ in
     {
       enable = true;
       host = host.hostName; # task ids T-<host>-…
+      roles = [ "worker" ] ++ lib.optional isDev "agentd";
       # 100 GiB absolute per filesystem: 15 % of hermes's 1.8 TiB / or of hestia's 1.4 TiB
       # /mnt/games would hold most tasks back.
       diskFloor = lib.mkDefault {
@@ -55,11 +69,16 @@ in
         ];
       };
     }
+    (lib.mkIf isDev {
+      # Not the worker's dataRoot (hestia: /mnt/games/orch): agentd's clones, merges and records
+      # stay at the path every host gives them, where `orch merge` and endpointAllow look.
+      agentd.settings.data_root = "${config.xdg.dataHome}/orch";
+      projects.orchestrator = {
+        path = "/home/dk/code/orchestrator";
+        flake = "git+file:///home/dk/code/orchestrator?ref=main";
+      };
+    })
     (lib.mkIf (host.hostName == "hermes") {
-      roles = [
-        "worker"
-        "agentd"
-      ];
       # With nix-daemon's budget beside it (5 GiB with hestia, 10 without;
       # common/modules/remote-builder), ~11 GiB of MemTotal (30.6) stay for the desktop, zram's
       # own pages and the system: 26 with hestia froze hermes on 2026-10-07 22:07, and 19 + 6
@@ -67,7 +86,9 @@ in
       ceilingGiB = if osConfig.remoteBuilder.useHestia then 14 else 12;
       # Merge jobs' gates build their Nix checks in hestia's store: only status and errors come
       # back over hermes's usually slow link, no outputs (orchestrator ruling 117).
-      agentd.gateNixStore = lib.mkIf osConfig.remoteBuilder.useHestia "ssh-ng://nix-ssh@hestia";
+      agentd.gateNixStore = lib.mkIf (
+        isDev && osConfig.remoteBuilder.useHestia
+      ) "ssh-ng://nix-ssh@hestia";
       # Closing the lid ends the accept window and gives idempotent leased tasks back.
       fleet = {
         sleepInhibitor = true;
@@ -79,6 +100,7 @@ in
         offload.enable = true;
         warmSlots = 2;
       };
+      # hermes keeps both checkouts, the user's, whichever host develops.
       projects = {
         ostt3 = {
           path = "/home/dk/code/ostt3";
@@ -91,8 +113,10 @@ in
       };
     })
     (lib.mkIf (host.hostName == "hestia") {
-      roles = [ "worker" ];
       ceilingGiB = 27; # MemTotal 31 GiB less 4
+      # As the development host, the ledger leaves 8 GiB of the ceiling to agentd (MemoryMax 2G)
+      # and its runners (orch-runners.slice is inside orch.slice, outside the ledger).
+      worker.memoryGiB = lib.mkIf isDev 19;
       # clones, trees, warm targets; / has 457 GiB, /mnt/games 1.4 TiB. dk owns /mnt/games, so
       # the worker makes the directory.
       dataRoot = "/mnt/games/orch";
@@ -109,8 +133,8 @@ in
       };
       worker.warmSlots = 6; # IB6 R7: six warm build slots on hestia
       # Tasks of hermes's projects leased here: the worker knows the project by name and builds
-      # its dev shell from the leased tree. No checkout or flake here (hestia has no copy of the
-      # repository and can't reach olympus's).
+      # its dev shell from the leased tree. As the development host, the checkout is here too
+      # (above); no ostt3 checkout here, so agentd leaves ostt3 out.
       projects.orchestrator = { };
     })
   ];

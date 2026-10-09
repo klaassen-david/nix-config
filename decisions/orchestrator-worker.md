@@ -35,6 +35,24 @@ coordinator's address in `common/modules/orch`.
   `/mnt/games`.
 - No projects on hestia yet: ostt3's come with the orchestrator's `ostt3-adoption` (Q12).
 
+**Amended** [USER 2026-10-09]: hestia is the development host: it runs agentd, hermes the
+worker only and supervises hestia's agentd remotely while connected; development may move back
+(the orchestrator's `DECISIONS.md`, 136 and 137). One binding, `orchDevHost` in
+`home-manager/modules/orch`, gives the `agentd` role and everything agentd needs (the
+orchestrator project with its checkout, agentd's settings, hermes's `gateNixStore` when hermes
+is the host) to that host; changing it is the hand-over, in either direction (the steps are in
+the module header).
+- agentd's `data_root` is `~/.local/share/orch` on either host, not the worker's `dataRoot`
+  (`/mnt/games/orch` on hestia): the same paths everywhere, so agents' sessions resume by their
+  cwd after a hand-over, and `orch merge` and `fleet.endpointAllow` find the clones. No bind
+  mount. Clones with their `target/` dirs need far more than hestia's `/` has free (126 GiB on
+  hermes, 6 GiB without `target/`; hestia's `/` had 58 GiB free on 2026-10-09).
+- As the development host, hestia's ledger is 19 of its 27 GiB ceiling: agentd (2 GiB) and its
+  runners live in `orch.slice` outside the ledger.
+- ostt3 stays on hermes: hestia has no checkout of it.
+- Every orchestrator host pins olympus's ssh host key for its mesh address, so the development
+  host fetches and pushes `olympus:git/orchestrator.git` without trust-on-first-use.
+
 **Input** [AGENT 2026-10-04]: `git+file:///home/dk/code/orchestrator`, pinned
 by `ref` and `rev` to a commit `orch deployable <rev>` accepts.
 - Rejected: `git+ssh` to `olympus:git/orchestrator.git`. `sudo nixos-rebuild`
@@ -43,5 +61,5 @@ by `ref` and `rev` to a commit `orch deployable <rev>` accepts.
   the orchestrator's `gate full` tested; only home-manager follows.
 
 **Revisit if:** the orchestrator moves to GitHub or olympus becomes fetchable as
-root; agentd moves to hestia (the orchestrator's `DECISIONS.md`, 17), whose clones
-under `dataRoot` then go into its `fleet.endpointAllow`.
+root; hestia's `/` can't hold agentd's clones (then their build output, not their path, moves to
+`/mnt/games`). The `git+file` input needs the checkout on whichever host evaluates this flake.
