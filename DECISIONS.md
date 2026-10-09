@@ -74,7 +74,8 @@ changes (old ruling stays in the file as history).
   hestia runs the worker only, data on `/mnt/games/orch`, ceiling 27 GiB
   [AGENT 2026-10-06]; agentd runs on the development host `orchDevHost`
   (hestia; flipping it is the hand-over), its data at `~/.local/share/orch` on
-  either host [USER 2026-10-09]
+  either host [USER 2026-10-09]; agents' and tasks' sandboxes block the VPN's
+  networks on every worker host [USER 2026-10-09]
 - [remote-builder](decisions/remote-builder.md) — hermes builds on hestia over
   the mesh (ssh-ng as dk, host key pinned, local fallback), VM tests included
   [USER 2026-10-05]

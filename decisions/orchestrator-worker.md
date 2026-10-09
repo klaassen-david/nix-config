@@ -53,6 +53,12 @@ the module header).
 - Every orchestrator host pins olympus's ssh host key for its mesh address, so the development
   host fetches and pushes `olympus:git/orchestrator.git` without trust-on-first-use.
 
+**VPN block** [USER 2026-10-09]: on every worker host the orchestrator's agent and task
+sandboxes block the VPN's networks (`services.orch.sandbox.blockedNets`: the mesh's /16 and /48,
+the phones' v6 range), because the development host's dashboard answers on the mesh without a
+login (the orchestrator's `DECISIONS.md` 144). Fail closed: an agent or task whose block can't be
+set doesn't start. A host without the block gets no leases from one with it.
+
 **Input** [AGENT 2026-10-04]: `git+file:///home/dk/code/orchestrator`, pinned
 by `ref` and `rev` to a commit `orch deployable <rev>` accepts.
 - Rejected: `git+ssh` to `olympus:git/orchestrator.git`. `sudo nixos-rebuild`

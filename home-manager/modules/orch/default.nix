@@ -52,6 +52,17 @@ in
         percent = 0;
       };
       plugins = [ orch.orch-plugin-rust ];
+      # Agents' and tasks' sandboxes can't reach the VPN (orchestrator DECISIONS 144): the
+      # development host's dashboard answers on the mesh without a login, and every process of
+      # an agent's or a task's runs as dk. Every worker host blocks, not only the development
+      # host: agentd's guard vouches only for its own host, and an owner leases a task only to
+      # an executor that blocks what it blocks. The mesh's /16 (phones' 10.100.1.0/24 inside),
+      # its /48 and the phones' v6 range (common/modules/wireguard's header).
+      sandbox.blockedNets = [
+        "10.100.0.0/16"
+        "fdaa:e184:83f::/48"
+        "fdcc:ad94:bacf:61a4::cafe:0/112"
+      ];
       # The link to the coordinator on olympus (common/modules/orch-coordinator); the token is
       # this host's agenix secret (common/modules/orch).
       coordinator = {
