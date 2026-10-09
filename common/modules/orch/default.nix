@@ -34,6 +34,7 @@ let
   pubKey = peer: ../../keys + "/orch-fleet-${peer}.pub";
   havePub = peer: builtins.pathExists (pubKey peer);
   inherit (config.home-manager.users.dk.services.orch.fleet) gitEndpoint;
+  hmOrch = config.home-manager.users.dk.services.orch;
 in
 {
   users.users.dk.linger = true;
@@ -59,6 +60,13 @@ in
 
   networking.hosts.${olympusIp} = [ "orch.dklaassen.de" ];
 
+  # The development host's dashboard (home-manager/modules/orch: `agentd.dashboard.listen` on the
+  # mesh addresses) is reachable on the mesh interface only, never the LAN or the uplink; the hub
+  # decides which phones reach hosts at all (common/modules/wireguard).
+  networking.firewall.interfaces.olympus.allowedTCPPorts = lib.mkIf (lib.any (
+    a: a != "127.0.0.1" && a != "::1"
+  ) hmOrch.agentd.dashboard.listen) [ hmOrch.agentd.dashboard.port ];
+
   programs.ssh.knownHosts.olympus = {
     hostNames = [
       "olympus"
@@ -69,7 +77,8 @@ in
 
   # Adds to common.nix's keyFiles; the forced command binds only the peers' fleet keys.
   users.users.dk.openssh.authorizedKeys.keys = map (
-    peer: ''restrict,command="${gitEndpoint}" ${lib.removeSuffix "\n" (builtins.readFile (pubKey peer))}''
+    peer:
+    ''restrict,command="${gitEndpoint}" ${lib.removeSuffix "\n" (builtins.readFile (pubKey peer))}''
   ) (lib.filter havePub peers);
 
   warnings = map (

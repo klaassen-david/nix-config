@@ -59,6 +59,13 @@ the phones' v6 range), because the development host's dashboard answers on the m
 login (the orchestrator's `DECISIONS.md` 144). Fail closed: an agent or task whose block can't be
 set doesn't start. A host without the block gets no leases from one with it.
 
+**Dashboard on the mesh** [USER 2026-10-09]: the development host's agentd dashboard also
+listens on its mesh addresses (port 7468, opened on the `olympus` interface only), for every VPN
+device with host access, phones included. No login: VPN access is the gate; no rate limit
+(the orchestrator's `DECISIONS.md` 144). agentd serves the mesh only while its guard sees every
+live agent and task behind the VPN block above; after a switch, live agents are recycled
+(`orch session pause`/`resume`) and older tasks end first.
+
 **Input** [AGENT 2026-10-04]: `git+file:///home/dk/code/orchestrator`, pinned
 by `ref` and `rev` to a commit `orch deployable <rev>` accepts.
 - Rejected: `git+ssh` to `olympus:git/orchestrator.git`. `sudo nixos-rebuild`

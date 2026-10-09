@@ -84,6 +84,19 @@ in
       # Not the worker's dataRoot (hestia: /mnt/games/orch): agentd's clones, merges and records
       # stay at the path every host gives them, where `orch merge` and endpointAllow look.
       agentd.settings.data_root = "${config.xdg.dataHome}/orch";
+      # The dashboard on the host's mesh addresses too, for every VPN device with host access,
+      # phones included; no login, VPN access is the gate (orchestrator DECISIONS 144). agentd
+      # serves the mesh only while every live agent and task runs behind the VPN block above;
+      # common/modules/orch opens the port on the mesh interface only.
+      agentd.dashboard.listen =
+        let
+          octet = toString osConfig.vpn.nodes.${host.hostName}.octet;
+        in
+        [
+          "127.0.0.1"
+          "10.100.0.${octet}"
+          "fdaa:e184:83f::${octet}"
+        ];
       projects.orchestrator = {
         path = "/home/dk/code/orchestrator";
         flake = "git+file:///home/dk/code/orchestrator?ref=main";
