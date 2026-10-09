@@ -18,6 +18,9 @@
 #   authorized_keys line with the forced command `orch git-endpoint`, which serves snapshot refs
 #   and nothing else. The line is added only once the .pub file is in git (`git add -N`);
 #   until then the build warns.
+# - olympus's ssh host key, pinned for its mesh address: on the development host the user and
+#   the supervisor fetch and push olympus:git/orchestrator.git (~/.ssh/config.local maps `olympus`
+#   there), never trust-on-first-use. The key common/modules/mail-backup pins for dklaassen.de.
 let
   name = config.host.hostName;
   # The hosts that run a worker; each one's peers are the others.
@@ -55,6 +58,14 @@ in
   };
 
   networking.hosts.${olympusIp} = [ "orch.dklaassen.de" ];
+
+  programs.ssh.knownHosts.olympus = {
+    hostNames = [
+      "olympus"
+      olympusIp
+    ];
+    publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICC2ITqo7NHmJIn8Cgd3O5ezGJAmLSE/Srlq9l8Ix9io";
+  };
 
   # Adds to common.nix's keyFiles; the forced command binds only the peers' fleet keys.
   users.users.dk.openssh.authorizedKeys.keys = map (
