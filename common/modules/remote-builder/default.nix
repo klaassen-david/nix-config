@@ -118,6 +118,18 @@ in
     # `full` gate runs up to six Nix builds at once (cargo at -j24 each), and the VM tests beside
     # them timed out under that load on 2026-10-08 (orchestrator's Fable report on `full`, A3).
     nix.settings.cores = 8;
+    # nix-daemon's builds (hermes's remote builds, `full`'s Nix checks and VM tests: three VM guests
+    # take up to ~14 GiB) get a budget beside orch.slice's 16 GiB (home-manager/modules/orch), so
+    # the two together stay under hestia's 31 GiB. Over it the kernel kills a builder, not the box;
+    # systemd-oomd kills one after 20 s of heavy pressure.
+    systemd.services.nix-daemon.serviceConfig = {
+      MemoryMax = "14G";
+      MemorySwapMax = "1G";
+      OOMPolicy = "continue";
+      ManagedOOMMemoryPressure = "kill";
+      ManagedOOMMemoryPressureLimit = "50%";
+      ManagedOOMMemoryPressureDurationSec = "20s";
+    };
   })
 ];
 }

@@ -113,10 +113,14 @@ in
       };
     })
     (lib.mkIf (host.hostName == "hestia") {
-      ceilingGiB = 27; # MemTotal 31 GiB less 4
-      # As the development host, the ledger leaves 8 GiB of the ceiling to agentd (MemoryMax 2G)
-      # and its runners (orch-runners.slice is inside orch.slice, outside the ledger).
-      worker.memoryGiB = lib.mkIf isDev 19;
+      # orch.slice 16 GiB beside nix-daemon's 14 (common/modules/remote-builder): together under
+      # hestia's 31 GiB, so builds for hermes, `full`'s VM tests and orch's tasks can't freeze it
+      # (hermes froze three times from exactly that oversubscription; the user's go, 2026-10-09).
+      ceilingGiB = 16;
+      # As the development host, the ledger leaves 6 GiB of the ceiling to agentd (MemoryMax 2G)
+      # and its runners (orch-runners.slice is inside orch.slice, outside the ledger); a warm
+      # slot gate (8 GiB learned at most) still fits the 10.
+      worker.memoryGiB = if isDev then 10 else 15;
       # clones, trees, warm targets; / has 457 GiB, /mnt/games 1.4 TiB. dk owns /mnt/games, so
       # the worker makes the directory.
       dataRoot = "/mnt/games/orch";
