@@ -68,23 +68,9 @@ changes (old ruling stays in the file as history).
   wpa_supplicant, not iwd: iwd deauthenticates past its hard-coded 1200 TU
   association comeback and the MFP-requiring Bbox asks 1953; the MT7922 also
   gets `disable_aspm=1` [USER 2026-10-04]
-- [orchestrator-worker](decisions/orchestrator-worker.md) — hermes runs the
-  orchestrator's worker and agentd (`home-manager/modules/orch`) with
-  lingering on; input is `git+file` pinned to a deployable rev [USER 2026-10-05];
-  hestia runs the worker only, data on `/mnt/games/orch`, ceiling 27 GiB
-  [AGENT 2026-10-06]; agentd runs on the development host `orchDevHost`
-  (hestia; flipping it is the hand-over), its data at `~/.local/share/orch` on
-  either host [USER 2026-10-09]; agents' and tasks' sandboxes block the VPN's
-  networks on every worker host, and the development host's dashboard answers on
-  its mesh address without a login [USER 2026-10-09]
 - [remote-builder](decisions/remote-builder.md) — hermes builds on hestia over
   the mesh (ssh-ng as dk, host key pinned, local fallback), VM tests included
   [USER 2026-10-05]
   ; on over Wi-Fi too, since local builds have no global limit (max-jobs is per
   client) [USER 2026-10-07]; on hermes nix-daemon and orch.slice together stay 5 GiB under
   its RAM, with little swap and a systemd-oomd net, so builds can't freeze it
-- [orchestrator-fleet](decisions/orchestrator-fleet.md) — the orchestrator's
-  coordinator runs on olympus behind `orch.dklaassen.de` (SSO, VPN only; the
-  hosts reach it through the mesh), one link token per worker host; hestia
-  accepts hermes's tasks always, hermes in windows, trees fetched over ssh with
-  a per-host key forced to `orch git-endpoint` [AGENT 2026-10-06]

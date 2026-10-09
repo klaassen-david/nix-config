@@ -63,22 +63,6 @@
         "type": "github"
       }
     },
-    "crane": {
-      "locked": {
-        "lastModified": 1790899423,
-        "narHash": "sha256-THGtz65UGJU+sonZidRboyCMk+9DclpMF7pwL4uDV4M=",
-        "owner": "ipetkov",
-        "repo": "crane",
-        "rev": "47b6b27ed9a3a9181415e4367d0c30ab2a0e0250",
-        "type": "github"
-      },
-      "original": {
-        "owner": "ipetkov",
-        "repo": "crane",
-        "rev": "47b6b27ed9a3a9181415e4367d0c30ab2a0e0250",
-        "type": "github"
-      }
-    },
     "darwin": {
       "inputs": {
         "nixpkgs": [
@@ -271,22 +255,6 @@
     },
     "nixpkgs_3": {
       "locked": {
-        "lastModified": 1790046670,
-        "narHash": "sha256-MYiI+CzL0tuWgRPjGsKCDHqYs2T3OzMlMQWOYWG0qso=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "6774f7bc253789b113a4f39285dc0fa100abeacc",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "6774f7bc253789b113a4f39285dc0fa100abeacc",
-        "type": "github"
-      }
-    },
-    "nixpkgs_4": {
-      "locked": {
         "lastModified": 1789286504,
         "narHash": "sha256-eiEK7cKZORNEvX0GeF3RtNEF/JXhgf2RqSp3230q13E=",
         "owner": "nixos",
@@ -319,30 +287,6 @@
         "owner": "nix-community",
         "repo": "nixvim",
         "type": "github"
-      }
-    },
-    "orchestrator": {
-      "inputs": {
-        "crane": "crane",
-        "home-manager": [
-          "home-manager"
-        ],
-        "nixpkgs": "nixpkgs_3"
-      },
-      "locked": {
-        "lastModified": 1791547918,
-        "narHash": "sha256-mg/FGFVR5tTrf3g25fvBkYZt/idbbS+TFDW5IJSCt/M=",
-        "ref": "main",
-        "rev": "8e0fc0d11a25a0561c3cd5a602a9bdf461deec25",
-        "revCount": 1372,
-        "type": "git",
-        "url": "file:///home/dk/code/orchestrator"
-      },
-      "original": {
-        "ref": "main",
-        "rev": "8e0fc0d11a25a0561c3cd5a602a9bdf461deec25",
-        "type": "git",
-        "url": "file:///home/dk/code/orchestrator"
       }
     },
     "pyproject-build-systems": {
@@ -422,7 +366,6 @@
         "nixos-hardware": "nixos-hardware",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "nixvim": "nixvim",
-        "orchestrator": "orchestrator",
         "render-markdown-nvim": "render-markdown-nvim",
         "zen-browser": "zen-browser"
       }
@@ -487,7 +430,7 @@
     "zen-browser": {
       "inputs": {
         "home-manager": "home-manager_3",
-        "nixpkgs": "nixpkgs_4"
+        "nixpkgs": "nixpkgs_3"
       },
       "locked": {
         "lastModified": 1790101991,

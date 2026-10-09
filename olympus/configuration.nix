@@ -15,8 +15,6 @@
     ../common/modules/attic
     # serves the mail store to hestia's restic repo (keyed on stalwart)
     ../common/modules/mail-backup
-    # the orchestrator's coordinator, VPN only (orch.dklaassen.de)
-    ../common/modules/orch-coordinator
   ];
 
   host = {

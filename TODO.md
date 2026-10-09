@@ -56,7 +56,7 @@ Ranked by value-to-effort. Each expands in its own section below.
   watchdog gate: arm it by hand (`systemctl edit` → `RuntimeWatchdogSec=30s`),
   then lid-close suspend and `systemctl hibernate` each resume without a reset.
   To lift the hung-task gate: no `blocked for more than` in
-  `journalctl -k -g hung_task` across a month of orch builds.
+  `journalctl -k -g hung_task` across a month.
 
 - [ ] **host/disk alerting** `[auto]` units / `[manual]` delivery
   No uptime, disk-usage, or service-failure alerting on olympus at all. The
