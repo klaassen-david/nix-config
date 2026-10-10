@@ -72,3 +72,7 @@ changes (old ruling stays in the file as history).
   9000–9099 on the mesh interface only (`host.firewall.mesh.tcpRanges`
   default): mesh hosts and phones with host access, never LAN/internet
   [USER 2026-10-11]
+- [trainer](decisions/trainer.md) — served by nginx on olympus
+  to VPN sources only; app comes in as a `git+ssh` flake input from
+  olympus:~/code; public A record to 10.100.0.1 for now, olympus resolver
+  deferred [USER 2026-10-11]

@@ -13,6 +13,7 @@
     ../common/modules/stalwart
     ../common/modules/wg-easy
     ../common/modules/attic
+    ../common/modules/trainer
     # serves the mail store to hestia's restic repo (keyed on stalwart)
     ../common/modules/mail-backup
   ];

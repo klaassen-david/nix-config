@@ -41,6 +41,12 @@
       url = "github:klaassen-david/render-markdown.nvim/wrapped-cells";
       flake = false;
     };
+    # no remote: the repo lives on olympus; update = commit there, then
+    # `nix flake update trainer`
+    trainer = {
+      url = "git+ssh://dk@dklaassen.de/home/dk/code/trainer";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
   };
 
   outputs =

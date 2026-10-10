@@ -367,6 +367,7 @@
         "nixpkgs-unstable": "nixpkgs-unstable",
         "nixvim": "nixvim",
         "render-markdown-nvim": "render-markdown-nvim",
+        "trainer": "trainer",
         "zen-browser": "zen-browser"
       }
     },
@@ -400,6 +401,26 @@
         "ref": "future-26.11",
         "repo": "default",
         "type": "github"
+      }
+    },
+    "trainer": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs-unstable"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791671257,
+        "narHash": "sha256-7k/5hJycvCSgoLFrYXFfsez7j9E26Ec+rdqAogpfSGs=",
+        "ref": "refs/heads/main",
+        "rev": "e1d5e850ac19fa8edde4aa257f029e557d40bd09",
+        "revCount": 18,
+        "type": "git",
+        "url": "ssh://dk@dklaassen.de/home/dk/code/trainer"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://dk@dklaassen.de/home/dk/code/trainer"
       }
     },
     "uv2nix": {
