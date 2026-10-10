@@ -241,6 +241,19 @@ in
         ];
         description = "extra UDP port ranges to accept on all interfaces";
       };
+      # Accepted on the mesh interface (`olympus`) only: mesh hosts and phones
+      # with `vpn-phone … hosts on`. Relayed exit traffic stays shut out by vpn-exit.
+      mesh.tcpRanges = mkOption {
+        type = types.listOf portRange;
+        # dev servers
+        default = [
+          {
+            from = 9000;
+            to = 9099;
+          }
+        ];
+        description = "TCP port ranges to accept on the WireGuard mesh interface only";
+      };
     };
 
     # TLS material for the public vhosts (common/modules/acme). Off by default:
@@ -281,13 +294,14 @@ in
     networking.hostName = config.host.hostName;
     system.stateVersion = config.host.stateVersion;
 
-    # the struct's four port lists, rendered once for every host; `enable` and
+    # the struct's port lists, rendered once for every host; `enable` and
     # `checkReversePath` stay with the bases, which disagree about the latter
     networking.firewall = {
       allowedTCPPorts = config.host.firewall.tcpPorts;
       allowedUDPPorts = config.host.firewall.udpPorts;
       allowedTCPPortRanges = config.host.firewall.tcpRanges;
       allowedUDPPortRanges = config.host.firewall.udpRanges;
+      interfaces.olympus.allowedTCPPortRanges = config.host.firewall.mesh.tcpRanges;
     };
 
     assertions = [

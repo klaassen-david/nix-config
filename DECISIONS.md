@@ -68,3 +68,7 @@ changes (old ruling stays in the file as history).
   wpa_supplicant, not iwd: iwd deauthenticates past its hard-coded 1200 TU
   association comeback and the MFP-requiring Bbox asks 1953; the MT7922 also
   gets `disable_aspm=1` [USER 2026-10-04]
+- [mesh-dev-ports](decisions/mesh-dev-ports.md) — every host accepts TCP
+  9000–9099 on the mesh interface only (`host.firewall.mesh.tcpRanges`
+  default): mesh hosts and phones with host access, never LAN/internet
+  [USER 2026-10-11]
