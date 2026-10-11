@@ -20,6 +20,7 @@
 
 let
   port = 3030;
+  domain = "trainer.dklaassen.de";
   pkg = inputs.trainer.packages.${pkgs.stdenv.hostPlatform.system}.default;
 in
 {
@@ -35,7 +36,8 @@ in
       LOG_FILE = "/var/lib/trainer/log.jsonl";
     };
     serviceConfig = {
-      ExecStart = lib.getExe pkg;
+      # the server answers only known Host names (DNS-rebinding guard)
+      ExecStart = "${lib.getExe pkg} --allow-host ${domain}";
       DynamicUser = true;
       StateDirectory = "trainer";
       Restart = "on-failure";
@@ -50,7 +52,7 @@ in
     };
   };
 
-  services.nginx.virtualHosts."trainer.dklaassen.de" = sslVhost { } // {
+  services.nginx.virtualHosts.${domain} = sslVhost { } // {
     locations."/" = {
       proxyPass = "http://127.0.0.1:${toString port}";
       extraConfig = ''
