@@ -97,9 +97,14 @@
   programs.ssh.knownHosts."dklaassen.de".publicKey =
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICC2ITqo7NHmJIn8Cgd3O5ezGJAmLSE/Srlq9l8Ix9io";
 
-  # VPN-only vhost (modules/trainer); also in public DNS, but a router's
-  # DNS-rebind protection may drop the private answer
-  networking.hosts."10.100.0.1" = [ "trainer.dklaassen.de" ];
+  # VPN-only vhosts on olympus (modules/trainer, modules/hot-swap/vhosts.nix);
+  # also in public DNS, but a router's DNS-rebind protection may drop the
+  # private answer
+  networking.hosts."10.100.0.1" = [
+    "trainer.dklaassen.de"
+    "orchestrator.dklaassen.de"
+    "coordinator.dklaassen.de"
+  ];
 
   # only groups that exist on every host; the ones a service creates are added
   # where that service is enabled (networkmanager/gamemode in desktop.nix, seat

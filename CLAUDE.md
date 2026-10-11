@@ -79,6 +79,10 @@ Rulings and rejected alternatives: `decisions/vpn.md`; mechanics (addressing, ta
 - **Restore**: `sudo mail-restore` lists snapshots and refuses to act; `sudo mail-restore [--snapshot ID] --yes` performs it. olympus stops stalwart, renames the live store to `/var/lib/stalwart/data.bak-<timestamp>` (never deletes, and puts it back if the import fails), imports, restarts. Clear the `.bak-*` dirs by hand once a restore is confirmed good.
 - **Repository**: `/var/backup/restic`, `0700 root`, password in `restic-repo-pass.age` — keep a copy off this host, it is not inside the repo it protects. `restic init` runs on the first backup; `sudo restic-repo <args>` is the interactive handle (`snapshots`, `check`, `restore`). Retention is `--keep-daily=7 --keep-weekly=5 --keep-monthly=12` applied per `--group-by host,tags`, so a second source can share the repo without evicting mail snapshots.
 
+## Hot-swapped apps
+
+`common/modules/hot-swap` runs apps whose binary is *not* in the store (orchestrator and coordinator, both on hestia; `hot-swap/apps.nix` is the placement, `decisions/hot-swap.md`): `<app>.service` (as dk) execs `~/deploy/<app>/current/bin/<app>`, and `<app>-swap.service` moves `current` to the version in `~/deploy/<app>/want`, health-checks `127.0.0.1:<port>/healthz` and rolls back. Both are in `userManagedUnits`. The port accepts only the hub; olympus serves `<app>.dklaassen.de` through `hot-swap/vhosts.nix` (VPN ACL + Nextcloud SSO, `hotSwap.sso`). A new app version is never a switch; a switch is only for the unit, port or vhost.
+
 ## Calendar & contacts (desktop)
 
 `home-manager/modules/calendar` is a CalDAV/CardDAV pipeline (in the desktop HM bundle only): **pimsync** syncs every Nextcloud calendar/addressbook into a local vdir, **khal** reads the calendars (the i3status next-appointment block + `ikhal`), **khard** the contacts. Built on home-manager's `accounts.{calendar,contact}` registry — one account definition feeds both the sync engine and the CLI clients.

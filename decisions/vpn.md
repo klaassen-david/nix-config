@@ -56,7 +56,9 @@ or `vpn egress direct` [AGENT 2026-10-02, adversarial audit H1]; `vpn mesh off` 
 explicit return to direct. A wg-easy v15 admin is root-equivalent on olympus
 (host netns + NET_ADMIN); accepted with wg-easy's hooks cleared on every db
 change, and the setup wizard finished right after deploy. Restricting the SSO
-gate to dk's account is open (needs the account's email/group).
+gate to dk's account is open (needs the account's email/group). The
+orchestrator/coordinator vhosts use the same gate, unrestricted
+(decisions/hot-swap.md) [USER 2026-10-11].
 
 ## Constraints [AGENT 2026-09-30]
 

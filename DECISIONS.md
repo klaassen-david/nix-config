@@ -76,3 +76,10 @@ changes (old ruling stays in the file as history).
   to VPN sources only; app comes in as a `git+ssh` flake input from
   olympus:~/code; public A record to 10.100.0.1 for now, olympus resolver
   deferred [USER 2026-10-11]
+- [hot-swap](decisions/hot-swap.md) — orchestrator and coordinator run on
+  hestia from `~/deploy/<app>/current` (static musl binaries cargo-built
+  there), not from the store; nix-config owns only units, ports, vhosts and the
+  swap/rollback unit; upgrade = downgrade = `systemctl start <app>-swap`, no
+  sudo, no switch; olympus's nginx proxies both dashboards over the mesh, their
+  ports accept the hub only, existing Nextcloud SSO in front (any
+  authenticated user) [USER 2026-10-11]

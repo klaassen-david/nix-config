@@ -11,6 +11,9 @@
     ../common/desktop.nix
     ../common/modules/backup
     ../common/modules/mail-backup
+    # hot-swapped from ~/deploy, dashboards proxied by olympus (decisions/hot-swap.md)
+    ../common/modules/orchestrator
+    ../common/modules/coordinator
   ];
 
   host = {
@@ -45,6 +48,17 @@
   };
 
   environment.systemPackages = [ pkgs.lutris ];
+
+  # declared, not left to `loginctl`: the coordinator and orchestrator start
+  # work with `systemd-run --user`, which needs dk's manager up without a login
+  users.users.dk.linger = true;
+
+  # decisions/hot-swap.md, "Night window": fstrim and the restic check default
+  # to Monday 00:00, inside the overnight build window, where an I/O stall over
+  # 60 s panics this host (modules/crash-capture). Monday morning instead; both
+  # timers are Persistent, so a missed run catches up at boot.
+  services.fstrim.interval = "Mon 07:30";
+  systemd.timers.restic-check.timerConfig.OnCalendar = lib.mkForce "Mon 08:00";
 
   # games library on the second NVMe — mount by UUID so it survives the
   # nvme0/nvme1 enumeration swap; nofail keeps boot going if the disk is absent.
