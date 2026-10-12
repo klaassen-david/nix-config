@@ -90,3 +90,7 @@ exactly as `trainer`; the existing `*.dklaassen.de` Let's Encrypt wildcard
 **Revisit if**: an app needs a C library that will not link statically, a
 release needs a unit/port change on every swap, remote execution lets the
 control plane move to olympus, or a second coordinator node appears.
+
+**Settings file** [USER 2026-10-12]: each app unit reads an optional `~/deploy/<app>/env`
+(`EnvironmentFile=-`), owned by dk and written only by the operator. App settings (steward keepalive, sandbox,
+accounts, task hiding) change with `systemctl restart <app>`, without a nix switch.

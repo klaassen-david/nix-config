@@ -184,6 +184,9 @@ in
             WorkingDirectory = "${root}/${name}/state";
             Restart = "on-failure";
             RestartSec = 2;
+            # optional, dk-owned settings file (KEY=VALUE lines): app settings change with a restart, without a
+            # nix switch (hot-swap's goal). Its values override `environment`. Agents may not write ~/deploy (D63).
+            EnvironmentFile = "-${root}/${name}/env";
           }
           // app.serviceConfig;
         };
