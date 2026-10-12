@@ -76,6 +76,10 @@ changes (old ruling stays in the file as history).
   to VPN sources only; app comes in as a `git+ssh` flake input from
   olympus:~/code; public A record to 10.100.0.1 for now, olympus resolver
   deferred [USER 2026-10-11]
+- [hestia-storage](decisions/hestia-storage.md) — hestia's Samsung 970 EVO:
+  100 GiB `hestia-backup` at `/var/backup` (restic repo), the rest
+  `hestia-dev` at `/mnt/dev` (build slots); backup units require the mount;
+  fstrim daily 07:30 [USER 2026-10-12]
 - [hot-swap](decisions/hot-swap.md) — orchestrator and coordinator run on
   hestia from `~/deploy/<app>/current` (static musl binaries cargo-built
   there), not from the store; nix-config owns only units, ports, vhosts and the

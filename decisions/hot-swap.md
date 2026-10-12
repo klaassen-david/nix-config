@@ -46,11 +46,14 @@ on olympus, could drive agents that run as dk.
 21:00–07:00 overnight build window: `modules/crash-capture` panics the host on a
 task blocked for 60 s, and an I/O stall under build load is the likeliest way to
 get one. Both timers are Persistent. crash-capture itself stays as it is.
+Amended [USER 2026-10-12]: fstrim is now daily at 07:30 (hestia-storage.md).
 
 **Build directories**: no nix change. `/mnt/games` is dk-owned (`dk:root 0755`),
 ext4, 270 G free; cargo target dirs, build slots and sccache go there. It is
 `nofail`: a tool that writes there checks that it is a mount point first, or it
 fills `/`. It shares the NVMe with `/`, so it is extra space, not separate I/O.
+Superseded for build slots [USER 2026-10-12]: `/mnt/dev` on the second NVMe
+(hestia-storage.md).
 
 **Source**: both apps come from one repo for now (olympus:~/code/orchestrator,
 a cargo workspace with the coordinator crates in it; olympus:~/code/coordinator

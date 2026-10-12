@@ -58,14 +58,16 @@
   users.users.dk.linger = true;
 
   # decisions/hot-swap.md, "Night window": fstrim and the restic check default
-  # to Monday 00:00, inside the overnight build window, where an I/O stall over
-  # 60 s panics this host (modules/crash-capture). Monday morning instead; both
-  # timers are Persistent, so a missed run catches up at boot.
-  services.fstrim.interval = "Mon 07:30";
+  # to 00:00, inside the overnight build window, where an I/O stall over 60 s
+  # panics this host (modules/crash-capture). Mornings instead; both timers are
+  # Persistent, so a missed run catches up at boot. fstrim daily for the QLC,
+  # DRAM-less Kingston (decisions/hestia-storage.md).
+  services.fstrim.interval = "*-*-* 07:30";
   systemd.timers.restic-check.timerConfig.OnCalendar = lib.mkForce "Mon 08:00";
 
-  # games library on the second NVMe — mount by UUID so it survives the
-  # nvme0/nvme1 enumeration swap; nofail keeps boot going if the disk is absent.
+  # games library and build slots, on the Kingston that also holds / — mount by
+  # UUID so it survives the nvme0/nvme1 enumeration swap; nofail keeps boot
+  # going if the disk is absent.
   fileSystems."/mnt/games" = {
     device = "/dev/disk/by-uuid/458b8b57-edd0-4426-bf5e-6d06543c46b0";
     fsType = "ext4";
@@ -74,6 +76,27 @@
       "x-systemd.device-timeout=5s"
     ];
   };
+
+  # Samsung 970 EVO, by label (decisions/hestia-storage.md): the restic repo
+  # off the root disk, and /mnt/dev as build space on its own I/O path.
+  # The backup units refuse to run without /var/backup (backupRepo.alertHook).
+  fileSystems."/var/backup" = {
+    device = "/dev/disk/by-label/hestia-backup";
+    fsType = "ext4";
+    options = [
+      "noatime"
+      "nofail"
+    ];
+  };
+  fileSystems."/mnt/dev" = {
+    device = "/dev/disk/by-label/hestia-dev";
+    fsType = "ext4";
+    options = [
+      "noatime"
+      "nofail"
+    ];
+  };
+  systemd.tmpfiles.rules = [ "d /mnt/dev 0755 dk users -" ];
 
   # Bootloader
   boot.loader = {
