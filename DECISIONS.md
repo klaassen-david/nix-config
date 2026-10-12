@@ -83,3 +83,10 @@ changes (old ruling stays in the file as history).
   sudo, no switch; olympus's nginx proxies both dashboards over the mesh, their
   ports accept the hub only, existing Nextcloud SSO in front (any
   authenticated user) [USER 2026-10-11]
+- [orch-state-backup](decisions/orch-state-backup.md) — hestia's
+  orchestrator/coordinator state and the night kit's history are backed up
+  hourly as `--host hestia --tag orch-state`, keep-last 2, into hestia's repo
+  and a second one on hermes (each host pulls on its own; ends the
+  single-repository rule; mail keeps its history and goes to both); WAL
+  databases via `VACUUM INTO`; tokens included since the repos are encrypted
+  [USER 2026-10-12]

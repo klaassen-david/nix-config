@@ -11,6 +11,7 @@
     ../common/desktop.nix
     ../common/modules/backup
     ../common/modules/mail-backup
+    ../common/modules/orch-state-backup
     # hot-swapped from ~/deploy, dashboards proxied by olympus (decisions/hot-swap.md)
     ../common/modules/orchestrator
     ../common/modules/coordinator
@@ -36,9 +37,12 @@
       variant = "dvorak,,";
     };
     capabilities.samba = true;
-    # owns the fleet restic repo; ../common/modules/backup pulls each listed
-    # source into it and verifies the result on a weekly timer
-    backup.pull = [ "mail" ];
+    # owns a fleet restic repo (hermes has the other); ../common/modules/backup
+    # pulls each listed source into it and verifies the result on a weekly timer
+    backup.pull = [
+      "mail"
+      "orch-state"
+    ];
     # 510M ESP only fits ~2 kernel+initrd pairs (initrd ~198M each); the
     # default of 10 overflows /boot/efi and breaks the systemd-boot install.
     keepGenerations = 2;

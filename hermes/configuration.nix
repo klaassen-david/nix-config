@@ -9,6 +9,9 @@
     ../common/desktop.nix
     ../common/modules/power-log
     ../common/modules/hibernate-console
+    ../common/modules/backup
+    ../common/modules/mail-backup
+    ../common/modules/orch-state-backup
   ];
 
   powerManagement.enable = true;
@@ -28,6 +31,12 @@
       lid = true;
     };
     chargeLimitPercent = 60;
+    # second restic repo of the fleet: pulls the same sources as hestia on its
+    # own (mail from olympus, orch-state from hestia); ../common/modules/backup
+    backup.pull = [
+      "mail"
+      "orch-state"
+    ];
     # 2026-10-06: PID 1 died during shutdown (pstore: panic in do_exit); the
     # journal's last 5 minutes, sway crash included, never reached disk.
     debug.crashCapture = true;

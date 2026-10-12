@@ -271,7 +271,12 @@ in
     # repository itself — path, retention, check schedule, failure alerts —
     # belongs to common/modules/backup, not here.
     backup.pull = mkOption {
-      type = types.listOf (types.enum [ "mail" ]);
+      type = types.listOf (
+        types.enum [
+          "mail"
+          "orch-state"
+        ]
+      );
       default = [ ];
       example = [ "mail" ];
       description = "sources pulled into this host's restic repository; a non-empty list makes this host the repository owner";

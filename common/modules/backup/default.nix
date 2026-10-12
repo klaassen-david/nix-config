@@ -7,22 +7,26 @@
 }:
 
 # ---------------------------------------------------------------------------
-# restic repository — the fleet's backup target
+# restic repositories — the fleet's backup targets
 # ---------------------------------------------------------------------------
-# The host whose `host.backup.pull` is non-empty owns a single local restic
-# repository; every source listed there writes into it with its own
-# `--host`/`--tag`, and retention is applied per `--group-by host,tags` so one
-# job can never evict another source's monthly snapshots. Mail (../mail-backup)
-# is the first source; adding another is an entry in `sources` below plus a
-# module that streams it, not a second repository — dedup is repository-wide,
+# Every host whose `host.backup.pull` is non-empty (hestia, hermes) owns one
+# local restic repository and pulls each source it lists into it on its own,
+# so either copy survives losing the other host. This replaces the earlier
+# single-repository rule [2026-10-12, decisions/orch-state-backup.md]: still
+# one repository per host, never two, and every one configured alike. Each
+# source writes with its own `--host`/`--tag`, and retention is applied per
+# `--group-by host,tags` so one job can never evict another source's
+# snapshots. Sources: mail (../mail-backup) and the agent harness's state
+# (../orch-state-backup); adding another is an entry in `sources` below plus a
+# module that streams it, not another repository — dedup is repository-wide,
 # so overlapping data is stored once.
 #
-# Shared fate is the price: one password opens every snapshot in here, and
-# repo-level damage hits all of them.
+# Shared fate is the price: one password opens every snapshot in every repo,
+# and repo-level damage hits all of that host's snapshots.
 #
-# Everything about the repository is fixed here rather than exposed per host:
-# there is exactly one repo in the fleet, so path, retention and check schedule
-# have nothing to vary against. The host struct only names the sources.
+# Everything about the repositories is fixed here rather than exposed per
+# host: path, retention and check schedule are the same on every owner. The
+# host struct only names the sources.
 #
 # ---------------------------------------------------------------------------
 # Verification — the two ways a backup lies
@@ -83,10 +87,19 @@ let
   # for the write, so the writer and the freshness check cannot disagree about
   # the tag. mail: the pull needs a boot (OnBootSec) or a week of uptime to
   # fire, so a fortnight is the first age that is not just a quiet stretch.
+  # `retention` defaults to the top-level list. orch-state
+  # (../orch-state-backup): hourly and Persistent; three days is a source or a
+  # puller cut off, not a quiet stretch. It keeps only the last two snapshots
+  # [USER 2026-10-12]: a restore reaches back about two hours, no further.
   sources = {
     mail = {
       flags = "--host olympus --tag mail";
       maxAgeDays = 14;
+    };
+    orch-state = {
+      flags = "--host hestia --tag orch-state";
+      maxAgeDays = 3;
+      retention = [ "--keep-last=2" ];
     };
   };
 
