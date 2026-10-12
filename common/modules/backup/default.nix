@@ -111,8 +111,11 @@ let
 
   # Merged into every backup unit (`lib.mkMerge [ backupRepo.alertHook {...} ]`):
   # a failure raises that unit's stamp, its next success clears it. %n/%N are
-  # expanded by systemd, so one attrset serves every job.
+  # expanded by systemd, so one attrset serves every job. RequiresMountsFor: where
+  # the repo has its own disk (hestia), a missing mount must fail the job, not
+  # `restic init` a fresh repo on the root disk underneath it.
   alertHook = {
+    unitConfig.RequiresMountsFor = [ repository ];
     onFailure = [ "backup-alert@%n.service" ];
     serviceConfig.ExecStartPost = "-${pkgs.coreutils}/bin/rm -f ${alertDir}/%N";
   };
