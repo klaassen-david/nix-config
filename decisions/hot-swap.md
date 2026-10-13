@@ -101,10 +101,11 @@ accounts, task hiding) change with `systemctl restart <app>`, without a nix swit
 **Proxy key** [USER 2026-10-13]: the apps trust a request from the hub (10.100.0.1) as the SSO user,
 release approval included; with the address alone, any process on olympus that can reach hestia's
 port would be that user. `hotSwap.proxyKey = true` (both hosts) adds a shared key, `orch-proxy-key.age`
-(64 hex characters, one line), that only nginx's root master process on olympus and the apps' state dirs
-on hestia hold:
+(64 hex characters, one line), that only the nginx user on olympus and the apps' state dirs on hestia
+can read:
 - olympus (`hot-swap/vhosts.nix`): `nginx-orch-proxy-key.service` renders
-  `/run/nginx-orch-proxy-key/header.conf` (root, 0600, dir 0700) with
+  `/run/nginx-orch-proxy-key/header.conf` (owner nginx, 0400, dir 0700 nginx; nginx runs as `nginx`, not
+  root: a root-only file stopped nginx on the first switch, 2026-10-13) with
   `proxy_set_header X-Orch-Proxy-Key "<key>";` from the secret before nginx starts; every location of both
   vhosts (the SSO-free manifest, `sw.js` and `/icons/` included) includes it. gixy's build-time check
   accepts the runtime include. A new key restarts the renderer and reloads nginx.

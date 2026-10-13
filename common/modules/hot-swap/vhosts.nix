@@ -27,8 +27,8 @@
 # X-Orch-Proxy-Key, so the apps can tell this nginx from any other process on
 # olympus. nginx needs the header as a directive, the secret holds the raw key:
 # nginx-orch-proxy-key renders the include from the root-only secret before
-# nginx starts; only nginx's master (root) reads it. proxy_set_header replaces
-# any client-sent header of that name.
+# nginx starts, readable by the nginx user only (nginx runs as that user, not
+# root). proxy_set_header replaces any client-sent header of that name.
 
 let
   apps = import ./apps.nix;
@@ -37,6 +37,7 @@ let
   keyAge = "${secretsPath}/orch-proxy-key.age";
   keyDir = "/run/nginx-orch-proxy-key";
   keyInclude = lib.optionalString proxyKey "include ${keyDir}/header.conf;";
+  inherit (config.services) nginx;
   mesh = node: "10.100.0.${toString config.vpn.nodes.${node}.octet}";
   acl = ''
     allow 10.100.0.0/16;
@@ -123,8 +124,10 @@ in
             echo "orch-proxy-key: not 32+ alphanumerics" >&2
             exit 1
           fi
-          install -d -m 0700 ${keyDir}
+          install -d -m 0700 -o ${nginx.user} -g ${nginx.group} ${keyDir}
           printf 'proxy_set_header X-Orch-Proxy-Key "%s";\n' "$key" > ${keyDir}/header.conf.tmp
+          chown ${nginx.user}:${nginx.group} ${keyDir}/header.conf.tmp
+          chmod 0400 ${keyDir}/header.conf.tmp
           mv -f ${keyDir}/header.conf.tmp ${keyDir}/header.conf
         '';
       };
