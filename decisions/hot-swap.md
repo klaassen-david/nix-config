@@ -97,3 +97,27 @@ control plane move to olympus, or a second coordinator node appears.
 **Settings file** [USER 2026-10-12]: each app unit reads an optional `~/deploy/<app>/env`
 (`EnvironmentFile=-`), owned by dk and written only by the operator. App settings (steward keepalive, sandbox,
 accounts, task hiding) change with `systemctl restart <app>`, without a nix switch.
+
+**Proxy key** [USER 2026-10-13]: the apps trust a request from the hub (10.100.0.1) as the SSO user,
+release approval included; with the address alone, any process on olympus that can reach hestia's
+port would be that user. `hotSwap.proxyKey = true` (both hosts) adds a shared key, `orch-proxy-key.age`
+(64 hex characters, one line), that only nginx's root master process on olympus and the apps' state dirs
+on hestia hold:
+- olympus (`hot-swap/vhosts.nix`): `nginx-orch-proxy-key.service` renders
+  `/run/nginx-orch-proxy-key/header.conf` (root, 0600, dir 0700) with
+  `proxy_set_header X-Orch-Proxy-Key "<key>";` from the secret before nginx starts; every location of both
+  vhosts (the SSO-free manifest, `sw.js` and `/icons/` included) includes it. gixy's build-time check
+  accepts the runtime include. A new key restarts the renderer and reloads nginx.
+- hestia (`hot-swap/default.nix`): agenix writes the key per app to `~/deploy/<app>/state/secrets/proxy-key`
+  as a real file (`symlink = false`; the apps refuse a symlink, a file not owned by dk, any group/other
+  bit or fewer than 32 visible characters), next to the admin token, which agents cannot read; the unit gets
+  `TRUSTED_PROXY_KEY_FILE`. A new key restarts both apps.
+- Order: switch olympus first (the apps ignore the header while their key mode is off), then hestia (its
+  switch restarts both apps: check `GET /api/v1/release-runs/active` first). Rotation: re-encrypt the
+  secret and switch both, olympus first. Rollback: `hotSwap.proxyKey = false` on hestia and switch.
+- Verify: both dashboards load through SSO; the release smoke row "ops: proxy without key refused"
+  passes instead of INFO.
+
+Rejected: the key in `~/deploy/<app>/env` or a hand-written nginx include (outside nix, not rotated with the
+secret); two `.age` files, one per format (they can drift); an agenix symlink (refused by the apps).
+

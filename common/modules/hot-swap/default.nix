@@ -2,6 +2,7 @@
   config,
   lib,
   pkgs,
+  secretsPath,
   ...
 }:
 
@@ -46,6 +47,11 @@
 # and the firewall accepts the port only on the mesh interface from `sources`,
 # by default the hub alone: olympus's nginx is the only door (ACL, optional
 # SSO). Phones (10.100.1.0/24) and the other hosts are refused.
+#
+# Proxy key (hotSwap.proxyKey, ./proxy-key.nix): the apps trust the hub only
+# when it also sends the shared key. agenix writes it per app as a real file
+# (the apps refuse a symlink) next to the admin token, where agents cannot read
+# it, and the unit gets TRUSTED_PROXY_KEY_FILE. A new key restarts the apps.
 
 let
   inherit (lib) mkOption types;
@@ -56,6 +62,9 @@ let
   # dk is the first normal user, so 1000 when NixOS allocates the uid
   runtimeDir = "/run/user/${toString (lib.defaultTo 1000 user.uid)}";
   hub = lib.findFirst (n: n.hub) null (lib.attrValues config.vpn.nodes);
+  proxyKey = config.hotSwap.proxyKey;
+  keyAge = "${secretsPath}/orch-proxy-key.age";
+  keyPath = name: "${root}/${name}/state/secrets/proxy-key";
 
   swap = pkgs.writeShellApplication {
     name = "hot-swap";
@@ -109,6 +118,8 @@ let
   };
 in
 {
+  imports = [ ./proxy-key.nix ];
+
   # Internal: each app module registers itself here.
   options.hotSwap.apps = mkOption {
     internal = true;
@@ -158,7 +169,23 @@ in
         "d ${root}/${name} 0755 dk ${user.group} -"
         "d ${root}/${name}/releases 0755 dk ${user.group} -"
         "d ${root}/${name}/state 0700 dk ${user.group} -"
-      ]) apps
+      ]
+      ++ lib.optional proxyKey "d ${root}/${name}/state/secrets 0700 dk ${user.group} -"
+      ) apps
+    );
+
+    age.secrets = lib.mkIf proxyKey (
+      lib.mapAttrs' (
+        name: _:
+        lib.nameValuePair "orch-proxy-key-${name}" {
+          file = keyAge;
+          path = keyPath name;
+          symlink = false;
+          owner = "dk";
+          inherit (user) group;
+          mode = "0400";
+        }
+      ) apps
     );
 
     systemd.services = lib.mkMerge (
@@ -174,10 +201,15 @@ in
             "/etc/profiles/per-user/dk"
             "/run/current-system/sw"
           ];
-          environment = app.environment // {
-            STATE_DIR = "${root}/${name}/state";
-            XDG_RUNTIME_DIR = runtimeDir;
-          };
+          environment =
+            app.environment
+            // {
+              STATE_DIR = "${root}/${name}/state";
+              XDG_RUNTIME_DIR = runtimeDir;
+            }
+            // lib.optionalAttrs proxyKey { TRUSTED_PROXY_KEY_FILE = keyPath name; };
+          # the key is read at start
+          restartTriggers = lib.optional proxyKey keyAge;
           serviceConfig = {
             User = "dk";
             ExecStart = "${root}/${name}/current/bin/${name}";

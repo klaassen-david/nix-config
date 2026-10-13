@@ -33,6 +33,9 @@
   # orchestrator/coordinator dashboards, on top of the VPN ACL
   # (decisions/hot-swap.md)
   hotSwap.sso = true;
+  # nginx sends the shared proxy key; switch this host before hestia
+  # (decisions/hot-swap.md, "Proxy key")
+  hotSwap.proxyKey = true;
 
   boot.loader.grub.enable = true;
   boot.loader.grub.configurationLimit = config.host.keepGenerations;

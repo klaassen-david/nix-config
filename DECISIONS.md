@@ -86,7 +86,9 @@ changes (old ruling stays in the file as history).
   swap/rollback unit; upgrade = downgrade = `systemctl start <app>-swap`, no
   sudo, no switch; olympus's nginx proxies both dashboards over the mesh, their
   ports accept the hub only, existing Nextcloud SSO in front (any
-  authenticated user) [USER 2026-10-11]
+  authenticated user) [USER 2026-10-11]; the apps trust the hub only with a
+  shared proxy key nginx sends as `X-Orch-Proxy-Key` (`hotSwap.proxyKey`,
+  `orch-proxy-key.age`) [USER 2026-10-13]
 - [orch-state-backup](decisions/orch-state-backup.md) — hestia's
   orchestrator/coordinator state and the night kit's history are backed up
   hourly as `--host hestia --tag orch-state`, keep-last 2, into hestia's repo

@@ -17,6 +17,10 @@
     ../common/modules/coordinator
   ];
 
+  # the apps trust olympus's nginx only with the shared proxy key; switch
+  # olympus first (decisions/hot-swap.md, "Proxy key")
+  hotSwap.proxyKey = true;
+
   host = {
     hostName = "hestia";
     role = "tower";
