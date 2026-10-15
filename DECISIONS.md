@@ -96,3 +96,7 @@ changes (old ruling stays in the file as history).
   single-repository rule; mail keeps its history and goes to both); WAL
   databases via `VACUUM INTO`; tokens included since the repos are encrypted
   [USER 2026-10-12]
+- [control](decisions/control.md) — control.dklaassen.de (phone_controller
+  relay) runs on olympus as a hot-swapped app, built on a desktop and pushed,
+  never built on olympus; the vhost is public, no Nextcloud SSO
+  [USER 2026-10-15]

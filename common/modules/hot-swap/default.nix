@@ -9,7 +9,7 @@
 # Hot-swapped apps: services whose binary is not in the nix store
 # ===============================================================
 # decisions/hot-swap.md. For apps that change faster than a switch is worth
-# (orchestrator, coordinator; both on hestia, ./apps.nix), nix-config owns the
+# (orchestrator, coordinator on hestia; control on olympus, ./apps.nix), nix-config owns the
 # unit, the port, the firewall hole, the vhost (./vhosts.nix, on olympus) and the
 # swap/rollback logic; the binary is whatever
 #   /home/dk/deploy/<app>/current/bin/<app>
@@ -36,14 +36,16 @@
 # without its own restart killing the swap; systemd runs one start job per unit,
 # which serialises concurrent swaps.
 #
-# The app unit runs as dk with dk's home and PATH (an agent harness is no more
+# The app unit runs as dk with dk's home and PATH unless the app's serviceConfig
+# sandboxes it, as ../control does (an agent harness is no more
 # confined than a login shell) and is skipped (ConditionPathExists) until a
 # first release exists. It gets dk's XDG_RUNTIME_DIR, so `systemd-run --user`
 # and `systemctl --user` reach dk's (lingering) manager: work started that way
 # lives in user@1000.service, outside this unit, and survives every swap.
 # Pruning releases/ is the deployer's job.
 #
-# Network: the app binds 0.0.0.0:<port> (a mesh restart cannot leave it unbound)
+# Network: a mesh app binds 0.0.0.0:<port> (a mesh restart cannot leave it unbound;
+# an app on olympus itself binds loopback and brings its own vhost)
 # and the firewall accepts the port only on the mesh interface from `sources`,
 # by default the hub alone: olympus's nginx is the only door (ACL, optional
 # SSO). Phones (10.100.1.0/24) and the other hosts are refused.
@@ -62,7 +64,6 @@ let
   # dk is the first normal user, so 1000 when NixOS allocates the uid
   runtimeDir = "/run/user/${toString (lib.defaultTo 1000 user.uid)}";
   hub = lib.findFirst (n: n.hub) null (lib.attrValues config.vpn.nodes);
-  proxyKey = config.hotSwap.proxyKey;
   keyAge = "${secretsPath}/orch-proxy-key.age";
   keyPath = name: "${root}/${name}/state/secrets/proxy-key";
 
@@ -130,13 +131,19 @@ in
         options = {
           port = mkOption {
             type = types.port;
-            description = "TCP port the app listens on (0.0.0.0); GET /healthz answers on 127.0.0.1.";
+            description = "TCP port the app listens on; GET /healthz answers on 127.0.0.1.";
           };
           sources = mkOption {
             type = types.listOf types.str;
             default = [ "10.100.0.${toString hub.octet}" ];
             defaultText = "the hub's mesh address";
             description = "Source addresses accepted on the mesh interface for this port.";
+          };
+          proxyKey = mkOption {
+            type = types.bool;
+            default = config.hotSwap.proxyKey;
+            defaultText = "config.hotSwap.proxyKey";
+            description = "Hand this app the shared proxy key (TRUSTED_PROXY_KEY_FILE).";
           };
           environment = mkOption {
             type = types.attrsOf types.str;
@@ -165,28 +172,26 @@ in
       "d ${root} 0755 dk ${user.group} -"
     ]
     ++ lib.concatLists (
-      lib.mapAttrsToList (name: _: [
+      lib.mapAttrsToList (name: app: [
         "d ${root}/${name} 0755 dk ${user.group} -"
         "d ${root}/${name}/releases 0755 dk ${user.group} -"
         "d ${root}/${name}/state 0700 dk ${user.group} -"
       ]
-      ++ lib.optional proxyKey "d ${root}/${name}/state/secrets 0700 dk ${user.group} -"
+      ++ lib.optional app.proxyKey "d ${root}/${name}/state/secrets 0700 dk ${user.group} -"
       ) apps
     );
 
-    age.secrets = lib.mkIf proxyKey (
-      lib.mapAttrs' (
-        name: _:
-        lib.nameValuePair "orch-proxy-key-${name}" {
-          file = keyAge;
-          path = keyPath name;
-          symlink = false;
-          owner = "dk";
-          inherit (user) group;
-          mode = "0400";
-        }
-      ) apps
-    );
+    age.secrets = lib.mapAttrs' (
+      name: _:
+      lib.nameValuePair "orch-proxy-key-${name}" {
+        file = keyAge;
+        path = keyPath name;
+        symlink = false;
+        owner = "dk";
+        inherit (user) group;
+        mode = "0400";
+      }
+    ) (lib.filterAttrs (_: app: app.proxyKey) apps);
 
     systemd.services = lib.mkMerge (
       lib.mapAttrsToList (name: app: {
@@ -207,9 +212,9 @@ in
               STATE_DIR = "${root}/${name}/state";
               XDG_RUNTIME_DIR = runtimeDir;
             }
-            // lib.optionalAttrs proxyKey { TRUSTED_PROXY_KEY_FILE = keyPath name; };
+            // lib.optionalAttrs app.proxyKey { TRUSTED_PROXY_KEY_FILE = keyPath name; };
           # the key is read at start
-          restartTriggers = lib.optional proxyKey keyAge;
+          restartTriggers = lib.optional app.proxyKey keyAge;
           serviceConfig = {
             User = "dk";
             ExecStart = "${root}/${name}/current/bin/${name}";

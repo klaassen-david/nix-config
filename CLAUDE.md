@@ -16,7 +16,7 @@ Inputs track `nixpkgs-unstable` + `home-manager/master`. Unfree allowed.
 - `common/` — shared base:
   - `host.nix` — defines the `host.*` options struct (see below) and `imports`-ed everywhere via `common.nix`.
   - `common.nix` — base for *all* hosts (nix settings, user `dk`, agenix identity, fish, `services.fstrim` + `zramSwap` fleet-wide). Imports `host.nix` + `modules/wireguard`.
-  - `headless.nix` — server base; imports `common.nix` + `modules/nginx`. Holds `control.dklaassen.de`, sshd, fail2ban.
+  - `headless.nix` — server base; imports `common.nix` + `modules/nginx`. Holds sshd, fail2ban (`control.dklaassen.de` lives in `modules/control`).
   - `desktop.nix` — desktop base; imports `common.nix`. Sway/greetd, audio, steam, printing.
   - `modules/{nginx,nextcloud,stalwart,wg-easy,wireguard}/default.nix` — service modules.
 - `<host>/configuration.nix` — per-host: imports a base (`headless.nix` or `desktop.nix`) + service modules, sets the `host` struct, hardware/bootloader.
@@ -82,7 +82,7 @@ Rulings and rejected alternatives: `decisions/vpn.md`; mechanics (addressing, ta
 
 ## Hot-swapped apps
 
-`common/modules/hot-swap` runs apps whose binary is *not* in the store (orchestrator and coordinator, both on hestia; `hot-swap/apps.nix` is the placement, `decisions/hot-swap.md`): `<app>.service` (as dk) execs `~/deploy/<app>/current/bin/<app>`, and `<app>-swap.service` moves `current` to the version in `~/deploy/<app>/want`, health-checks `127.0.0.1:<port>/healthz` and rolls back. Both are in `userManagedUnits`. The port accepts only the hub; olympus serves `<app>.dklaassen.de` through `hot-swap/vhosts.nix` (VPN ACL + Nextcloud SSO, `hotSwap.sso`). A new app version is never a switch; a switch is only for the unit, port or vhost.
+`common/modules/hot-swap` runs apps whose binary is *not* in the store (orchestrator and coordinator on hestia, control on olympus; `hot-swap/apps.nix` is the placement, `decisions/hot-swap.md`, `decisions/control.md`): `<app>.service` (as dk) execs `~/deploy/<app>/current/bin/<app>`, and `<app>-swap.service` moves `current` to the version in `~/deploy/<app>/want`, health-checks `127.0.0.1:<port>/healthz` and rolls back. Both are in `userManagedUnits`. The port accepts only the hub; olympus serves `<app>.dklaassen.de` through `hot-swap/vhosts.nix` (VPN ACL + Nextcloud SSO, `hotSwap.sso`). Exception: `control` runs on olympus itself, binds loopback, is sandboxed and has its own public vhost without SSO (`modules/control`). A new app version is never a switch; a switch is only for the unit, port or vhost.
 
 ## Calendar & contacts (desktop)
 

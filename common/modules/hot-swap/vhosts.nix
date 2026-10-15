@@ -31,7 +31,8 @@
 # root). proxy_set_header replaces any client-sent header of that name.
 
 let
-  apps = import ./apps.nix;
+  # apps on olympus itself serve their own vhost, not this mesh proxy
+  apps = lib.filterAttrs (_: app: app.node != "olympus") (import ./apps.nix);
   sso = config.hotSwap.sso;
   proxyKey = config.hotSwap.proxyKey;
   keyAge = "${secretsPath}/orch-proxy-key.age";

@@ -17,6 +17,8 @@
     # orchestrator./coordinator.dklaassen.de, proxied over the mesh to the
     # hot-swapped apps on hestia (decisions/hot-swap.md)
     ../common/modules/hot-swap/vhosts.nix
+    # control.dklaassen.de: the phone_controller relay, hot-swapped here
+    ../common/modules/control
     # serves the mail store to hestia's restic repo (keyed on stalwart)
     ../common/modules/mail-backup
   ];
