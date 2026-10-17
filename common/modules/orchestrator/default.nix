@@ -26,5 +26,13 @@ in
       ALLOW_HOST = domain;
       PUBLIC_URL = "https://${domain}";
     };
+    # an OOM kill inside the unit (the daemon's git work, its `coordinator run`
+    # clients) must not stop it; the limits bound its page cache from merges and
+    # gates (peaks 2.5-7.1 G, almost all cache) (decisions/orchestrator-oom-policy.md)
+    serviceConfig = {
+      OOMPolicy = "continue";
+      MemoryHigh = "6G";
+      MemoryMax = "10G";
+    };
   };
 }

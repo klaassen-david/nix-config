@@ -103,3 +103,6 @@ changes (old ruling stays in the file as history).
 - [hestia-cpu-governor](decisions/hestia-cpu-governor.md) — hestia runs the
   `performance` governor permanently, boost on; gamemode requests and restores
   `performance` [USER 2026-10-17]
+- [orchestrator-oom-policy](decisions/orchestrator-oom-policy.md) —
+  `orchestrator.service` runs with `OOMPolicy=continue`, `MemoryHigh=6G`,
+  `MemoryMax=10G`; agents stay in their own user scopes [USER 2026-10-17]
