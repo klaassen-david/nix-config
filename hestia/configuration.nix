@@ -69,6 +69,14 @@
   services.fstrim.interval = "*-*-* 07:30";
   systemd.timers.restic-check.timerConfig.OnCalendar = lib.mkForce "Mon 08:00";
 
+  # every core on the performance governor, boost left on; gamemode keeps it
+  # there instead of restoring what it found (decisions/hestia-cpu-governor.md)
+  powerManagement.cpuFreqGovernor = "performance";
+  programs.gamemode.settings.general = {
+    desiredgov = "performance";
+    defaultgov = "performance";
+  };
+
   # games library and build slots, on the Kingston that also holds / — mount by
   # UUID so it survives the nvme0/nvme1 enumeration swap; nofail keeps boot
   # going if the disk is absent.

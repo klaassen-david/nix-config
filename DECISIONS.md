@@ -100,3 +100,6 @@ changes (old ruling stays in the file as history).
   relay) runs on olympus as a hot-swapped app, built on a desktop and pushed,
   never built on olympus; the vhost is public, no Nextcloud SSO
   [USER 2026-10-15]
+- [hestia-cpu-governor](decisions/hestia-cpu-governor.md) — hestia runs the
+  `performance` governor permanently, boost on; gamemode requests and restores
+  `performance` [USER 2026-10-17]
