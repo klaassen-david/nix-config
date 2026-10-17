@@ -52,8 +52,25 @@ asymmetry is also why ten profiles disappeared during this investigation.
 Dropping iwd also renames the interface — iwd forces `wlan0`, predictable naming
 gives `wlp1s0` — which silently invalidates any NM profile carrying
 `connection.interface-name = wlan0`; NM reports it as "Wi-Fi network could not be
-found". The status bar's middle click now runs `nmtui`, since `iwgtk` only ever
-spoke to iwd.
+found". Every wifi profile now leaves `connection.interface-name` unset, so the
+next rename cannot repeat it. The status bar's middle click now runs `nmtui`,
+since `iwgtk` only ever spoke to iwd.
+
+**802.1X profiles cost more than the PSK ones** [AGENT 2026-10-14]. Under iwd,
+NM did not run the EAP exchange at all — it requires a matching iwd provisioning
+file ("802.1x connections must have IWD provisioning files") and iwd
+authenticated from `/var/lib/iwd/<ssid>.8021x`. wpa_supplicant moves the
+handshake into NM, which then needs the password itself. `eduroam` carried
+`802-1x.password-flags = 1` (agent-owned), harmless while iwd held the
+credential but unsatisfiable afterwards: hermes runs no persistent secret agent
+(no gnome-keyring, nm-applet or kwallet), and nmtui/nmcli register only
+transient ones, so nothing ever stored what was typed. Fixed by `password-flags
+= 0` — the secret lives in the root-only keyfile, which also works before login,
+unlike any agent. Checked with
+`nmcli -g 802-1x.password-flags con show eduroam`. The same migration left
+`802-1x.domain-suffix-match` empty against an ISRG Root X1 pin, i.e. any
+Let's Encrypt certificate would have satisfied TTLS/PAP; now pinned to
+`radius.rptu.de` from the CAT profile.
 
 **Revisit if**: hermes shows MT7922-specific faults under wpa_supplicant (the
 5 GHz handshake and 3-second signal-change reports are the ones to watch), or a
