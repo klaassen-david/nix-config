@@ -1,4 +1,34 @@
-# hestia runs the performance governor permanently
+# hestia: schedutil by default, performance during measurement sessions
+
+**Ruling** [USER 2026-10-18, amends 2026-10-17]: hestia runs `schedutil`
+(`powerManagement.cpuFreqGovernor`). The coordinator switches every core to
+`performance` (boost on) for the length of a measurement session, its
+demand-driven measure hold (D216 as amended 2026-10-18), by starting
+`cpu-governor-performance.service` when the session begins and
+`cpu-governor-schedutil.service` when it ends. Both are oneshot units in
+`hestia/configuration.nix`; dk may start them without sudo through
+`host.userManagedUnits`. gamemode keeps `desiredgov = performance` and restores
+what it found, so it still works between sessions. Every timed run therefore sees
+`performance`; everything else runs on `schedutil`.
+
+**Why the amendment.** With `performance` all the time, hestia ran 7-10 C hotter
+at the same partial load: minutes at or above 85 C went from 10 % to 55 %, and
+the coordinator's thermal hold (85 C) refused dispatches all evening on
+2026-10-17 and again on 2026-10-18. Measurements now run in explicit sessions,
+so the switch can follow them instead of a clock.
+
+**Failure mode**: if the coordinator dies inside a session, the governor stays
+`performance` until the next session ends or a reboot (boot default is
+`schedutil`); harmless apart from heat.
+
+**Revisit if**: measurement sessions are replaced, or a better cooler makes the
+permanent `performance` governor cheap.
+
+---
+
+## History: 2026-10-17 ruling (superseded)
+
+### hestia runs the performance governor permanently
 
 **Ruling** [USER 2026-10-17]: every core of hestia's 3900X runs the
 `performance` cpufreq governor all the time (`powerManagement.cpuFreqGovernor`

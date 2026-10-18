@@ -69,13 +69,30 @@
   services.fstrim.interval = "*-*-* 07:30";
   systemd.timers.restic-check.timerConfig.OnCalendar = lib.mkForce "Mon 08:00";
 
-  # every core on the performance governor, boost left on; gamemode keeps it
-  # there instead of restoring what it found (decisions/hestia-cpu-governor.md)
-  powerManagement.cpuFreqGovernor = "performance";
-  programs.gamemode.settings.general = {
-    desiredgov = "performance";
-    defaultgov = "performance";
-  };
+  # schedutil by default; performance (boost on) only while the coordinator holds
+  # the host for a measurement session: it starts cpu-governor-performance when a
+  # session begins and cpu-governor-schedutil when it ends. dk may start both
+  # without sudo (host.userManagedUnits); gamemode still switches in between
+  # (decisions/hestia-cpu-governor.md).
+  powerManagement.cpuFreqGovernor = "schedutil";
+  systemd.services = lib.genAttrs [ "cpu-governor-performance" "cpu-governor-schedutil" ] (
+    unit:
+    let
+      gov = lib.removePrefix "cpu-governor-" unit;
+    in
+    {
+      description = "set every core's cpufreq governor to ${gov}";
+      serviceConfig.Type = "oneshot";
+      script = ''
+        for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo ${gov} > "$g"; done
+      '';
+    }
+  );
+  host.userManagedUnits = [
+    "cpu-governor-performance.service"
+    "cpu-governor-schedutil.service"
+  ];
+  programs.gamemode.settings.general.desiredgov = "performance";
 
   # games library and build slots, on the Kingston that also holds / — mount by
   # UUID so it survives the nvme0/nvme1 enumeration swap; nofail keeps boot
