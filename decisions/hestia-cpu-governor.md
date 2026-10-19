@@ -2,8 +2,8 @@
 
 **Ruling** [USER 2026-10-18, amends 2026-10-17]: hestia runs `schedutil`
 (`powerManagement.cpuFreqGovernor`). The coordinator switches every core to
-`performance` (boost on) for the length of a measurement session, its
-demand-driven measure hold (D216 as amended 2026-10-18), by starting
+`performance` for the length of a measurement session, its
+demand-driven measure hold (D219), by starting
 `cpu-governor-performance.service` when the session begins and
 `cpu-governor-schedutil.service` when it ends. Both are oneshot units in
 `hestia/configuration.nix`; dk may start them without sudo through
@@ -17,9 +17,23 @@ the coordinator's thermal hold (85 C) refused dispatches all evening on
 2026-10-17 and again on 2026-10-18. Measurements now run in explicit sessions,
 so the switch can follow them instead of a clock.
 
-**Failure mode**: if the coordinator dies inside a session, the governor stays
-`performance` until the next session ends or a reboot (boot default is
-`schedutil`); harmless apart from heat.
+**Mechanics** (review 2026-10-19): the units take a lock (`/run/cpu-governor.lock`),
+write every core and fail if any write failed; they order after
+`cpufreq.service`, which a switch no longer restarts (`restartIfChanged = false`),
+so a rebuild cannot reset the governor under a running session. gamemode ends on
+`schedutil` (`defaultgov`). Boost is not touched: it stays at its default (on).
+
+**Failure modes**: a coordinator restart re-runs the switch for the session it
+re-adopts; a coordinator that stays down inside a session leaves `performance`
+until the next session or a reboot (boot default `schedutil`). A failed switch
+back to `schedutil` is retried by the coordinator's sampler (the harness side of
+this ruling); until that lands, heat and thermal holds are the cost.
+
+**Rejected**: fixed time windows for the governor (the first version of this
+amendment; D219 replaced the windows with sessions); `performance` permanently
+(the 2026-10-17 ruling; 7-10 C hotter, thermal holds); gamemode as the switch
+(needs the user's session bus inside the coordinator, and a client that ends
+early restores the wrong governor).
 
 **Revisit if**: measurement sessions are replaced, or a better cooler makes the
 permanent `performance` governor cheap.

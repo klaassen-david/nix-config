@@ -69,30 +69,47 @@
   services.fstrim.interval = "*-*-* 07:30";
   systemd.timers.restic-check.timerConfig.OnCalendar = lib.mkForce "Mon 08:00";
 
-  # schedutil by default; performance (boost on) only while the coordinator holds
-  # the host for a measurement session: it starts cpu-governor-performance when a
-  # session begins and cpu-governor-schedutil when it ends. dk may start both
-  # without sudo (host.userManagedUnits); gamemode still switches in between
-  # (decisions/hestia-cpu-governor.md).
+  # schedutil by default; the coordinator starts cpu-governor-performance when a
+  # measurement session begins and cpu-governor-schedutil when it ends (dk may start
+  # both, host.userManagedUnits). One lock serialises the two; every core is written
+  # even if one fails, and the unit then fails (decisions/hestia-cpu-governor.md).
   powerManagement.cpuFreqGovernor = "schedutil";
-  systemd.services = lib.genAttrs [ "cpu-governor-performance" "cpu-governor-schedutil" ] (
-    unit:
-    let
-      gov = lib.removePrefix "cpu-governor-" unit;
-    in
-    {
-      description = "set every core's cpufreq governor to ${gov}";
-      serviceConfig.Type = "oneshot";
-      script = ''
-        for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo ${gov} > "$g"; done
-      '';
-    }
-  );
+  systemd.services =
+    lib.genAttrs [ "cpu-governor-performance" "cpu-governor-schedutil" ] (
+      unit:
+      let
+        gov = lib.removePrefix "cpu-governor-" unit;
+      in
+      {
+        description = "set every core's cpufreq governor to ${gov}";
+        after = [ "cpufreq.service" ];
+        path = [ pkgs.util-linux ];
+        serviceConfig.Type = "oneshot";
+        script = ''
+          exec 9>/run/cpu-governor.lock
+          flock 9
+          rc=0
+          for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+            echo ${gov} > "$g" || rc=1
+          done
+          exit $rc
+        '';
+      }
+    )
+    # a switch must not reset the governor under a running measurement session
+    // {
+      cpufreq.restartIfChanged = false;
+    };
   host.userManagedUnits = [
     "cpu-governor-performance.service"
     "cpu-governor-schedutil.service"
   ];
-  programs.gamemode.settings.general.desiredgov = "performance";
+  # gamemode ends on schedutil, never on whatever it found (a session may have
+  # ended in between)
+  programs.gamemode.settings.general = {
+    desiredgov = "performance";
+    defaultgov = "schedutil";
+  };
 
   # games library and build slots, on the Kingston that also holds / — mount by
   # UUID so it survives the nvme0/nvme1 enumeration swap; nofail keeps boot
