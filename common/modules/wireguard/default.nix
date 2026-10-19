@@ -1229,7 +1229,7 @@ let
   # missing include is a debug message to ssh, not an error, so the tunnel-down
   # state is simply the file's absence.
   sshUser = config.users.users.dk;
-  sshLocalConfig = "${sshUser.home}/.ssh/config.local";
+  sshVpnConfig = "${sshUser.home}/.ssh/config.vpn";
 in
 {
   imports = [ ./cli.nix ];
@@ -1470,11 +1470,11 @@ in
             ${n}) if ${systemctl} is-active --quiet ${n}.service; then ${egressScriptsOf.${n}.attach} || true; fi ;;
           '') egressUnits}
           esac
-          ${pkgs.coreutils}/bin/install -m 0600 -o ${sshUser.name} -g ${sshUser.group} ${sshTunnelConfig} ${sshLocalConfig}
+          ${pkgs.coreutils}/bin/install -m 0600 -o ${sshUser.name} -g ${sshUser.group} ${sshTunnelConfig} ${sshVpnConfig}
         '';
         postShutdown = ''
           ${lib.optionalString self.exit exitShutdown}
-          ${pkgs.coreutils}/bin/rm -f ${sshLocalConfig}
+          ${pkgs.coreutils}/bin/rm -f ${sshVpnConfig}
         '';
       })
     ];

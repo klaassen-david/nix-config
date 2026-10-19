@@ -111,7 +111,7 @@ let
         mode = "0400";
       };
 
-      # config.local is installed into ~dk/.ssh
+      # config.vpn is installed into ~dk/.ssh
       users.users.dk.isNormalUser = true;
       systemd.tmpfiles.rules = [ "d /home/dk/.ssh 0700 dk users -" ];
 
@@ -381,17 +381,19 @@ pkgs.testers.runNixOSTest {
         out = hermes.succeed("curl -s --max-time 5 http://198.51.100.1/").strip()
         assert out == "203.0.113.30", f"expected direct egress, got {out!r}"
 
-    with subtest("ssh config.local follows the mesh interface"):
-        hermes.succeed("test -e /home/dk/.ssh/config.local")
-        hermes.succeed("grep -A1 '^Host hestia' /home/dk/.ssh/config.local | grep 10.100.0.2")
+    with subtest("ssh config.vpn follows the mesh interface, config.local is left alone"):
+        hermes.succeed("test -e /home/dk/.ssh/config.vpn")
+        hermes.succeed("grep -A1 '^Host hestia' /home/dk/.ssh/config.vpn | grep 10.100.0.2")
+        hermes.succeed("echo 'Host keep' > /home/dk/.ssh/config.local")
         hermes.succeed("systemctl stop wireguard-olympus.service")
         hermes.fail("ping -c1 -W2 10.100.0.1")
-        hermes.fail("test -e /home/dk/.ssh/config.local")
+        hermes.fail("test -e /home/dk/.ssh/config.vpn")
+        hermes.succeed("grep -x 'Host keep' /home/dk/.ssh/config.local")
         # the underlay rule belongs to vpn-underlay, not to the mesh
         hermes.succeed("ip rule show | grep 5000")
         hermes.succeed("systemctl start wireguard-olympus.service")
         hermes.wait_until_succeeds("ping -c1 -W2 10.100.0.1")
-        hermes.succeed("test -e /home/dk/.ssh/config.local")
+        hermes.succeed("test -e /home/dk/.ssh/config.vpn")
         hermes.succeed("ip rule show | grep 5000")
         hermes.wait_until_succeeds("ping -6 -c1 -W2 fdaa:e184:83f::1")
 

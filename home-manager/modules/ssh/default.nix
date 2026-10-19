@@ -4,9 +4,13 @@
   programs.ssh = {
     enable = true;
 
-    # written by the mesh interface's postSetup and removed by postShutdown (common/modules/wireguard):
-    # peer HostNames on the tunnel while `olympus` is up, absent while it is down.
-    includes = [ "config.local" ];
+    # config.local: hand-maintained, untouched by nix; listed first so its values win.
+    # config.vpn: written by the mesh interface's postSetup and removed by postShutdown
+    # (common/modules/wireguard): peer HostNames on the tunnel while `olympus` is up.
+    includes = [
+      "config.local"
+      "config.vpn"
+    ];
 
     enableDefaultConfig = false;
 
