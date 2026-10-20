@@ -69,11 +69,12 @@
   services.fstrim.interval = "*-*-* 07:30";
   systemd.timers.restic-check.timerConfig.OnCalendar = lib.mkForce "Mon 08:00";
 
-  # schedutil by default; the coordinator starts cpu-governor-performance when a
-  # measurement session begins and cpu-governor-schedutil when it ends (dk may start
-  # both, host.userManagedUnits). One lock serialises the two; every core is written
+  # performance permanently since the cooler swap of 2026-10-20 (67-68 C at full load
+  # on all 24 threads); the coordinator no longer switches per measurement session
+  # (measure.session_governor = 0). The two units stay as operator tools (dk may start
+  # them, host.userManagedUnits); one lock serialises them and every core is written
   # even if one fails, and the unit then fails (decisions/hestia-cpu-governor.md).
-  powerManagement.cpuFreqGovernor = "schedutil";
+  powerManagement.cpuFreqGovernor = "performance";
   systemd.services =
     lib.genAttrs [ "cpu-governor-performance" "cpu-governor-schedutil" ] (
       unit:
@@ -96,7 +97,7 @@
         '';
       }
     )
-    # a switch must not reset the governor under a running measurement session
+    # a switch must not reset the governor under a running measurement
     // {
       cpufreq.restartIfChanged = false;
     };
@@ -104,11 +105,10 @@
     "cpu-governor-performance.service"
     "cpu-governor-schedutil.service"
   ];
-  # gamemode ends on schedutil, never on whatever it found (a session may have
-  # ended in between)
+  # gamemode ends on performance, the host default, never on whatever it found
   programs.gamemode.settings.general = {
     desiredgov = "performance";
-    defaultgov = "schedutil";
+    defaultgov = "performance";
   };
 
   # games library and build slots, on the Kingston that also holds / — mount by

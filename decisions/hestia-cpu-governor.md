@@ -1,4 +1,23 @@
-# hestia: schedutil by default, performance during measurement sessions
+# hestia: performance permanently (since the cooler swap)
+
+**Ruling** [USER 2026-10-20, amends 2026-10-18]: hestia runs `performance`
+permanently (`powerManagement.cpuFreqGovernor`), and gamemode ends on `performance`
+too. The coordinator no longer switches the governor per measurement session: its
+limit `measure.session_governor` is 0 (set 2026-10-20 08:08Z, operator).
+`cpu-governor-{performance,schedutil}.service` stay as operator tools.
+
+**Why.** The CPU cooler was replaced on 2026-10-20. Two minutes of full load on all
+24 threads in `performance` held 67-68 C at about 4.0 GHz all-core, without
+throttling, and fell back to 46 C within 30 s (schedutil: 65-66 C). The old cooler
+reached 84-90 C, which is what made the 2026-10-18 amendment below necessary. Its
+"Revisit if" (a better cooler) is met.
+
+**Settle thresholds** follow from the post-swap A/A calibration (quiet p95 + 2 C),
+not from this file.
+
+---
+
+## Superseded 2026-10-20: schedutil by default, performance during measurement sessions
 
 **Ruling** [USER 2026-10-18, amends 2026-10-17]: hestia runs `schedutil`
 (`powerManagement.cpuFreqGovernor`). The coordinator switches every core to
