@@ -58,19 +58,31 @@ since `iwgtk` only ever spoke to iwd.
 
 **802.1X profiles cost more than the PSK ones** [AGENT 2026-10-14]. Under iwd,
 NM did not run the EAP exchange at all — it requires a matching iwd provisioning
-file ("802.1x connections must have IWD provisioning files") and iwd
-authenticated from `/var/lib/iwd/<ssid>.8021x`. wpa_supplicant moves the
-handshake into NM, which then needs the password itself. `eduroam` carried
-`802-1x.password-flags = 1` (agent-owned), harmless while iwd held the
-credential but unsatisfiable afterwards: hermes runs no persistent secret agent
-(no gnome-keyring, nm-applet or kwallet), and nmtui/nmcli register only
-transient ones, so nothing ever stored what was typed. Fixed by `password-flags
-= 0` — the secret lives in the root-only keyfile, which also works before login,
-unlike any agent. Checked with
-`nmcli -g 802-1x.password-flags con show eduroam`. The same migration left
+file ("802.1x connections must have IWD provisioning files"), generates one from
+the connection (`eap_method_config_to_iwd_config`) and leaves iwd to
+authenticate. wpa_supplicant moves the handshake into NM, which then needs the
+password itself. `eduroam` carried `802-1x.password-flags = 1` (agent-owned),
+harmless while iwd held the credential but unsatisfiable afterwards: hermes runs
+no persistent secret agent (no gnome-keyring, nm-applet or kwallet), and
+nmtui/nmcli register only transient ones, so nothing ever stored what was typed.
+`password-flags = 0` is the fix — the secret lives in the root-only keyfile,
+which also works before login, unlike any agent — but it is not sufficient on
+its own: the stored value must be the credential the institution issued, and a
+wrong one fails identically to no agent at all, as
+`CTRL-EVENT-EAP-FAILURE` + `Reason: 23=IEEE8021X_FAILED` with no address ever
+assigned. `~/.config/cat_installer/cat_installer.conf` is the authoritative
+copy — a wpa_supplicant network block carrying eap, phase2, identity,
+anonymous_identity, ca_cert, altsubject_match and password. A leftover
+`/var/lib/iwd/<ssid>.8021x` is not: the one here named PEAP and held no password
+while the profile was TTLS/PAP. The migration also left
 `802-1x.domain-suffix-match` empty against an ISRG Root X1 pin, i.e. any
-Let's Encrypt certificate would have satisfied TTLS/PAP; now pinned to
-`radius.rptu.de` from the CAT profile.
+Let's Encrypt certificate would have satisfied TTLS/PAP; now `radius.rptu.de`,
+which the server's SAN presents.
+
+Verified on campus [AGENT 2026-10-21]: `CTRL-EVENT-EAP-SUCCESS` over TTLS
+against `CN=radius.rptu.de`, a routable address and full connectivity. The
+synthetic MAC is not implicated — eduroam authenticates with
+`macAddress = "stable"` in effect.
 
 **Revisit if**: hermes shows MT7922-specific faults under wpa_supplicant (the
 5 GHz handshake and 3-second signal-change reports are the ones to watch), or a
