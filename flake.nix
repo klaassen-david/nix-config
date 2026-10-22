@@ -3,6 +3,10 @@
 
   inputs = {
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # Temporary: PHP for Nextcloud from the master commit fixing CVE-2026-109618
+    # and CVE-2026-109619 (php 8.4.27), ahead of nixos-unstable. Drop it, and
+    # its use in common/modules/nextcloud, once nixos-unstable has php84 >= 8.4.27.
+    nixpkgs-php.url = "github:NixOS/nixpkgs/a5fc1be5b6c2d0c934143b57363aef9a15cce508";
     home-manager = {
       url = "github:nix-community/home-manager/master";
       inputs.nixpkgs.follows = "nixpkgs-unstable";

@@ -1,6 +1,7 @@
 {
   config,
   pkgs,
+  inputs,
   secretsPath,
   sslVhost,
   ...
@@ -29,6 +30,8 @@
   services.nextcloud = {
     enable = true;
     package = pkgs.nextcloud34; # pin to a major version; update deliberately
+    # CVE-2026-109618/-109619 fix ahead of the channel; see the flake input.
+    phpPackage = inputs.nixpkgs-php.legacyPackages.${pkgs.stdenv.hostPlatform.system}.php84;
     secretFile = config.age.secrets.nextcloud-general.path;
 
     hostName = "nextcloud.dklaassen.de";
@@ -75,6 +78,9 @@
 
     # PHP memory limit — 512 MB is Nextcloud's recommendation
     phpOptions."memory_limit" = "512M";
+    # Unused by Nextcloud; the confirmed FPM path of CVE-2026-109619. Must be
+    # php.ini/pool level — ini_set() and .user.ini run too late.
+    phpOptions."session.upload_progress.enabled" = "0";
 
     # Extra apps installed declaratively.
     # The calendar app provides CalDAV at /remote.php/dav/; the tasks app adds

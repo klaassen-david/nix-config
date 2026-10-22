@@ -68,6 +68,13 @@ Ranked by value-to-effort. Each expands in its own section below.
 
 ## Security
 
+- [ ] **drop the `nixpkgs-php` flake input** `[auto]`
+  Pins Nextcloud's PHP to the nixpkgs master fix for CVE-2026-109618/-109619
+  (2026-10-22). Once nixos-unstable has php84 >= 8.4.27 (`nix flake update
+  nixpkgs-unstable`), remove the input and the `phpPackage` line in
+  `common/modules/nextcloud`; keep `session.upload_progress.enabled = 0`.
+  Verify: `nix eval .#nixosConfigurations.olympus.config.services.nextcloud.phpPackage.version`.
+
 - [ ] **extend the sshd hardening** `[auto]`
   `headless.nix:40-49` already restricts users and disables password/root
   login. Not set anywhere: `KexAlgorithms`, `Ciphers`, `MACs` allowlists,

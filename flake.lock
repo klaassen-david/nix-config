@@ -221,6 +221,22 @@
         "url": "https://channels.nixos.org/nixos-unstable/nixexprs.tar.xz"
       }
     },
+    "nixpkgs-php": {
+      "locked": {
+        "lastModified": 1792592829,
+        "narHash": "sha256-fmNFBoWUCUJdycc4kB+pMSXhnOOdeEDaxqfjzyyilK8=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "a5fc1be5b6c2d0c934143b57363aef9a15cce508",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "a5fc1be5b6c2d0c934143b57363aef9a15cce508",
+        "type": "github"
+      }
+    },
     "nixpkgs-unstable": {
       "locked": {
         "lastModified": 1790046670,
@@ -364,6 +380,7 @@
         "disko": "disko",
         "home-manager": "home-manager_2",
         "nixos-hardware": "nixos-hardware",
+        "nixpkgs-php": "nixpkgs-php",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "nixvim": "nixvim",
         "render-markdown-nvim": "render-markdown-nvim",
