@@ -29,7 +29,7 @@
 
   services.nextcloud = {
     enable = true;
-    package = pkgs.nextcloud34; # pin to a major version; update deliberately
+    package = pkgs.nextcloud35; # pin to a major version; update deliberately
     # CVE-2026-109618/-109619 fix ahead of the channel; see the flake input.
     phpPackage = inputs.nixpkgs-php.legacyPackages.${pkgs.stdenv.hostPlatform.system}.php84;
     secretFile = config.age.secrets.nextcloud-general.path;

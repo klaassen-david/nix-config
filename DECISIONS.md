@@ -107,3 +107,6 @@ changes (old ruling stays in the file as history).
 - [orchestrator-oom-policy](decisions/orchestrator-oom-policy.md) —
   `orchestrator.service` runs with `OOMPolicy=continue`, `MemoryHigh=6G`,
   `MemoryMax=10G`; agents stay in their own user scopes [USER 2026-10-17]
+- [nextcloud-major](decisions/nextcloud-major.md) — olympus on `nextcloud35`,
+  bumped from 34 at 35.0.0; majors are explicit one-step pins, DB dump +
+  config copy first [USER 2026-10-22]
