@@ -410,11 +410,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791683286,
-        "narHash": "sha256-umoMWYc1NEIXjmOnTu+PNWrYz0+O0sO2VonEt4YIoHM=",
+        "lastModified": 1792344559,
+        "narHash": "sha256-dpXXRDql3UsgJV/4rre+eW98JczIt4jCx11mw0zFXOE=",
         "ref": "refs/heads/main",
-        "rev": "a5cb4dcb916abbc79f09964b4a2b428fbd8287cf",
-        "revCount": 44,
+        "rev": "e9c536dc0ebb6e9ab8f8b20a33e3366ad5000bca",
+        "revCount": 45,
         "type": "git",
         "url": "ssh://dk@dklaassen.de/home/dk/code/trainer"
       },
