@@ -70,6 +70,11 @@ in
         default = false;
         description = "run the LAN Samba file share (smbd + wsdd discovery) for Windows interop";
       };
+      wooting = mkOption {
+        type = types.bool;
+        default = false;
+        description = "a Wooting keyboard is attached: udev rules giving the seat user its hidraw nodes, plus wootility (common/modules/wooting)";
+      };
       sshServer = mkOption {
         type = types.bool;
         default = config.host.role != "vps";

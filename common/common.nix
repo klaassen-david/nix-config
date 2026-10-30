@@ -14,6 +14,7 @@
     ./modules/wifi
     # self-gates on host.capabilities.samba
     ./modules/samba
+    ./modules/wooting
     # consumer side of the self-hosted attic binary cache (substituter + pull
     # auth on every host, push on binaryCachePush hosts)
     ./modules/attic-cache
@@ -81,6 +82,7 @@
       "unrar"
       "claude-code"
       "corefonts"
+      "wootility"
     ];
 
   # decrypt agenix secrets with the shared user key (present on every host),

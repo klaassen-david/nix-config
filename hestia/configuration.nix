@@ -41,6 +41,7 @@
       variant = "dvorak,,";
     };
     capabilities.samba = true;
+    capabilities.wooting = true;
     # owns a fleet restic repo (hermes has the other); ../common/modules/backup
     # pulls each listed source into it and verifies the result on a weekly timer
     backup.pull = [
