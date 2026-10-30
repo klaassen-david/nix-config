@@ -109,8 +109,10 @@
 # serves the mesh (:51820) and wg-easy (:51821, see ../wg-easy).
 #
 # Known limits:
-#   - In a full tunnel DNS is whatever resolver the local network handed out
-#     (tukl pushes its own); it is not forced through the exit.
+#   - In a full tunnel over the mesh DNS goes through the tunnel to fixed public
+#     resolvers (egressResolvers; names under a link's own search domain still go
+#     to that link's resolver, which may not answer from the exit); tukl pushes
+#     its own.
 #   - Phones get v6 only via an exit: olympus has no global v6 (see networking.nat).
 #   - Table 2150 trusts the host's own interface addresses: a network that hands
 #     out a /16-or-longer address (or a rogue DHCP lease) keeps that prefix
@@ -973,7 +975,10 @@ let
   # A switch is the same thing: the old unit's stop leaves the blackhole, the new
   # start replaces it, with no direct window. The owner marker names the unit
   # holding the routes, so a late ExecStop of the old unit cannot strip the new one.
-  # `extra` are addresses added to `olympus` for the unit's lifetime.
+  # `extra` are addresses added to `olympus` for the unit's lifetime. `mtu`: an exit
+  # is relayed over the hub's GRE pair, and larger packets vanish (no "fragmentation
+  # needed" comes back). `dns`: resolve through the tunnel; the network's own
+  # resolvers often refuse queries from the exit (RPTU's do).
   egressScripts =
     {
       name,
@@ -981,6 +986,8 @@ let
       src4,
       src6,
       extra ? [ ],
+      mtu ? null,
+      dns ? false,
     }:
     let
       each =
@@ -992,17 +999,25 @@ let
       addrFlags = a: lib.optionalString (lib.hasInfix ":" a) "-6 ";
       nodad = a: lib.optionalString (lib.hasInfix ":" a) " nodad";
       srcOpt = a: lib.optionalString (a != null) " src ${a}";
+      mtuOpt = lib.optionalString (mtu != null) " mtu ${mtu}";
     in
     rec {
-      # (Re)creates what lives and dies with the tunnel link: source addresses and
-      # the real default routes. Also run by the mesh's postSetup after a restart.
+      # (Re)creates what lives and dies with the tunnel link: source addresses, the
+      # real default routes and the tunnel's resolvers. Also run by the mesh's
+      # postSetup after a restart (a recreated link has lost its resolved config).
       attach = pkgs.writeShellScript "vpn-egress-attach" ''
         set -euo pipefail
         ${lib.concatMapStringsSep "\n" (
           a: "${ip} ${addrFlags a}addr replace ${a} dev olympus${nodad a}"
         ) extra}
-        ${ip} -4 route replace default dev ${dev}${srcOpt src4} metric 100 table 2100
-        ${ip} -6 route replace default dev ${dev}${srcOpt src6} metric 100 table 2100
+        ${ip} -4 route replace default dev ${dev}${srcOpt src4} metric 100${mtuOpt} table 2100
+        ${ip} -6 route replace default dev ${dev}${srcOpt src6} metric 100${mtuOpt} table 2100
+        ${lib.optionalString dns ''
+          # best effort: without resolved there is nothing to redirect
+          ${resolvectl} dns ${dev} ${lib.concatStringsSep " " egressResolvers} || true
+          ${resolvectl} domain ${dev} '~.' || true
+          ${resolvectl} default-route ${dev} yes || true
+        ''}
       '';
       start = pkgs.writeShellScript "vpn-egress-start" ''
         set -euo pipefail
@@ -1023,6 +1038,7 @@ let
         set -uo pipefail
         if [ "$(cat ${owner} 2>/dev/null || true)" = ${name} ]; then
           ${each (f: "${ip} ${f} route del default dev ${dev} metric 100 table 2100 || true")}
+          ${lib.optionalString dns "${resolvectl} revert ${dev} || true"}
           rm -f ${owner}
         fi
         ${lib.concatMapStringsSep "\n" (a: "${ip} ${addrFlags a}addr del ${a} dev olympus || true") extra}
@@ -1037,9 +1053,17 @@ let
       ${ip} ${f} route flush table 2100 || true
     '') [ "-4" "-6" ]}
     rm -f ${owner}
+    # the mesh egresses' resolvers (tukl's are wg-quick's)
+    ${resolvectl} revert olympus || true
     ${systemctl} stop --no-block vpn-onlink.service || true
   '';
   grep = "${pkgs.gnugrep}/bin/grep";
+  resolvectl = "${config.systemd.package}/bin/resolvectl";
+  # Resolvers used through a mesh egress (v4 only: olympus has no global v6).
+  egressResolvers = [
+    "1.1.1.1"
+    "8.8.8.8"
+  ];
 
   # One definition per slot holder; units, the mesh re-attach and tukl share them.
   egressDefs = {
@@ -1047,6 +1071,7 @@ let
       dev = "olympus";
       src4 = self.ip;
       src6 = self.ip6;
+      dns = true;
     };
   }
   // lib.listToAttrs (
@@ -1060,6 +1085,8 @@ let
           "${src4 x self}/32"
           "${src6 x self}/128"
         ];
+        mtu = greMtu;
+        dns = true;
       };
     }) otherExits
   )
