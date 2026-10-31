@@ -84,9 +84,9 @@ in
       # content-defined chunking dedups identical NAR chunks across uploads.
       garbage-collection = {
         interval = "12 hours";
-        # bound VPS disk growth: drop paths untouched for 30d. Per-cache retention
+        # bound VPS disk growth: drop paths untouched for 7d. Per-cache retention
         # can override this via `attic cache configure --retention-period`.
-        default-retention-period = "30 days";
+        default-retention-period = "7 days";
       };
     };
   };
