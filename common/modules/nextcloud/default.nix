@@ -11,11 +11,6 @@
   imports = [ ../nginx ];
 
   age.secrets = {
-    nextcloud-admin-pass = {
-      file = "${secretsPath}/nextcloud-admin-pass.age";
-      owner = "nextcloud";
-      mode = "0400";
-    };
     nextcloud-general = {
       file = "${secretsPath}/nextcloud-general.age";
       owner = "nextcloud";
@@ -41,12 +36,6 @@
 
     config.dbtype = "pgsql";
     database.createLocally = true;
-
-    # Admin credentials
-    config = {
-      adminuser = "admin";
-      adminpassFile = config.age.secrets.nextcloud-admin-pass.path;
-    };
 
     configureRedis = true;
 
