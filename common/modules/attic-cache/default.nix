@@ -17,6 +17,8 @@ let
   cacheHost = "attic.dklaassen.de";
   cacheName = "dklaassencache";
   pushHome = "/var/lib/attic-push";
+  spool = "${pushHome}/spool";
+  work = "${pushHome}/work";
 in
 {
   # Pull from the cache. These merge with the cachix substituters/keys in
@@ -73,33 +75,83 @@ in
   };
 
   # post-build-hook fires once per locally-built derivation as the nix-daemon
-  # (root). Nix runs hooks SYNCHRONOUSLY, so to keep builds from blocking on the
-  # upload we hand the push to a detached transient unit via `systemd-run
-  # --no-block` and return immediately. That unit expands the built path's full
-  # closure and drops never-share fragments BEFORE pushing, then pushes the
-  # survivors with --no-closure (filtering only $OUT_PATHS would miss nvidia/
-  # initrd when they ride in as transitive deps of the system toplevel). HOME
-  # points at the config rendered above; `|| true` keeps a failed upload silent.
-  #
-  # RuntimeMaxSec caps each push: attic's uploader has been observed to wedge on
-  # large closures (e.g. a rust toolchain) and sit for a day pinning >1G of RAM
-  # per stuck -j8 job. The cap makes systemd SIGTERM a runaway push instead of
-  # leaking it forever; an aborted upload is harmless (the paths just re-push on
-  # the next build that produces them, and `|| true` already swallows failures).
+  # (root), synchronously. It only drops $OUT_PATHS into ${spool} (written as a
+  # dotfile, renamed when complete — path units ignore dotfiles) and returns.
+  # attic-push.path starts the one attic-push.service whenever the spool is
+  # non-empty, and starts it again after each run while it still is, so at most
+  # one upload runs at a time. A push per hook (the old design) put hundreds of
+  # concurrent uploads on olympus after a flake update: atticd's sqlite pool and
+  # nginx's worker_connections ran out, and failed paths never re-pushed.
   nix.settings.post-build-hook = lib.mkIf config.host.capabilities.binaryCachePush (
-    pkgs.writeShellScript "attic-push" ''
-      set -eu
-      exec ${config.systemd.package}/bin/systemd-run \
-        --collect --no-block --quiet \
-        --property=RuntimeMaxSec=1800 \
-        --setenv=HOME=${pushHome} \
-        --setenv=OUT_PATHS="$OUT_PATHS" \
-        -- ${pkgs.writeShellScript "attic-push-upload" ''
-          set -euf
-          paths=$(${config.nix.package}/bin/nix-store -qR $OUT_PATHS \
-            | ${pkgs.gnugrep}/bin/grep -vE -- '-(nvidia|initrd|modules-shrunk)') || true
-          [ -z "$paths" ] || ${pkgs.attic-client}/bin/attic push --no-closure -j8 ${cacheName} $paths || true
-        ''}
+    pkgs.writeShellScript "attic-enqueue" ''
+      tmp=$(${pkgs.coreutils}/bin/mktemp ${spool}/.XXXXXXXX) \
+        && echo "$OUT_PATHS" > "$tmp" \
+        && ${pkgs.coreutils}/bin/mv "$tmp" "${spool}/q''${tmp##*/.}" \
+        || true
     ''
   );
+
+  systemd.tmpfiles.rules = lib.mkIf config.host.capabilities.binaryCachePush [
+    "d ${pushHome} 0700 root root -"
+    "d ${spool} 0700 root root -"
+    "d ${work} 0700 root root -"
+  ];
+
+  systemd.paths.attic-push = lib.mkIf config.host.capabilities.binaryCachePush {
+    wantedBy = [ "paths.target" ];
+    pathConfig.DirectoryNotEmpty = spool;
+  };
+
+  # Each run claims the whole spool into ${work}, expands the full closure and
+  # drops never-share fragments BEFORE pushing (filtering only $OUT_PATHS would
+  # miss nvidia/initrd riding in as deps of the system toplevel), then pushes
+  # with --no-closure. On failure the batch goes back to the spool; the sleep
+  # keeps the path unit from re-triggering in a tight loop. TimeoutStartSec caps
+  # a wedged uploader (seen pinning >1G per stuck -j8 job); the next run requeues
+  # what it left in ${work}, and paths already uploaded are skipped.
+  systemd.services.attic-push = lib.mkIf config.host.capabilities.binaryCachePush {
+    description = "Push queued build outputs to the attic cache";
+    wants = [ "network-online.target" ];
+    after = [
+      "network-online.target"
+      "attic-push-config.service"
+    ];
+    environment.HOME = pushHome;
+    path = [
+      config.nix.package
+      pkgs.attic-client
+      pkgs.coreutils
+      pkgs.findutils
+      pkgs.gnugrep
+    ];
+    serviceConfig = {
+      Type = "oneshot";
+      TimeoutStartSec = "1h";
+      Nice = 10;
+      IOSchedulingClass = "idle";
+    };
+    script = ''
+      set -o pipefail
+      shopt -s nullglob
+      left=(${work}/*)
+      [ ''${#left[@]} -eq 0 ] || mv -t ${spool} "''${left[@]}"
+      batch=(${spool}/*)
+      [ ''${#batch[@]} -gt 0 ] || exit 0
+      mv -t ${work} "''${batch[@]}"
+
+      roots=()
+      for p in $(cat ${work}/* | tr ' ' '\n' | sort -u); do
+        if [ -e "$p" ]; then roots+=("$p"); fi
+      done
+
+      if [ ''${#roots[@]} -gt 0 ] && ! nix-store -qR "''${roots[@]}" \
+          | { grep -vE -- '-(nvidia|initrd|modules-shrunk)' || true; } \
+          | xargs -r attic push --no-closure -j8 ${cacheName}; then
+        mv -t ${spool} ${work}/*
+        sleep 300
+        exit 1
+      fi
+      rm -f ${work}/*
+    '';
+  };
 }
