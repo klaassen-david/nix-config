@@ -174,7 +174,7 @@ Ranked by value-to-effort. Each expands in its own section below.
 
 Decided: [decisions/theming-stylix.md](decisions/theming-stylix.md).
 
-- [ ] **wire up stylix from `host.theme`** `[auto]` consumers / `[manual]` looks
+- [x] **wire up stylix from `host.theme`** `[auto]` consumers / `[manual]` looks
   Single source of truth for colorscheme/fonts/wallpaper across sway, ghostty,
   nvim, zathura and gtk, driven from `host.theme` (`host.nix:136-150`). State
   today: `host.theme.{base16,opacity,wallpaper}` are declared and read by
@@ -188,6 +188,14 @@ Decided: [decisions/theming-stylix.md](decisions/theming-stylix.md).
   i3status blocks, swayosd and Waterfox read `config.lib.stylix.colors`;
   ghostty opacity is `host.theme.opacity`. Still open: the `[manual]` looks
   after a switch (ghostty, nvim, GTK/Qt apps, bar, tofi, swaync, swayosd).*
+  *Closed 2026-11-04 (`ef7ca09..46526a8`): looks confirmed by hand after the
+  switch [USER 2026-11-04], cursor (Adwaita) and bar icons (11pt) kept as they
+  are. Follow-ups folded in: Thunderbird/Waterfox theme add-on, prefer-dark
+  from polarity, hand-tuned sizes with stylix font families, zathura fully on
+  stylix, bar text-only state colours. Verified: `grep -rn 'host.theme'
+  --include='*.nix' .` shows consumers (`common/modules/theme` reads
+  `config.host.theme`, sway the wallpaper), `nix flake check` green on all
+  three hosts.*
 
 ## Browser — Waterfox
 
