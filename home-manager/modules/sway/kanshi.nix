@@ -54,7 +54,8 @@ in
   wayland.windowManager.sway.extraConfig = lib.mkOrder 1500 (
     let
       # raw bar block, so stylix's sway target cannot reach it: same mapping as
-      # its exportedBarConfig, from the palette
+      # its exportedBarConfig, from the palette — except active_workspace (shown
+      # on an unfocused output), whose base00-on-base03 text was unreadable
       c = config.lib.stylix.colors.withHashtag;
       common = ''
         font pango:FiraCode Nerd Font Propo 8.000000
@@ -70,7 +71,7 @@ in
           statusline ${c.base05}
           separator ${c.base03}
           focused_workspace ${c.base0D} ${c.base0D} ${c.base00}
-          active_workspace ${c.base03} ${c.base03} ${c.base00}
+          active_workspace ${c.base03} ${c.base03} ${c.base05}
           inactive_workspace ${c.base01} ${c.base01} ${c.base05}
           urgent_workspace ${c.base08} ${c.base08} ${c.base00}
           binding_mode ${c.base0A} ${c.base0A} ${c.base00}
