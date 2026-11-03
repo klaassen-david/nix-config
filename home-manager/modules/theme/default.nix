@@ -4,29 +4,41 @@
 # config.lib.stylix.colors themselves (sway bar in ../sway/kanshi.nix,
 # i3status blocks, swayosd in ../sway, Waterfox in ../waterfox).
 #
-# Not themed: Firefox (keeps its hand-edited userChrome), Zen.
+# Firefox: fonts and reader mode only; its UI follows the GTK theme. Zen: not
+# themed.
 { lib, ... }:
 
 {
-  stylix.targets = lib.genAttrs [
-    # desktop
-    "sway"
-    "swaync"
-    "tofi"
-    "gtk"
-    "qt"
-    "fontconfig"
-    "font-packages"
-    # terminal and tools
-    "ghostty"
-    "nixvim"
-    "fish"
-    "starship"
-    "fzf"
-    "tmux"
-    "zellij"
-    "yazi"
-    "zathura"
-    "mpv"
-  ] (_: { enable = true; });
+  stylix.targets =
+    lib.genAttrs
+      [
+        # desktop
+        "sway"
+        "swaync"
+        "tofi"
+        "gtk"
+        "qt"
+        "fontconfig"
+        "font-packages"
+        # terminal and tools
+        "ghostty"
+        "nixvim"
+        "fish"
+        "starship"
+        "fzf"
+        "tmux"
+        "zellij"
+        "yazi"
+        "zathura"
+        "mpv"
+      ]
+      (_: {
+        enable = true;
+      })
+    // {
+      firefox = {
+        enable = true;
+        profileNames = [ "default" ];
+      };
+    };
 }

@@ -1,5 +1,6 @@
 {
   config,
+  lib,
   ...
 }:
 
@@ -18,16 +19,15 @@
     # Firefox start a brand-new empty one (and the old profiles.ini, the only
     # record of the right name, is gone — see profiles.ini.home-manager.bak).
     # Verify against `ls ~/.config/mozilla/firefox/` before changing this.
-    # We deliberately don't set `userChrome` here — the stylesheet stays a
-    # hand-edited file in the profile's chrome/ dir (see pref below).
+    # Fonts and reader mode come from stylix (home-manager/modules/theme); the
+    # UI follows the stylix-themed GTK theme via Firefox's "System theme".
     profiles.default = {
       id = 0;
       path = "pfypjkxg.default-1689518983179";
       isDefault = true;
-      settings = {
-        # Required for Firefox to load chrome/userChrome.css (+ userContent.css).
-        "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
-      };
+      # stylix derives this from the terminal size (16pt for ghostty -> 21px);
+      # web code text keeps Firefox's default
+      settings."font.size.monospace.x-western" = lib.mkForce 13;
     };
   };
 }
