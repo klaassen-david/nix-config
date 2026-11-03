@@ -1,6 +1,8 @@
 # browser: Waterfox with native tree tabs
 
-**Ruling** [USER 2026-11-03]: the desktops move from Firefox/Zen to Waterfox.
+**Ruling** [USER 2026-11-03]: Waterfox becomes the desktops' default browser (in place of Zen).
+**Firefox stays** [USER 2026-11-03]: it remains installed and configured
+(`home-manager/modules/firefox`); Waterfox becomes the default, not the only browser.
 Required behaviour: no top bar; one sidebar holding url bar, extension
 buttons and a tab tree (children indented, Sidebery-style level lines); no
 hover reveals anywhere; Zen-style floating url bar (centred, suggestions open
