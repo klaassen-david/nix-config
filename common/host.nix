@@ -155,12 +155,13 @@ in
     };
 
     # Which browser links open in, and which one sway starts at login
-    # (home-manager/modules/browser). Both browsers stay installed either way;
+    # (home-manager/modules/browser). All of them stay installed either way;
     # this only moves the default.
     browser = mkOption {
       type = types.nullOr (types.enum [
         "zen"
         "firefox"
+        "waterfox"
       ]);
       default = if config.host.role == "vps" then null else "zen";
       description = "default web browser; drives the xdg http/html handler and the sway startup entry";

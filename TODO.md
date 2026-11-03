@@ -183,6 +183,28 @@ Decided: [decisions/theming-stylix.md](decisions/theming-stylix.md).
   wallpaper path (`sway/default.nix:132`) and ghostty's `background-opacity`.
   Verify: the same grep must show consumers, and `nix flake check` must build
   all three hosts.
+  Waterfox (`home-manager/modules/waterfox`) already reads
+  `config.lib.stylix.colors` when present and falls back to a built-in Nord
+  palette until then (asserts `host.theme.base16 == "nord"`).
+
+## Browser — Waterfox
+
+Decided: [decisions/browser.md](decisions/browser.md). Packaged and installed on
+both desktops; not the default yet.
+
+- [ ] **switch hermes/hestia to Waterfox** `[manual]` — after the stylix item.
+  1. Before the first start of the packaged build, carry the evaluation profile
+     over (tabs, tree, extension data): `cp -a ~/.cache/waterfox-eval/profile/.
+     ~/.waterfox/default/` — skip `user.js`/`chrome/userChrome.css`, home-manager
+     owns those.
+  2. `host.browser = "waterfox"` per host; switch; relogin (sway startup entry).
+  3. Check by hand: Ctrl+T/Ctrl+L/Escape, Tab engine cycling, Ctrl+Alt+arrows,
+     Ctrl+E + F11, a `window.open` popup still shows its address bar.
+  4. Delete the evaluation leftovers: `~/.cache/waterfox-eval/` (and the
+     session's scratchpad harness).
+- [ ] **Waterfox bumps** `[manual]` — `package.nix` has the steps; `window.cfg`
+  patches browser internals (`_loadURL`, `BrowserCommands.openTab`,
+  `endLayoutExtend`, toolbox position), so re-run the checks in step 3 above.
 
 ## Passwords & keyring
 

@@ -1,4 +1,4 @@
-# Picks the default browser from `host.browser`. Both browsers are installed
+# Picks the default browser from `host.browser`. All browsers are installed
 # either way — the choice only moves the xdg handler for links and the sway
 # startup entry, so switching is a rebuild plus a relogin, not a migration.
 #
@@ -17,6 +17,10 @@ let
       command = "firefox";
       desktopFile = "firefox.desktop";
     };
+    waterfox = {
+      command = "waterfox";
+      desktopFile = "waterfox.desktop";
+    };
   };
 
   # every mime type and url scheme the default browser claims
@@ -33,6 +37,7 @@ in
   imports = [
     ../firefox
     ../zen-browser
+    ../waterfox
   ];
 
   _module.args.defaultBrowser = browsers.${host.browser};

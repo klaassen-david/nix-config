@@ -1,0 +1,158 @@
+/* Compact vertical tab tree, Sidebery-like (Waterfox native tree tabs).
+   Colours come from the theme add-on (base16); nothing here hardcodes a palette.
+   Rules that need ::part() live in the author sheet in window.cfg: user
+   sheets do not match ::part(). */
+
+/* no gaps / rounding around sidebar and web view (Waterfox's own fullscreen recipe) */
+:root {
+  --chrome-window-gap: 0px !important;
+  --chrome-block-radius: 0px !important;
+}
+#tabbrowser-tabpanels .browserContainer {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+sidebar-main, #vertical-tabs { padding: 0 !important; margin: 0 !important; }
+/* stock focus ring is a fixed cyan under any theme; use the theme's focus colour */
+:root[lwtheme] { --focus-outline-color: var(--toolbar-field-border-color-focus) !important; }
+
+/* tab rows: 24px, no gaps (expanded sidebar only: the collapsed icon strip
+   derives its square tiles from the stock sizes) */
+#vertical-tabs #tabbrowser-tabs[orient="vertical"][expanded] {
+  --tab-min-height: 24px !important;
+  --tab-block-margin: 0px !important;
+  --tab-inline-padding: 4px !important;
+  --tab-inner-inline-margin: 2px !important;
+}
+#vertical-tabs #tabbrowser-tabs[orient="vertical"][expanded] .tabbrowser-tab:not([pinned]) {
+  padding-block: 0 !important;
+}
+
+/* Tree. Indent is padding inside the tab, not margin, so the row can paint the
+   level lines; the twisty sits on the favicon instead of a reserved slot.
+   Split-view panes keep Waterfox's own wrapper indent (excluded throughout). */
+#vertical-tabs[tree-tabs-enabled] {
+  --tree-twisty-size: 12px !important;
+  --tree-twisty-gap: 0px !important;
+}
+#vertical-tabs[tree-tabs-enabled] #tabbrowser-tabs[expanded] .tabbrowser-tab[data-tree-level]:not(tab-split-view-wrapper > *) {
+  margin-inline-start: 0 !important;
+  border-inline-start: none !important;
+}
+/* tabs in an open tab group keep the group's inset */
+#vertical-tabs[tree-tabs-enabled] #tabbrowser-tabs[expanded] tab-group > .tabbrowser-tab[data-tree-level] {
+  margin-inline-start: var(--space-medium) !important;
+}
+#vertical-tabs[tree-tabs-enabled] #tabbrowser-tabs[expanded] .tabbrowser-tab[data-tree-level]:not([pinned], tab-split-view-wrapper > *) {
+  & .tab-content {
+    padding-inline-start: calc(var(--tab-inline-padding) + var(--tree-indent-unit) * var(--tree-level, 0)) !important;
+  }
+  /* the highlight starts at the row's own indent, so ancestor lines stay
+     visible on the selected / hovered row */
+  & .tab-background {
+    margin-inline-start: calc(var(--tab-inner-inline-margin) + var(--tree-indent-unit) * var(--tree-level, 0)) !important;
+  }
+  /* "title changed" dot follows the indented favicon */
+  & .tab-content[titlechanged] {
+    background-position-x: calc(var(--tab-inline-padding) + var(--tree-indent-unit) * var(--tree-level, 0) + var(--icon-size) + 1px) !important;
+  }
+}
+
+/* one 1px line per ancestor level, ~2px left of each ancestor's favicon
+   (pad + indent*k - 2px for k = 0..level-1) */
+#vertical-tabs[tree-tabs-enabled] #tabbrowser-tabs[expanded] .tabbrowser-tab[data-tree-level]:not([data-tree-level="0"], [pinned], tab-split-view-wrapper > *) {
+  background-image: repeating-linear-gradient(to right,
+    color-mix(in srgb, currentColor 30%, transparent) 0 1px,
+    transparent 1px var(--tree-indent-unit)) !important;
+  background-repeat: no-repeat !important;
+  background-position: calc(var(--tab-inline-padding) - 2px) 0 !important;
+  background-size: calc(var(--tree-indent-unit) * var(--tree-level)) 100% !important;
+
+  &:-moz-locale-dir(rtl) {
+    background-image: repeating-linear-gradient(to left,
+      color-mix(in srgb, currentColor 30%, transparent) 0 1px,
+      transparent 1px var(--tree-indent-unit)) !important;
+    background-position: right calc(var(--tab-inline-padding) - 2px) top !important;
+  }
+}
+
+/* twisty on the favicon: invisible until hovered, then replaces the icon */
+#vertical-tabs[tree-tabs-enabled] #tabbrowser-tabs[expanded] .tabbrowser-tab:not(tab-split-view-wrapper > *) > .tab-tree-disclosure:not([hidden]) {
+  inset-inline-start: calc(var(--tab-inline-padding) + var(--tree-indent-unit) * var(--tree-level, 0)) !important;
+  inline-size: var(--icon-size) !important;
+}
+#vertical-tabs[tree-tabs-enabled] .tab-tree-disclosure::before {
+  inset-inline-start: calc((var(--icon-size) - var(--tree-twisty-size)) / 2) !important;
+  opacity: 0 !important;
+}
+#vertical-tabs[tree-tabs-enabled] .tab-tree-disclosure:hover::before { opacity: 1 !important; }
+#vertical-tabs[tree-tabs-enabled] .tabbrowser-tab:has(.tab-tree-disclosure:hover) .tab-icon-stack { opacity: 0 !important; }
+
+/* collapsed parent: descendant count as a badge on the favicon, replacing
+   Waterfox's "(N)" before the title (left alone inside collapsed tab groups,
+   where Waterfox hides it on purpose) */
+#vertical-tabs[tree-tabs-enabled] #tabbrowser-tabs[expanded] .tabbrowser-tab[data-tree-collapsed]:not(tab-group[collapsed] *)
+  .tab-content[data-tree-counter]:not([data-tree-counter="0"])::before {
+  content: attr(data-tree-counter) !important;
+  position: absolute !important;
+  inset-inline-start: calc(var(--tab-inline-padding) + var(--tree-indent-unit) * var(--tree-level, 0) + 8px);
+  top: 1px;
+  min-width: 11px;
+  padding: 0 2px;
+  margin: 0 !important;
+  border-radius: 6px;
+  font-size: 9px !important;
+  line-height: 11px;
+  text-align: center;
+  color: var(--lwt-toolbar-field-highlight-text, white) !important;
+  background: var(--lwt-toolbar-field-highlight, var(--focus-outline-color));
+  opacity: 1 !important;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Ctrl+E (and full screen) hide the sidebar. Width 0, not display:none, so the
+   url bar still works: when focused it floats as a top-layer popover. */
+:root[wf-sidebar-hidden] #sidebar-container {
+  min-width: 0 !important;
+  max-width: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+  border: none !important; /* its 1px inline borders stayed as a 2px strip */
+  visibility: hidden !important; /* no invisible keyboard focus (F6, toolbar keynav) */
+}
+:root[wf-sidebar-hidden] #sidebar-launcher-splitter { display: none !important; }
+/* the url bar is a top-layer popover (Nova), so the zero width does not clip
+   it: hide it unless it is floating. opacity, not visibility, keeps it
+   focusable for Ctrl+L / Ctrl+T. */
+:root[wf-sidebar-hidden] #urlbar { visibility: visible !important; }
+:root[wf-sidebar-hidden] #urlbar:not([breakout-extend]) {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* pinned-tab promo card */
+#drag-to-pin-promo-card { display: none !important; }
+
+/* Zen-style floating url bar: while expanded (click, Ctrl+L, Ctrl+T) the url
+   bar is a top-layer popover, so it can be centred on the viewport */
+#urlbar[breakout][breakout-extend] {
+  position: fixed !important;
+  top: 18vh !important;
+  left: 50% !important;
+  translate: -50% 0 !important;
+  margin: 0 !important; /* non-Nova adds a negative inline margin */
+  width: min(90vw, 62rem) !important;
+  max-width: none !important;
+  font-size: 1.15em !important;
+  --urlbar-height: 44px !important;
+}
+#urlbar[breakout][breakout-extend] .urlbarView {
+  max-height: calc(82vh - 60px) !important; /* short windows: scroll, don't overflow */
+  overflow-y: auto !important;
+}
+#urlbar[breakout][breakout-extend] > .urlbar-background {
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--border-color-deemphasized, rgba(0,0,0,.1)) !important;
+  border-radius: 10px !important;
+}
