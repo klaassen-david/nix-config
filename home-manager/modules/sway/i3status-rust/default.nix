@@ -77,8 +77,17 @@ in
     bars.default = {
       settings.icons_format = helpers.wrapIcon "{icon}";
       # block state colours from the stylix palette (stylix ships this as a lib
-      # attrset, not a target)
-      settings.theme.overrides = config.lib.stylix.i3status-rust.bar;
+      # attrset, not a target). Stylix maps info -> orange, warning -> yellow,
+      # which escalates backwards; swapped so it reads yellow -> orange -> red.
+      settings.theme.overrides =
+        let
+          bar = config.lib.stylix.i3status-rust.bar;
+        in
+        bar
+        // {
+          info_bg = bar.warning_bg;
+          warning_bg = bar.info_bg;
+        };
       icons = "material-nf";
       inherit blocks;
     };
