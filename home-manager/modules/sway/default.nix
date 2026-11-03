@@ -210,8 +210,11 @@
       padding-top = "35%";
       result-spacing = 25;
       num-results = 5;
-      # colours and font from stylix's tofi target; these keep the borderless,
-      # translucent full-screen overlay it would otherwise replace
+      # colours from stylix's tofi target; these keep the borderless,
+      # translucent full-screen overlay and the font/size it would otherwise
+      # replace (stylix: proportional FiraCode at the 10pt popup size)
+      font = lib.mkForce "FiraCode Nerd Font Mono";
+      font-size = lib.mkForce 24;
       border-width = lib.mkForce 0;
       outline-width = lib.mkForce 0;
       background-color = lib.mkForce "${config.lib.stylix.colors.withHashtag.base00}AA";

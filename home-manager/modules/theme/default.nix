@@ -8,9 +8,21 @@
 # a web view: decisions/theming-stylix.md). Firefox sets families and reader
 # colours itself (../firefox), its UI follows GTK; Waterfox has its theme
 # add-on; Zen is not themed.
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
+  # the icon theme from before stylix (it set none, so GTK fell back to Adwaita)
+  stylix.iconTheme = {
+    enable = true;
+    package = pkgs.kdePackages.breeze-icons;
+    dark = "breeze-dark";
+    light = "breeze";
+  };
 
   # GTK4/libadwaita and the Mozilla apps take light/dark from this portal
   # setting, not from the GTK theme; stylix leaves it unset.
