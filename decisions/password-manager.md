@@ -10,6 +10,9 @@ real sync semantics); keeping Proton Pass as the primary.
 **Open sub-decision**: whether Proton Pass leaves the desktop module at
 cutover or stays as a second, unrelated vault.
 
+**Interim** [USER 2026-11-03]: the Waterfox setup installs the Proton Pass
+extension for now; the Bitwarden extension replaces it once Vaultwarden runs.
+
 **Revisit if**: Vaultwarden upstream stalls, or the Bitwarden clients stop
 working against it. Build notes (vhost shape, no SSO gate on the API, admin
 token secret) live with the TODO item.
