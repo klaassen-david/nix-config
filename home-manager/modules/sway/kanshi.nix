@@ -58,7 +58,7 @@ in
       # on an unfocused output), whose base00-on-base03 text was unreadable
       c = config.lib.stylix.colors.withHashtag;
       common = ''
-        font pango:FiraCode Nerd Font Propo 8.000000
+        font pango:${config.stylix.fonts.monospace.name} 8
         mode dock
         hidden_state hide
         position bottom
