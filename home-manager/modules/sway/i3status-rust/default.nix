@@ -76,17 +76,28 @@ in
     enable = true;
     bars.default = {
       settings.icons_format = helpers.wrapIcon "{icon}";
-      # block state colours from the stylix palette (stylix ships this as a lib
-      # attrset, not a target). Stylix maps info -> orange, warning -> yellow,
-      # which escalates backwards; swapped so it reads yellow -> orange -> red.
+      # Block state as text colour only, like the `plain` theme before stylix:
+      # every background is the bar's own (base00), the palette colours the
+      # text, escalating yellow -> orange -> red. (stylix's lib attrset fills
+      # the backgrounds instead, info orange before warning yellow.)
       settings.theme.overrides =
         let
-          bar = config.lib.stylix.i3status-rust.bar;
+          c = config.lib.stylix.colors.withHashtag;
+          bg = c.base00;
         in
-        bar
-        // {
-          info_bg = bar.warning_bg;
-          warning_bg = bar.info_bg;
+        {
+          idle_bg = bg;
+          info_bg = bg;
+          good_bg = bg;
+          warning_bg = bg;
+          critical_bg = bg;
+          separator_bg = bg;
+          idle_fg = c.base05;
+          info_fg = c.base0A;
+          good_fg = c.base0B;
+          warning_fg = c.base09;
+          critical_fg = c.base08;
+          separator_fg = c.base03;
         };
       icons = "material-nf";
       inherit blocks;
