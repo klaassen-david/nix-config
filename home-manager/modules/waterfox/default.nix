@@ -80,9 +80,6 @@ in
     })
   ];
 
-  # sway: Waterfox opens on workspace 4 (for now, [USER 2026-11-03])
-  wayland.windowManager.sway.config.assigns."4" = [ { app_id = "^waterfox$"; } ];
-
   programs.waterfox = {
     enable = true;
     package = waterfox;
