@@ -53,6 +53,9 @@ in
 {
   wayland.windowManager.sway.extraConfig = lib.mkOrder 1500 (
     let
+      # raw bar block, so stylix's sway target cannot reach it: same mapping as
+      # its exportedBarConfig, from the palette
+      c = config.lib.stylix.colors.withHashtag;
       common = ''
         font pango:FiraCode Nerd Font Propo 8.000000
         mode dock
@@ -63,14 +66,14 @@ in
         workspace_buttons yes
         strip_workspace_numbers no
         colors {
-          background #000000
-          statusline #ffffff
-          separator #666666
-          focused_workspace #4c7899 #285577 #ffffff
-          active_workspace #333333 #5f676a #ffffff
-          inactive_workspace #333333 #222222 #888888
-          urgent_workspace #2f343a #900000 #ffffff
-          binding_mode #2f343a #900000 #ffffff
+          background ${c.base00}
+          statusline ${c.base05}
+          separator ${c.base03}
+          focused_workspace ${c.base0D} ${c.base0D} ${c.base00}
+          active_workspace ${c.base03} ${c.base03} ${c.base00}
+          inactive_workspace ${c.base01} ${c.base01} ${c.base05}
+          urgent_workspace ${c.base08} ${c.base08} ${c.base00}
+          binding_mode ${c.base0A} ${c.base0A} ${c.base00}
         }
       '';
     in

@@ -19,7 +19,8 @@ changes (old ruling stays in the file as history).
 - [password-manager](decisions/password-manager.md) — Vaultwarden on olympus;
   KeePassXC-over-Nextcloud and keeping Proton Pass rejected [USER 2026-08-31]
 - [theming-stylix](decisions/theming-stylix.md) — adopt stylix, driven from
-  `host.theme.*`; the scaffolding stays [USER 2026-08-31]
+  `host.theme.*`; the scaffolding stays [USER 2026-08-31]; explicit targets,
+  Nord by name, Noto + FiraCode, olympus console only [USER 2026-11-03]
 - [hestia-dns-mkforce](decisions/hestia-dns-mkforce.md) — the `mkForce` on
   `networkmanager.dns` is real (resolved.nix defines the option); keep it
   [AGENT 2026-09-07]

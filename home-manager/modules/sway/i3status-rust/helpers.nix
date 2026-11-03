@@ -1,4 +1,8 @@
-{ pkgs, lib }:
+{
+  pkgs,
+  lib,
+  colors, # config.lib.stylix.colors.withHashtag
+}:
 
 # Shared vocabulary for ./blocks/*: the pango wrapper every icon goes through,
 # the on/off colours, and the unit viewer the service blocks middle-click into.
@@ -26,12 +30,10 @@ rec {
 
   wrapIcon = styledIcon { };
 
-  # on/off colours for the service blocks. The blue is solarized, i.e. the
-  # palette the `plain` theme's state colours already come from (green #859900,
-  # yellow #b58900, red #dc322f); the white matches the bar's statusline
-  # (../kanshi.nix).
-  colorOn = "#268bd2";
-  colorOff = "#ffffff";
+  # on/off colours for the service blocks, from the stylix palette: the accent
+  # for on, the bar's statusline colour (../kanshi.nix) for off
+  colorOn = colors.base0D;
+  colorOff = colors.base05;
 
   # Middle-click target for the service blocks: a live, read-only
   # `systemctl status <unit>` in neovim. See ../unit-status-view.nix.

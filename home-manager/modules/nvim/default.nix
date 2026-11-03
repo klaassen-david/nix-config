@@ -1,4 +1,9 @@
-{ pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 let
   codelldb = "${pkgs.vscode-extensions.vadimcn.vscode-lldb}/share/vscode/extensions/vadimcn.vscode-lldb";
@@ -279,7 +284,9 @@ in
       };
     };
 
-    colorschemes.nord.enable = true;
+    # stylix's base16 rendering on the desktops (home-manager/modules/theme);
+    # olympus keeps the plugin
+    colorschemes.nord.enable = !config.stylix.targets.nixvim.enable;
 
     extraConfigLuaPost = ''
       -- vim.cmd "TransparentEnable"

@@ -6,8 +6,8 @@
     enableBashIntegration = true;
     enableFishIntegration = true;
     settings = {
-      font-size = 16;
-      background-opacity = 0.8;
+      # font, size, colours and background-opacity come from stylix
+      # (host.theme.opacity, common/modules/theme)
       gtk-tabs-location = "hidden";
       keybind = [
         "ctrl+shift+w=unbind"

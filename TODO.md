@@ -183,9 +183,11 @@ Decided: [decisions/theming-stylix.md](decisions/theming-stylix.md).
   wallpaper path (`sway/default.nix:132`) and ghostty's `background-opacity`.
   Verify: the same grep must show consumers, and `nix flake check` must build
   all three hosts.
-  Waterfox (`home-manager/modules/waterfox`) already reads
-  `config.lib.stylix.colors` when present and falls back to a built-in Nord
-  palette until then (asserts `host.theme.base16 == "nord"`).
+  *Wired 2026-11-03 (`common/modules/theme`, `home-manager/modules/theme`;
+  `nix flake check` green): explicit targets, console on every host; sway bar,
+  i3status blocks, swayosd and Waterfox read `config.lib.stylix.colors`;
+  ghostty opacity is `host.theme.opacity`. Still open: the `[manual]` looks
+  after a switch (ghostty, nvim, GTK/Qt apps, bar, tofi, swaync, swayosd).*
 
 ## Browser — Waterfox
 

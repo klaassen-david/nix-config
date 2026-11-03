@@ -1,4 +1,5 @@
 {
+  config,
   pkgs,
   host,
   lib,
@@ -15,7 +16,10 @@
 # attrset — order and the host.capabilities gating live in `blocks` below.
 
 let
-  helpers = import ./helpers.nix { inherit pkgs lib; };
+  helpers = import ./helpers.nix {
+    inherit pkgs lib;
+    colors = config.lib.stylix.colors.withHashtag;
+  };
   powerProfile = import ./power-profile.nix { inherit pkgs lib host; };
 
   block =
@@ -72,6 +76,9 @@ in
     enable = true;
     bars.default = {
       settings.icons_format = helpers.wrapIcon "{icon}";
+      # block state colours from the stylix palette (stylix ships this as a lib
+      # attrset, not a target)
+      settings.theme.overrides = config.lib.stylix.i3status-rust.bar;
       icons = "material-nf";
       inherit blocks;
     };

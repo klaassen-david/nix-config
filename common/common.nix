@@ -8,6 +8,8 @@
 {
   imports = [
     ./host.nix
+    # stylix from host.theme (console on every host; desktop targets in HM)
+    ./modules/theme
     # self-selects server (vps) vs on-demand client by host.role
     ./modules/wireguard
     # self-gates on host.capabilities.wifi (+ lid-close keepalive on capabilities.lid)

@@ -21,6 +21,11 @@
     zen-browser = {
       url = "github:0xc000022070/zen-browser-flake";
     };
+    # Theming from host.theme (common/modules/theme, decisions/theming-stylix.md)
+    stylix = {
+      url = "github:nix-community/stylix";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
     disko = {
       url = "github:nix-community/disko";
@@ -62,6 +67,7 @@
       nixos-hardware,
       disko,
       agenix,
+      stylix,
       ...
     }@inputs:
     let
@@ -89,6 +95,8 @@
           modules = [
             ./${host}/configuration.nix
             agenix.nixosModules.default
+            # also imports its home-manager module for every HM user
+            stylix.nixosModules.stylix
             home-manager.nixosModules.home-manager
             {
               home-manager = {

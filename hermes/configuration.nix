@@ -22,6 +22,7 @@
     stateVersion = "25.05";
     gpu = "amdgpu";
     display.primary = "eDP-1";
+    theme.opacity = 0.8; # terminal (stylix opacity.terminal)
     capabilities = {
       wifi = true;
       bluetooth = true;

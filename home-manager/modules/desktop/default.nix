@@ -8,6 +8,7 @@
     ../kdeconnect
     ../nextcloud-sync
     ../calendar
+    ../theme
   ];
 
   home.packages = with pkgs; [

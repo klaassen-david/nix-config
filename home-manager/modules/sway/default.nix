@@ -202,18 +202,19 @@
   programs.tofi = {
     enable = true;
     settings = {
-      font = "${pkgs.nerd-fonts.fira-code.outPath}/share/fonts/truetype/NerdFonts/FiraCode/FiraCodeNerdFontMono-Regular.ttf";
       output = host.display.primary;
       matching-algorithm = "fuzzy";
       width = "100%";
       height = "100%";
-      border-width = 0;
-      outline-width = 0;
       padding-left = "35%";
       padding-top = "35%";
       result-spacing = 25;
       num-results = 5;
-      background-color = "#000A";
+      # colours and font from stylix's tofi target; these keep the borderless,
+      # translucent full-screen overlay it would otherwise replace
+      border-width = lib.mkForce 0;
+      outline-width = lib.mkForce 0;
+      background-color = lib.mkForce "${config.lib.stylix.colors.withHashtag.base00}AA";
     };
   };
 
@@ -257,5 +258,40 @@
     enable = true;
   };
 
-  services.swayosd.enable = true;
+  services.swayosd = {
+    enable = true;
+    # stylix has no swayosd target: swayosd's default layout, palette colours
+    stylePath =
+      let
+        c = config.lib.stylix.colors.withHashtag;
+      in
+      pkgs.writeText "swayosd.css" ''
+        window#osd {
+          border-radius: 999px;
+          border: none;
+          background: alpha(${c.base00}, 0.9);
+        }
+        window#osd #container { margin: 16px; }
+        window#osd image, window#osd label { color: ${c.base05}; }
+        window#osd progressbar:disabled, window#osd image:disabled { opacity: 0.5; }
+        window#osd progressbar, window#osd segmentedprogress {
+          min-height: 6px;
+          border-radius: 999px;
+          background: transparent;
+          border: none;
+        }
+        window#osd trough, window#osd segment {
+          min-height: inherit;
+          border-radius: inherit;
+          border: none;
+          background: alpha(${c.base05}, 0.3);
+        }
+        window#osd progress, window#osd segment.active {
+          min-height: inherit;
+          border-radius: inherit;
+          border: none;
+          background: ${c.base0D};
+        }
+      '';
+  };
 }
