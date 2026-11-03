@@ -48,10 +48,10 @@ in
         package = pkgs.noto-fonts-color-emoji;
         name = "Noto Color Emoji";
       };
-      # the hand-tuned sizes from before stylix: ghostty was 16 with its built-in
-      # JetBrains Mono, which FiraCode needs one step more to match; GTK was 11
+      # hand-tuned: ghostty was 16 with its built-in JetBrains Mono, which
+      # FiraCode needs one step more to match; GTK/apps (and zathura) 12
       sizes.terminal = 17;
-      sizes.applications = 11;
+      sizes.applications = 12;
     };
 
     cursor = lib.mkIf desktop {

@@ -14,9 +14,10 @@ per-module literal.
   base16-schemes name) — no consumer hardcodes a palette.
 - Fonts: Noto Sans / Noto Serif, FiraCode Nerd Font for code. Cursor set by
   stylix (Adwaita 24).
-- Sizes stay the hand-tuned pre-stylix ones [USER 2026-11-03]: GTK/apps 11,
+- Sizes stay hand-tuned [USER 2026-11-03]: GTK/apps 12 (zathura too),
   terminal 17 (ghostty's old 16 in JetBrains Mono), tofi 24; icons stay
   Breeze (dark). Font *families* always follow stylix — only sizes are pinned.
+  zathura otherwise follows stylix entirely (colours, opacity).
 - nixvim's own `colorschemes.nord` gives way to stylix's base16 rendering.
 - olympus gets the text-console colours too; nothing else there.
 - Firefox: font families and reader-mode colours from the stylix values. Its
