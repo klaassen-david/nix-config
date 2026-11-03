@@ -207,8 +207,12 @@ both desktops; not the default yet.
   *hestia 2026-11-04: steps 1, 2 (`98d6b19`) and 4 done; the open tabs came
   over from Firefox's session with the Sidebery tree converted to Waterfox's
   (98 tabs, 6 pinned, 28 child links; checked headless before installing).
-  Open: step 3 by hand. hermes: all of it — Zen's session the same way (second
-  window without its pinned tabs), fresh profile.*
+  Open: step 3 by hand.*
+  *hermes 2026-11-04: profile prepared in `~/.config/waterfox/default` from
+  Zen's session (362 + 4 tabs, 8 pinned; the second window without its pinned
+  tabs, Zen's empty placeholder tabs dropped; Sidebery tree converted, 11 + 3
+  child links) and Zen's cookies (schema 17, as Waterfox's; checked headless
+  that they load and are not reset). `host.browser` set. Open: switch, step 3.*
 - [ ] **Waterfox bumps** `[manual]` — `package.nix` has the steps; `window.cfg`
   patches browser internals (`_loadURL`, `BrowserCommands.openTab`,
   `endLayoutExtend`, toolbox position), so re-run the checks in step 3 above.
