@@ -6,7 +6,7 @@
 #                  (layout, floating url bar, Ctrl+T, keys, unloading) — it patches
 #                  browser internals: re-check it on every Waterfox bump
 #   userChrome.css compact tree, level lines, floating url bar
-#   theme.nix      theme add-on generated from the base16 palette (stylix)
+#   theme.nix      theme add-on generated from the stylix base16 palette
 #
 # programs.waterfox comes from home-manager's own mkFirefoxModule (the same
 # builder behind programs.firefox/floorp/librewolf), so policies, profiles,
@@ -20,7 +20,6 @@
   lib,
   pkgs,
   inputs,
-  host,
   ...
 }:
 
@@ -36,33 +35,13 @@ let
     extraPrefsFiles = [ "${./window.cfg}" ];
   };
 
-  # Palette: stylix when it is wired up (TODO "wire up stylix"), else Nord —
-  # the only scheme spelled out here, hence the assertion below.
-  baseNames = map (i: "base0${lib.toHexString i}") (lib.range 0 15);
-  stylixColors = config.lib.stylix.colors or null;
-  nord = {
-    base00 = "#2E3440";
-    base01 = "#3B4252";
-    base02 = "#434C5E";
-    base03 = "#4C566A";
-    base04 = "#D8DEE9";
-    base05 = "#E5E9F0";
-    base06 = "#ECEFF4";
-    base07 = "#8FBCBB";
-    base08 = "#BF616A";
-    base09 = "#D08770";
-    base0A = "#EBCB8B";
-    base0B = "#A3BE8C";
-    base0C = "#88C0D0";
-    base0D = "#81A1C1";
-    base0E = "#B48EAD";
-    base0F = "#5E81AC";
-  };
-  palette =
-    if stylixColors != null then lib.genAttrs baseNames (n: stylixColors.withHashtag.${n}) else nord;
+  # UI colours from the stylix palette (common/modules/theme)
+  palette = lib.genAttrs (map (i: "base0${lib.toHexString i}") (lib.range 0 15)) (
+    n: config.lib.stylix.colors.withHashtag.${n}
+  );
   theme = pkgs.callPackage ./theme.nix {
     inherit palette;
-    polarity = if (config.stylix.polarity or "dark") == "light" then "light" else "dark";
+    polarity = if config.stylix.polarity == "light" then "light" else "dark";
   };
 
   # AMO "latest" by add-on id; normal_installed = installed once, updates itself
@@ -97,13 +76,6 @@ in
         configPath = "Library/Application Support/Waterfox";
       };
     })
-  ];
-
-  assertions = [
-    {
-      assertion = stylixColors != null || host.theme.base16 == "nord";
-      message = "waterfox: without stylix only the Nord palette is built in; host.theme.base16 is '${host.theme.base16}'";
-    }
   ];
 
   # sway: Waterfox opens on workspace 4 (for now, [USER 2026-11-03])
