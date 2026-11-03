@@ -214,6 +214,12 @@
       # translucent full-screen overlay and the hand-tuned size (stylix would
       # use its 10pt popup size)
       font-size = lib.mkForce 24;
+      # no boxes behind the text: stylix gives prompt, input and results an
+      # opaque base00 background, which shows on the translucent overlay
+      prompt-background = lib.mkForce "#00000000";
+      input-background = lib.mkForce "#00000000";
+      default-result-background = lib.mkForce "#00000000";
+      selection-background = lib.mkForce "#00000000";
       border-width = lib.mkForce 0;
       outline-width = lib.mkForce 0;
       background-color = lib.mkForce "${config.lib.stylix.colors.withHashtag.base00}AA";
