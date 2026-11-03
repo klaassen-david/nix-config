@@ -194,7 +194,7 @@ Decided: [decisions/theming-stylix.md](decisions/theming-stylix.md).
 Decided: [decisions/browser.md](decisions/browser.md). Packaged and installed on
 both desktops; not the default yet.
 
-- [ ] **switch hermes/hestia to Waterfox** `[manual]` — after the stylix item.
+- [x] **switch hermes/hestia to Waterfox** `[manual]` — after the stylix item.
   1. Before the first start of the packaged build, carry the evaluation profile
      over (tabs, tree, extension data): `cp -a ~/.cache/waterfox-eval/profile/.
      ~/.config/waterfox/default/` — skip `user.js`/`chrome/userChrome.css`, home-manager
@@ -213,6 +213,14 @@ both desktops; not the default yet.
   tabs, Zen's empty placeholder tabs dropped; Sidebery tree converted, 11 + 3
   child links) and Zen's cookies (schema 17, as Waterfox's; checked headless
   that they load and are not reset). `host.browser` set. Open: switch, step 3.*
+  *Closed 2026-11-04 (`98d6b19`, `1507291`): both hosts run the packaged
+  Waterfox from `~/.config/waterfox`. Verified: `nix flake check` green;
+  headless restore of both converted sessions; on hermes all 2403 Zen cookies
+  present (sqlite diff by host/name/path/originAttributes, 0 missing). Logins
+  that lived in site storage (IndexedDB/localStorage) did not come over: Zen's
+  storage is a newer format (Gecko 159, storage 2.4 vs Waterfox's 153 / 2.3),
+  so [USER 2026-11-04] chose re-login over copying it. Step 3 is not confirmed;
+  the bumps item below carries it.*
 - [ ] **Waterfox bumps** `[manual]` — `package.nix` has the steps; `window.cfg`
   patches browser internals (`_loadURL`, `BrowserCommands.openTab`,
   `endLayoutExtend`, toolbox position), so re-run the checks in step 3 above.
