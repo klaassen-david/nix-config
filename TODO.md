@@ -204,6 +204,11 @@ both desktops; not the default yet.
      Ctrl+E + F11, a `window.open` popup still shows its address bar.
   4. Delete the evaluation leftovers: `~/.cache/waterfox-eval/` (and the
      session's scratchpad harness).
+  *hestia 2026-11-04: steps 1, 2 (`98d6b19`) and 4 done; the open tabs came
+  over from Firefox's session with the Sidebery tree converted to Waterfox's
+  (98 tabs, 6 pinned, 28 child links; checked headless before installing).
+  Open: step 3 by hand. hermes: all of it — Zen's session the same way (second
+  window without its pinned tabs), fresh profile.*
 - [ ] **Waterfox bumps** `[manual]` — `package.nix` has the steps; `window.cfg`
   patches browser internals (`_loadURL`, `BrowserCommands.openTab`,
   `endLayoutExtend`, toolbox position), so re-run the checks in step 3 above.
