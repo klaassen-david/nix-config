@@ -16,10 +16,13 @@ per-module literal.
   stylix (Adwaita 24).
 - nixvim's own `colorschemes.nord` gives way to stylix's base16 rendering.
 - olympus gets the text-console colours too; nothing else there.
-- Firefox: font families and reader-mode colours from the stylix values; the
-  UI follows the stylix GTK theme via Firefox's "System theme" (no NUR Firefox
-  Color, no GNOME theme). The old userChrome pref went: no userChrome.css
-  existed.
+- Firefox: font families and reader-mode colours from the stylix values. Its
+  UI is only dark (the portal `color-scheme`, derived from stylix's polarity),
+  not palette-coloured: Firefox enforces add-on signing, so it cannot take the
+  generated theme add-on (no NUR Firefox Color, no GNOME theme). The old
+  userChrome pref went: no userChrome.css existed.
+- Thunderbird and Waterfox get the same generated theme add-on
+  (`common/modules/theme/mozilla-theme.nix`); both install unsigned add-ons.
 - Web views [USER 2026-11-03]: stylix never sets font *sizes* inside a web
   view, in any browser — sizing is zoom's job and sites should look the same
   everywhere. Hence no stylix firefox target (it pins font.size.*).

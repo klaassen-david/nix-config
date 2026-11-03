@@ -8,9 +8,15 @@
 # a web view: decisions/theming-stylix.md). Firefox sets families and reader
 # colours itself (../firefox), its UI follows GTK; Waterfox has its theme
 # add-on; Zen is not themed.
-{ lib, ... }:
+{ config, lib, ... }:
 
 {
+
+  # GTK4/libadwaita and the Mozilla apps take light/dark from this portal
+  # setting, not from the GTK theme; stylix leaves it unset.
+  dconf.settings."org/gnome/desktop/interface".color-scheme =
+    if config.stylix.polarity == "light" then "default" else "prefer-dark";
+
   stylix.targets =
     lib.genAttrs
       [

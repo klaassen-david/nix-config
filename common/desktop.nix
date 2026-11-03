@@ -1,9 +1,30 @@
 {
   config,
+  lib,
   pkgs,
   ...
 }:
 
+let
+  # Thunderbird's UI from the stylix palette: the same theme add-on as Waterfox
+  # (Thunderbird installs unsigned add-ons). lockPref, because a profile keeps
+  # its own extensions.activeThemeID that a default pref would not override.
+  mailTheme = pkgs.callPackage ./modules/theme/mozilla-theme.nix {
+    palette = lib.genAttrs (map (i: "base0${lib.toHexString i}") (lib.range 0 15)) (
+      n: config.lib.stylix.colors.withHashtag.${n}
+    );
+    polarity = if config.stylix.polarity == "light" then "light" else "dark";
+  };
+  thunderbird = pkgs.thunderbird.override {
+    extraPolicies.ExtensionSettings.${mailTheme.addonId} = {
+      installation_mode = "force_installed";
+      install_url = "file://${mailTheme}/share/mozilla/extensions/{ec8030f7-c20a-464f-9b0e-13a3a9e97384}/${mailTheme.addonId}.xpi";
+    };
+    extraPrefs = ''
+      lockPref("extensions.activeThemeID", "${mailTheme.addonId}");
+    '';
+  };
+in
 {
   imports = [ ./common.nix ];
 
@@ -21,7 +42,7 @@
     piper
 
     libreoffice
-    thunderbird
+    thunderbird # themed, see the let above
 
     # droidcam
     droidcam

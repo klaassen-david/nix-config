@@ -1,5 +1,7 @@
-# Waterfox/Firefox theme add-on generated from a base16 palette, so the browser
-# UI follows the same scheme as the rest of the desktop (stylix).
+# Theme add-on for Mozilla apps generated from a base16 palette, so their UI
+# follows the same scheme as the rest of the desktop (stylix). Used by Waterfox
+# (home-manager/modules/waterfox) and Thunderbird (common/desktop.nix): both
+# install unsigned add-ons. Firefox enforces signing, so it cannot take this.
 #
 # The palette's hash is part of the add-on id: a force_installed add-on is only
 # replaced when its version goes *up*, which a palette change cannot express,
@@ -75,7 +77,7 @@ let
     }
   );
 in
-runCommand "waterfox-theme-base16-${hash}"
+runCommand "mozilla-theme-base16-${hash}"
   {
     nativeBuildInputs = [ zip ];
     # home-manager's globalExtensions reads the id from here and installs

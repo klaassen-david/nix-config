@@ -6,7 +6,7 @@
 #                  (layout, floating url bar, Ctrl+T, keys, unloading) — it patches
 #                  browser internals: re-check it on every Waterfox bump
 #   userChrome.css compact tree, level lines, floating url bar
-#   theme.nix      theme add-on generated from the stylix base16 palette
+#   ../../../common/modules/theme/mozilla-theme.nix  theme add-on from the stylix palette
 #
 # programs.waterfox comes from home-manager's own mkFirefoxModule (the same
 # builder behind programs.firefox/floorp/librewolf), so policies, profiles,
@@ -41,7 +41,7 @@ let
   palette = lib.genAttrs (map (i: "base0${lib.toHexString i}") (lib.range 0 15)) (
     n: config.lib.stylix.colors.withHashtag.${n}
   );
-  theme = pkgs.callPackage ./theme.nix {
+  theme = pkgs.callPackage ../../../common/modules/theme/mozilla-theme.nix {
     inherit palette;
     polarity = if config.stylix.polarity == "light" then "light" else "dark";
   };
