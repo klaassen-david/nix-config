@@ -1,6 +1,5 @@
 {
   config,
-  lib,
   ...
 }:
 
@@ -19,15 +18,31 @@
     # Firefox start a brand-new empty one (and the old profiles.ini, the only
     # record of the right name, is gone — see profiles.ini.home-manager.bak).
     # Verify against `ls ~/.config/mozilla/firefox/` before changing this.
-    # Fonts and reader mode come from stylix (home-manager/modules/theme); the
-    # UI follows the stylix-themed GTK theme via Firefox's "System theme".
+    # The UI follows the stylix-themed GTK theme via Firefox's "System theme".
     profiles.default = {
       id = 0;
       path = "pfypjkxg.default-1689518983179";
       isDefault = true;
-      # stylix derives this from the terminal size (16pt for ghostty -> 21px);
-      # web code text keeps Firefox's default
-      settings."font.size.monospace.x-western" = lib.mkForce 13;
+      # Font families and reader-mode colours from stylix, set here rather than
+      # via stylix's firefox target: that target also pins font *sizes*, and
+      # web views keep the browser defaults (sizing is zoom's job, sites should
+      # look the same everywhere).
+      settings =
+        let
+          inherit (config.stylix) fonts;
+          c = config.lib.stylix.colors.withHashtag;
+        in
+        {
+          "font.name.monospace.x-western" = fonts.monospace.name;
+          "font.name.sans-serif.x-western" = fonts.sansSerif.name;
+          "font.name.serif.x-western" = fonts.serif.name;
+          "reader.color_scheme" = "custom";
+          "reader.custom_colors.background" = c.base00;
+          "reader.custom_colors.foreground" = c.base05;
+          "reader.custom_colors.selection-highlight" = c.base04;
+          "reader.custom_colors.unvisited-links" = c.base0D;
+          "reader.custom_colors.visited-links" = c.base0E;
+        };
     };
   };
 }

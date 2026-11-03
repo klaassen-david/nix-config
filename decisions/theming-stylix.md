@@ -16,9 +16,13 @@ per-module literal.
   stylix (Adwaita 24).
 - nixvim's own `colorschemes.nord` gives way to stylix's base16 rendering.
 - olympus gets the text-console colours too; nothing else there.
-- Firefox: stylix's target for fonts and reader mode only; the UI follows
-  the stylix GTK theme via Firefox's "System theme" (no NUR Firefox Color,
-  no GNOME theme). The old userChrome pref went: no userChrome.css existed.
+- Firefox: font families and reader-mode colours from the stylix values; the
+  UI follows the stylix GTK theme via Firefox's "System theme" (no NUR Firefox
+  Color, no GNOME theme). The old userChrome pref went: no userChrome.css
+  existed.
+- Web views [USER 2026-11-03]: stylix never sets font *sizes* inside a web
+  view, in any browser — sizing is zoom's job and sites should look the same
+  everywhere. Hence no stylix firefox target (it pins font.size.*).
 
 **Rejected**: deleting the currently-dead `host.theme` scaffolding.
 

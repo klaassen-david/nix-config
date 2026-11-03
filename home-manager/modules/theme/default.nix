@@ -4,8 +4,10 @@
 # config.lib.stylix.colors themselves (sway bar in ../sway/kanshi.nix,
 # i3status blocks, swayosd in ../sway, Waterfox in ../waterfox).
 #
-# Firefox: fonts and reader mode only; its UI follows the GTK theme. Zen: not
-# themed.
+# No browser target: stylix's firefox target pins web-view font sizes (never in
+# a web view: decisions/theming-stylix.md). Firefox sets families and reader
+# colours itself (../firefox), its UI follows GTK; Waterfox has its theme
+# add-on; Zen is not themed.
 { lib, ... }:
 
 {
@@ -34,11 +36,5 @@
       ]
       (_: {
         enable = true;
-      })
-    // {
-      firefox = {
-        enable = true;
-        profileNames = [ "default" ];
-      };
-    };
+      });
 }
