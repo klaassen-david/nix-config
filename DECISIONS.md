@@ -11,6 +11,8 @@ changes (old ruling stays in the file as history).
 - [nixpkgs-channel](decisions/nixpkgs-channel.md) — one channel
   (`nixpkgs-unstable`) for all three hosts; no stable pin for the vps
   [USER 2026-08-31]
+- [browser-sync](decisions/browser-sync.md) — no tab sync between hosts for
+  now; the rest of browser sync is undecided [USER 2026-11-03]
 - [password-manager](decisions/password-manager.md) — Vaultwarden on olympus;
   KeePassXC-over-Nextcloud and keeping Proton Pass rejected [USER 2026-08-31]
 - [theming-stylix](decisions/theming-stylix.md) — adopt stylix, driven from
