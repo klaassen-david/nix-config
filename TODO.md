@@ -197,7 +197,7 @@ both desktops; not the default yet.
 - [ ] **switch hermes/hestia to Waterfox** `[manual]` — after the stylix item.
   1. Before the first start of the packaged build, carry the evaluation profile
      over (tabs, tree, extension data): `cp -a ~/.cache/waterfox-eval/profile/.
-     ~/.waterfox/default/` — skip `user.js`/`chrome/userChrome.css`, home-manager
+     ~/.config/waterfox/default/` — skip `user.js`/`chrome/userChrome.css`, home-manager
      owns those.
   2. `host.browser = "waterfox"` per host; switch; relogin (sway startup entry).
   3. Check by hand: Ctrl+T/Ctrl+L/Escape, Tab engine cycling, Ctrl+Alt+arrows,

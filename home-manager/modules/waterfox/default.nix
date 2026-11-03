@@ -10,7 +10,9 @@
 #
 # programs.waterfox comes from home-manager's own mkFirefoxModule (the same
 # builder behind programs.firefox/floorp/librewolf), so policies, profiles,
-# settings and userChrome work as for Firefox. The profile lives in ~/.waterfox.
+# settings and userChrome work as for Firefox. The profile lives in
+# ~/.config/waterfox (XDG, like Firefox's): a non-default configPath also makes
+# the wrapper export MOZ_APP_DATA, which Waterfox honours.
 #
 # Extension *list* is declarative but additive: dropping an id here does not
 # uninstall it — retire one with `installation_mode = "blocked"`. Extension data
@@ -84,6 +86,7 @@ in
   programs.waterfox = {
     enable = true;
     package = waterfox;
+    configPath = "${config.xdg.configHome}/waterfox";
     globalExtensions = [ theme ];
 
     policies = {
