@@ -144,6 +144,12 @@
   ];
 
   programs.fish.enable = true;
+  # NixOS's default aliases would shadow home-manager's eza functions (decisions/ls-eza.md)
+  programs.fish.shellAliases = {
+    ls = null;
+    l = null;
+    ll = null;
+  };
 
   security.polkit.enable = true;
 }

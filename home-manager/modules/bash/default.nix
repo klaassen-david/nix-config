@@ -9,7 +9,7 @@
       ns = "nix-shell";
       nd = "nix develop";
       l = "ls -l";
-      ll = "ls -lA";
+      ll = "ls -l";
       la = "ls -la";
       nvims = "nvim -S";
     };

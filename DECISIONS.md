@@ -119,3 +119,6 @@ changes (old ruling stays in the file as history).
 - [nextcloud-major](decisions/nextcloud-major.md) — olympus on `nextcloud35`,
   bumped from 34 at 35.0.0; majors are explicit one-step pins, DB dump +
   config copy first [USER 2026-10-22]
+- [ls-eza](decisions/ls-eza.md) — fish's `ls` goes through eza, bash keeps GNU
+  `ls`; `l`/`ll`/`la` mean the same in both (`la` includes `.` and `..`)
+  [USER 2026-11-04]

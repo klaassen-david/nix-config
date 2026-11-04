@@ -35,8 +35,11 @@
       ls = {
         body = "eza $argv";
       };
+      l = {
+        body = "eza -l $argv";
+      };
       la = {
-        body = "eza -la $argv";
+        body = "eza -laa $argv";
       };
       ll = {
         body = "eza -l $argv";
