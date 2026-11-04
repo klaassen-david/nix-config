@@ -3,7 +3,7 @@
 **Ruling** [USER 2026-11-04]: clangd, omnisharp, ocamlformat and rust-analyzer
 are not bundled with nvim. Like ocamllsp, they come from the project's devshell,
 so nvim has to start inside it (`nd`, then `nvim`). They accounted for 3.3 GiB
-of the 5.0 GiB nvim closure on hermes.
+of the 6.5 GiB nvim closure on hermes (`programs.nixvim.build.package`).
 
 tinymist, pyright, nixd, elp, lua_ls and texlab stay bundled: together about
 0.5 GiB, and needed outside any project. tinymist sets `packageFallback` because
