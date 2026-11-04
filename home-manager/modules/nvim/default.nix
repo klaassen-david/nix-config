@@ -127,7 +127,17 @@
         };
       };
 
-      indent-blankline.enable = true;
+      indent-blankline = {
+        enable = true;
+        # ibl copies LineNr into IblScope, background included
+        luaConfig.pre = ''
+          local hooks = require("ibl.hooks")
+          hooks.register(hooks.type.HIGHLIGHT_SETUP, function()
+            local fg = vim.api.nvim_get_hl(0, { name = "CursorLineNr", link = false }).fg
+            vim.api.nvim_set_hl(0, "IblScope", { fg = fg })
+          end)
+        '';
+      };
       guess-indent.enable = true;
       web-devicons.enable = true;
       nvim-autopairs.enable = true;
