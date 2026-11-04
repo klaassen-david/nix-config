@@ -43,6 +43,7 @@
       undofile = true;
       ignorecase = true;
       smartcase = true;
+      updatetime = 250;
     };
 
     keymaps = [

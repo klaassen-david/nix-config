@@ -123,4 +123,5 @@ changes (old ruling stays in the file as history).
   `ls`; `l`/`ll`/`la` mean the same in both (`la` includes `.` and `..`)
   [USER 2026-11-04]
 - [nvim-editor-defaults](decisions/nvim-editor-defaults.md) — guess-indent only,
-  no sleuth; builtin `gc` instead of comment.nvim [USER 2026-11-04]
+  no sleuth; builtin `gc` instead of comment.nvim; `updatetime` 250
+  [USER 2026-11-04]
