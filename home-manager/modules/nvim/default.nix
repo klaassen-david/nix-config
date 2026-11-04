@@ -1,8 +1,4 @@
-{
-  config,
-  pkgs,
-  ...
-}:
+{ config, ... }:
 
 {
   imports = [
@@ -97,7 +93,8 @@
 
       treesitter = {
         enable = true;
-        grammarPackages = with pkgs.vimPlugins.nvim-treesitter.builtGrammars; [
+        # not pkgs.vimPlugins: those grammars ship upstream queries nvim has no handlers for
+        grammarPackages = with config.programs.nixvim.plugins.treesitter.package.builtGrammars; [
           rust
           python
           nix

@@ -1,8 +1,10 @@
-{ pkgs, ... }:
+{ config, ... }:
 {
   programs.nixvim = {
     # image.nvim's typst integration (on by default) needs this parser
-    plugins.treesitter.grammarPackages = [ pkgs.vimPlugins.nvim-treesitter.builtGrammars.typst ];
+    plugins.treesitter.grammarPackages = [
+      config.programs.nixvim.plugins.treesitter.package.builtGrammars.typst
+    ];
 
     plugins.lsp.servers = {
       tinymist.enable = true;
