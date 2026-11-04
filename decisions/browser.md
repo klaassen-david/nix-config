@@ -16,6 +16,9 @@ extensions, back, forward, reload in that order; back/forward always shown,
 also when disabled; Firefox View, the Waterfox blocker and all-tabs buttons
 removed.
 
+**Url bar in the sidebar** [USER 2026-11-04]: the address stays visible in the
+sidebar while the floating url bar is open.
+
 **Order** [USER 2026-11-03]: stylix is wired up and committed *before* the
 switch; the browser's UI colours come from a theme add-on generated from the
 stylix/base16 palette, not from hand-written userChrome colours or Dark Reader
