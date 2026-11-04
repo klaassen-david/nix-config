@@ -133,7 +133,6 @@
       comment.enable = true;
       indent-blankline.enable = true;
       guess-indent.enable = true;
-      sleuth.enable = true;
       web-devicons.enable = true;
       nvim-autopairs.enable = true;
       transparent = {

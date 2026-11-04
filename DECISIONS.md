@@ -122,3 +122,5 @@ changes (old ruling stays in the file as history).
 - [ls-eza](decisions/ls-eza.md) — fish's `ls` goes through eza, bash keeps GNU
   `ls`; `l`/`ll`/`la` mean the same in both (`la` includes `.` and `..`)
   [USER 2026-11-04]
+- [nvim-editor-defaults](decisions/nvim-editor-defaults.md) — guess-indent only,
+  no sleuth [USER 2026-11-04]
