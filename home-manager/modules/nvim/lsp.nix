@@ -29,20 +29,6 @@
       };
     };
 
-    # https://nix-community.github.io/nixvim/NeovimOptions/index.html?highlight=extraplugi#extraplugins
-    extraPlugins =
-      let
-        claudecode-nvim = pkgs.vimUtils.buildVimPlugin {
-          name = "claudecode-nvim";
-          src = inputs.claudecode-nvim;
-        };
-      in
-      [
-        claudecode-nvim
-      ];
-
-    plugins.snacks.enable = true;
-
     # https://nix-community.github.io/nixvim/NeovimOptions/autoGroups/index.html
     autoGroups = {
       "kickstart-lsp-attach" = {
@@ -369,21 +355,5 @@
       '';
     };
 
-    extraConfigLua = ''
-      require("claudecode").setup({
-        terminal = {
-          split_side = "right",
-          split_width_percentage = 0.35,
-          provider = "external",
-          provider_opts = {
-            external_terminal_cmd = "ghostty -e %s",
-          },
-          auto_close = true,
-        },
-        auto_start = true,
-        track_selection = true,
-        focus_after_send = false,
-      })
-    '';
   };
 }

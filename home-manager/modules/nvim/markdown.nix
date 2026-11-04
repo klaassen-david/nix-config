@@ -24,7 +24,7 @@
 #   non-file buffers: LSP hover floats are markdown too. It surfaces the servers
 #   already configured in ./lsp.nix (nixd, pyright, lua_ls, clangd, …) inside fences.
 # - mkdnflow's table-align maps default to <leader>a{l,r,c}, colliding with the Claude
-#   maps in ./default.nix; moved under <leader>t. `-` (MkdnDecreaseHeading) is dropped
+#   maps in ./claude.nix; moved under <leader>t. `-` (MkdnDecreaseHeading) is dropped
 #   so Oil's global map wins; `g-` still decreases. Every other mkdnflow map is
 #   buffer-local to markdown, so the rest of the config is unaffected.
 {
