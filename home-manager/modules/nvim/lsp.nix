@@ -1,9 +1,4 @@
-{ pkgs, ... }:
 {
-  home.packages = with pkgs; [
-    nixfmt
-  ];
-
   programs.nixvim = {
     plugins.fidget.enable = true;
 

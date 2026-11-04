@@ -16,8 +16,6 @@
     ./typst.nix
   ];
 
-  home.packages = [ pkgs.nodejs ];
-
   programs.nixvim = {
     enable = true;
     defaultEditor = true;
