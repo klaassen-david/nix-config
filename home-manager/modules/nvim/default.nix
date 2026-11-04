@@ -24,7 +24,8 @@
       tabstop = 2;
 
       breakindent = true;
-      signcolumn = "yes";
+      signcolumn = "number";
+      numberwidth = 3;
       list = true;
       listchars = {
         tab = "» ";
