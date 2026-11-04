@@ -10,7 +10,7 @@
 # host, so an agent invocation finds the same toolbox regardless of machine.
 #
 # Only what the *base* HM bundle lacks: ripgrep/fd/fzf/curl/wget/bat/gcc/nodejs
-# come from home.nix, nixfmt from modules/nvim/plugins/lsp.nix.
+# come from home.nix, nixfmt from modules/nvim/lsp.nix.
 #
 # Caveat: home.nix installs uutils-coreutils-noprefix, so GNU-only flags
 # (`date -d`, `stat -c`, `sort -V`) may not behave as a script expects.

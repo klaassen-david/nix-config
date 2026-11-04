@@ -3,7 +3,7 @@
 **Ruling** [USER 2026-09-12]: the markdown stack is render-markdown (in-buffer
 prettifying), nabla (LaTeX popup), image.nvim (kitty protocol), mkdnflow
 (links/tables/lists/to-dos/folding) and otter (LSP in fences), all in
-`home-manager/modules/nvim/plugins/markdown.nix`.
+`home-manager/modules/nvim/markdown.nix`.
 
 bullets.vim was considered and dropped: mkdnflow already covers list
 continuation, promote/demote with renumbering, and checkbox toggling with
