@@ -17,7 +17,7 @@
         semanticTokens = "disable";
         projectResolution = "lockDatabase";
       };
-      # without override, nixvim prepends the global onAttach, which reads an undefined `event`
+      # without override, the global onAttach would run twice: here and from LspAttach
       tinymist.onAttach.override = true;
       tinymist.onAttach.function = ''
         vim.keymap.set("n", "<leader>tp", function()
