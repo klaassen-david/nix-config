@@ -173,6 +173,9 @@ in
         # Firefox's own fullscreen autohide would slide the moved toolbox and
         # reveal it on hover; window.cfg hides the sidebar instead
         "browser.fullscreen.autohide" = false;
+        # Waterfox's Lepton hides a disabled forward button; keep both shown
+        "userChrome.autohide.back_button" = false;
+        "userChrome.autohide.forward_button" = false;
         "extensions.activeThemeID" = theme.addonId;
 
         # startup: restore the session (the tree lives in it), no nags

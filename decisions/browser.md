@@ -11,6 +11,11 @@ immediately, Escape always closes, Ctrl+T creates the tab only on Enter).
 **Private windows** [USER 2026-11-04]: every add-on runs in private windows,
 also ones installed by hand.
 
+**Sidebar controls** [USER 2026-11-04]: the first row starts with app menu,
+extensions, back, forward, reload in that order; back/forward always shown,
+also when disabled; Firefox View, the Waterfox blocker and all-tabs buttons
+removed.
+
 **Order** [USER 2026-11-03]: stylix is wired up and committed *before* the
 switch; the browser's UI colours come from a theme add-on generated from the
 stylix/base16 palette, not from hand-written userChrome colours or Dark Reader
