@@ -16,15 +16,15 @@
           "<leader>sh" = "help_tags";
         };
       };
-      oil = {
-        enable = true;
-        luaConfig.content = ''
-          vim.api.nvim_set_keymap('n', '-', ':Oil<CR>', { noremap = true })
-        '';
-      };
+      oil.enable = true;
     };
 
     keymaps = [
+      {
+        mode = "n";
+        key = "-";
+        action = "<cmd>Oil<CR>";
+      }
       {
         mode = "n";
         key = "<C-Right>";

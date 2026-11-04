@@ -31,7 +31,11 @@
       breakindent = true;
       signcolumn = "yes";
       list = true;
-      listchars.__raw = "{ tab = '» ', trail = '·', nbsp = '␣' }";
+      listchars = {
+        tab = "» ";
+        trail = "·";
+        nbsp = "␣";
+      };
       cursorline = true;
       scrolloff = 10;
       hlsearch = true;
