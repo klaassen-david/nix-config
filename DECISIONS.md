@@ -15,7 +15,8 @@ changes (old ruling stays in the file as history).
   default over Zen; Firefox stays installed; stylix lands first and themes it
   via a generated theme add-on [USER 2026-11-03]; add-ons run in private
   windows; sidebar row = menu, extensions, back, forward, reload; address
-  shown while the url bar floats [USER 2026-11-04]
+  shown while the url bar floats; switch-to-tab does not focus another
+  window's workspace (out of scope) [USER 2026-11-04]
 - [browser-sync](decisions/browser-sync.md) — no tab sync between hosts for
   now; the rest of browser sync is undecided [USER 2026-11-03]
 - [password-manager](decisions/password-manager.md) — Vaultwarden on olympus;

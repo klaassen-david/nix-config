@@ -19,6 +19,12 @@ removed.
 **Url bar in the sidebar** [USER 2026-11-04]: the address stays visible in the
 sidebar while the floating url bar is open.
 
+**Switch-to-tab across windows** [USER 2026-11-04]: out of scope. The other
+window's tab is selected but its workspace is only marked urgent: sway's
+`focus_on_window_activation smart` (home-manager's default) does not focus a
+window that is not visible. Rejected: `focus` (applies to every app) and
+focusing from Waterfox via `swaymsg`.
+
 **Order** [USER 2026-11-03]: stylix is wired up and committed *before* the
 switch; the browser's UI colours come from a theme add-on generated from the
 stylix/base16 palette, not from hand-written userChrome colours or Dark Reader
