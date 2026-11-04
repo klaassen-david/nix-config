@@ -145,6 +145,8 @@ in
 
         if client and client:supports_method(vim.lsp.protocol.Methods.textDocument_documentHighlight) then
           local highlight_augroup = vim.api.nvim_create_augroup('kickstart-lsp-highlight', { clear = false })
+          -- nixvim reruns this on every client/registerCapability
+          vim.api.nvim_clear_autocmds({ group = highlight_augroup, buf = bufnr })
           vim.api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
             buf = bufnr,
             group = highlight_augroup,
