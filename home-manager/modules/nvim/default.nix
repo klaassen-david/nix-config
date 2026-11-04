@@ -149,5 +149,8 @@
     # stylix's base16 rendering on the desktops (home-manager/modules/theme);
     # olympus keeps the plugin
     colorschemes.nord.enable = !config.stylix.targets.nixvim.enable;
+
+    # mini.base16 only knows the older @property, so fields would render as plain text
+    highlightOverride."@variable.member".link = "@property";
   };
 }
