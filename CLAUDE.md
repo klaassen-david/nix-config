@@ -97,7 +97,7 @@ Rulings and rejected alternatives: `decisions/vpn.md`; mechanics (addressing, ta
 ## Commands
 
 ```sh
-nix flake check                        # eval + build every host's toplevel, + statix lint, + vpn VM test (needs KVM)
+nix flake check                        # eval + build every host's toplevel, + statix lint, + nvim startup test, + vpn VM test (needs KVM)
 nix develop                            # devShell with `agenix` + `statix` on PATH
 nixos-rebuild switch --flake .#<host>  # explicit per-host
 ```

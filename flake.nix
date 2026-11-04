@@ -160,6 +160,9 @@
 
           # VM test of the wireguard mesh (KVM: `nix build .#checks.x86_64-linux.vpn -L`)
           vpn = import ./tests/vpn.nix { inherit pkgs inputs; };
+
+          # nvim starts without errors; keypress-time errors are out of its reach
+          nvim = self.nixosConfigurations.hermes.config.home-manager.users.dk.programs.nixvim.build.test;
         };
     };
 }
