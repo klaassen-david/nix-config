@@ -129,3 +129,5 @@ changes (old ruling stays in the file as history).
   ocamlformat and rust-analyzer come from the project's devshell (`nd`), the
   lighter servers stay bundled; same nvim on every host; no direnv
   [USER 2026-11-04]
+- [nvim-no-debugger](decisions/nvim-no-debugger.md) — no dap, dap-ui or codelldb in
+  nvim; 1.4 GiB of closure for tooling with no keymaps [USER 2026-11-04]

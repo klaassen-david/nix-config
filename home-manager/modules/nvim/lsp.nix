@@ -11,6 +11,10 @@ in
   programs.nixvim = {
     plugins.fidget.enable = true;
 
+    plugins.rustaceanvim.enable = true;
+    # from the project's devshell, decisions/nvim-lsp-closure.md
+    dependencies.rust-analyzer.enable = false;
+
     plugins.conform-nvim = {
       enable = true;
       settings = {

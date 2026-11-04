@@ -8,7 +8,6 @@
     ./markdown.nix
     ./claude.nix
     ./navigation.nix
-    ./debug.nix
     ./typst.nix
   ];
 
