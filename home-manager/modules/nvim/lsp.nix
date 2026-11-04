@@ -14,12 +14,6 @@
       };
     };
 
-    autoGroups = {
-      "kickstart-lsp-attach" = {
-        clear = true;
-      };
-    };
-
     plugins.none-ls = {
       enable = true;
       sources.formatting.ocamlformat.enable = true;
@@ -32,14 +26,6 @@
       servers = {
         pyright.enable = true;
         nixd.enable = true;
-
-        rust_analyzer = {
-          enable = false;
-          package = null;
-          cmd = [ "rust-analyzer" ];
-          installCargo = false;
-          installRustc = false;
-        };
 
         lua_ls = {
           enable = true;

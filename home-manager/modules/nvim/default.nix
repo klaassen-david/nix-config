@@ -24,10 +24,8 @@
   programs.nixvim = {
     enable = true;
     defaultEditor = true;
-    globals = {
-      mapleader = " ";
-      have_nerd_font = true;
-    };
+
+    globals.mapleader = " ";
 
     opts = {
       number = true;
@@ -97,13 +95,6 @@
     plugins = {
       lualine.enable = true;
 
-      lsp = {
-        enable = true;
-        servers = {
-          lua_ls.enable = true;
-        };
-      };
-
       treesitter = {
         enable = true;
         grammarPackages = with pkgs.vimPlugins.nvim-treesitter.builtGrammars; [
@@ -164,10 +155,5 @@
     # stylix's base16 rendering on the desktops (home-manager/modules/theme);
     # olympus keeps the plugin
     colorschemes.nord.enable = !config.stylix.targets.nixvim.enable;
-
-    extraConfigLuaPost = ''
-      -- vim.cmd "TransparentEnable"
-
-    '';
   };
 }
