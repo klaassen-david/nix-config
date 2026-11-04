@@ -18,8 +18,16 @@ per-module literal.
   terminal 17 (ghostty's old 16 in JetBrains Mono), tofi 24; icons stay
   Breeze (dark). Font *families* always follow stylix — only sizes are pinned.
   zathura otherwise follows stylix entirely (colours, opacity).
-- nixvim's own `colorschemes.nord` gives way to stylix's base16 rendering.
-- olympus gets the text-console colours too; nothing else there.
+- ~~nixvim's own `colorschemes.nord` gives way to stylix's base16 rendering.~~
+  Amended [USER 2026-11-04]: stylix's rendering made nvim mostly red under
+  Nord, and the plugin reads better. `nvimThemes` in `common/host.nix` maps each
+  scheme to a nixvim colorscheme or `mini.base16`; `host.theme.base16` only
+  accepts its keys, so a scheme without a mapping fails at eval. Nord uses the
+  plugin, and it is the only entry. A plugin brings its own colours (Nord's
+  comments are `616e88`, not in the stylix palette), so nvim is the one
+  exception to "no consumer hardcodes a palette".
+- olympus gets the text-console colours too; nothing else there, except that
+  nvim follows the same mapping on every host [USER 2026-11-04].
 - Firefox: font families and reader-mode colours from the stylix values. Its
   UI is only dark (the portal `color-scheme`, derived from stylix's polarity),
   not palette-coloured: Firefox enforces add-on signing, so it cannot take the

@@ -1,8 +1,9 @@
 # Stylix, driven by the host struct (decisions/theming-stylix.md).
 #
-# `host.theme.base16` names a base16-schemes scheme ("nord", "gruvbox-dark-hard",
-# … — `ls $(nix build --no-link --print-out-paths nixpkgs#base16-schemes)/share/themes`);
-# changing it re-themes everything below. No consumer hardcodes a palette:
+# `host.theme.base16` names a base16-schemes scheme (`ls $(nix build --no-link
+# --print-out-paths nixpkgs#base16-schemes)/share/themes`) that has an nvim
+# entry in common/host.nix; changing it re-themes everything below. No consumer
+# hardcodes a palette:
 # targets stylix ships are opted in (autoEnable = false) here (console, every
 # host) and in home-manager/modules/theme (the desktop bundle); everything
 # without a target reads `config.lib.stylix.colors` (sway bar, i3status blocks,

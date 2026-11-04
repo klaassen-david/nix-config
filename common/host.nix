@@ -9,6 +9,12 @@ let
       to = mkOption { type = types.port; };
     };
   };
+
+  # How nvim renders each scheme: a nixvim colorscheme (with optional settings),
+  # or "mini.base16" for stylix's own. The keys are what theme.base16 accepts.
+  nvimThemes = {
+    nord.plugin = "nord";
+  };
 in
 {
   options.host = {
@@ -190,9 +196,15 @@ in
 
     theme = {
       base16 = mkOption {
-        type = types.str;
+        type = types.enum (lib.attrNames nvimThemes);
         default = "nord";
         description = "base16 scheme name; feeds the stylix idea + bar colors";
+      };
+      nvim = mkOption {
+        type = types.attrs;
+        readOnly = true;
+        default = nvimThemes.${config.host.theme.base16};
+        description = "nvim rendering of the scheme, from nvimThemes";
       };
       opacity = mkOption {
         type = types.numbers.between 0.0 1.0;

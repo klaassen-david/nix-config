@@ -1,5 +1,14 @@
-{ config, ... }:
+{
+  config,
+  host,
+  lib,
+  ...
+}:
 
+let
+  inherit (host.theme) nvim;
+  stylixRendered = nvim.plugin == "mini.base16";
+in
 {
   imports = [
     ./completion.nix
@@ -10,6 +19,8 @@
     ./navigation.nix
     ./typst.nix
   ];
+
+  stylix.targets.nixvim.enable = stylixRendered;
 
   programs.nixvim = {
     enable = true;
@@ -157,11 +168,14 @@
       };
     };
 
-    # stylix's base16 rendering on the desktops (home-manager/modules/theme);
-    # olympus keeps the plugin
-    colorschemes.nord.enable = !config.stylix.targets.nixvim.enable;
+    colorschemes = lib.optionalAttrs (!stylixRendered) {
+      ${nvim.plugin} = {
+        enable = true;
+        settings = nvim.settings or { };
+      };
+    };
 
-    # mini.base16 only knows the older @property, so fields would render as plain text
+    # nord.nvim and mini.base16 predate @variable.member, so fields would render as plain text
     highlightOverride."@variable.member".link = "@property";
   };
 }
