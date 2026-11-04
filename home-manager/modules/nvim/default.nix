@@ -1,7 +1,6 @@
 {
   config,
   pkgs,
-  lib,
   ...
 }:
 
@@ -12,6 +11,7 @@
     ./lean.nix
     ./markdown.nix
     ./claude.nix
+    ./navigation.nix
     ./debug.nix
     ./typst.nix
   ];
@@ -24,9 +24,6 @@
   programs.nixvim = {
     enable = true;
     defaultEditor = true;
-    # barbar.nvim carries the JSON license, which nixpkgs counts as unfree
-    nixpkgs.config.allowUnfreePredicate = pkg: lib.getName pkg == "barbar.nvim";
-
     globals = {
       mapleader = " ";
       have_nerd_font = true;
@@ -56,36 +53,6 @@
         mode = "n";
         key = "<ESC>";
         action = "<cmd>nohlsearch<CR>";
-      }
-      {
-        mode = "n";
-        key = "<C-Right>";
-        action = "<cmd>BufferNext<CR>";
-      }
-      {
-        mode = "n";
-        key = "<C-Left>";
-        action = "<cmd>BufferPrevious<CR>";
-      }
-      {
-        mode = "n";
-        key = "<C-c>";
-        action = "<cmd>BufferClose<CR>";
-      }
-      {
-        mode = "n";
-        key = "<C-s-w>";
-        action = "<cmd>BufferRestore<CR>";
-      }
-      {
-        mode = "n";
-        key = "<C-s-Left>";
-        action = "<cmd>BufferMovePrevious<CR>";
-      }
-      {
-        mode = "n";
-        key = "<C-s-Right>";
-        action = "<cmd>BufferMoveNext<CR>";
       }
       {
         mode = "n";
@@ -139,17 +106,6 @@
 
       luasnip.enable = true;
 
-      telescope = {
-        enable = true;
-        extensions.fzf-native.enable = true;
-        keymaps = {
-          "<leader>sf" = "find_files";
-          "<leader>sg" = "live_grep";
-          "<leader>sb" = "buffers";
-          "<leader>sh" = "help_tags";
-        };
-      };
-
       treesitter = {
         enable = true;
         grammarPackages = with pkgs.vimPlugins.nvim-treesitter.builtGrammars; [
@@ -186,12 +142,6 @@
         };
       };
 
-      oil = {
-        enable = true;
-        luaConfig.content = ''
-          vim.api.nvim_set_keymap('n', '-', ':Oil<CR>', { noremap = true })
-        '';
-      };
       comment.enable = true;
       indent-blankline.enable = true;
       guess-indent.enable = true;
@@ -205,7 +155,6 @@
       lazydev.enable = true;
       undotree.enable = true;
       mini-ai.enable = true;
-      barbar.enable = true;
     };
 
     userCommands = {
