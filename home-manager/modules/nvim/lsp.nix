@@ -130,40 +130,6 @@
           };
         };
 
-        tinymist.enable = true;
-        tinymist.rootMarkers = [
-          "tinymist.lock"
-          "Session.vim"
-          ".git"
-        ];
-        tinymist.settings = {
-          formatterMode = "typstyle";
-          exportPdf = "onType";
-          semanticTokens = "disable";
-          projectResolution = "lockDatabase";
-        };
-        # without override, nixvim prepends the global onAttach, which reads an undefined `event`
-        tinymist.onAttach.override = true;
-        tinymist.onAttach.function = ''
-          vim.keymap.set("n", "<leader>tp", function()
-              client:exec_cmd({
-                  title = "pin",
-                  command = "tinymist.pinMainToCurrent",
-                  arguments = { vim.api.nvim_buf_get_name(0) },
-              }, { bufnr = bufnr })
-          end, { buf = bufnr, desc = "[T]inymist [P]in" })
-
-          vim.keymap.set("n", "<leader>tu", function()
-              client:exec_cmd({
-                  title = "unpin",
-                  command = "tinymist.pinMain",
-                  arguments = { vim.v.null },
-              }, { bufnr = bufnr })
-          end, { buf = bufnr, desc = "[T]inymist [U]npin" })
-
-          vim.keymap.set("n", "<leader>to", "<cmd>OpenPdf<CR>",
-            { buf = bufnr, desc = "[T]inymist [O]pen PDF" })
-        '';
       };
 
       keymaps = {

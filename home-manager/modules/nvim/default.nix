@@ -15,6 +15,7 @@ in
     ./lean.nix
     ./markdown.nix
     ./claude.nix
+    ./typst.nix
   ];
 
   home.packages = with pkgs; [
@@ -180,7 +181,6 @@ in
           diff
           latex
           ocaml
-          typst # image.nvim's typst integration (on by default) needs this parser
         ];
         settings = {
           highlight.enable = true;
@@ -230,17 +230,6 @@ in
     userCommands = {
       Q = {
         command = "mks!|wqa";
-      };
-      OpenPdf = {
-        command.__raw = ''
-          function()
-            local filepath = vim.api.nvim_buf_get_name(0)
-            if filepath:match("%.typ$") then
-              local pdf_path = filepath:gsub("%.typ$", ".pdf")
-              vim.system({ "xdg-open", pdf_path })
-            end
-          end
-        '';
       };
     };
 
