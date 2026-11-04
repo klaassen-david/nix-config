@@ -50,6 +50,7 @@ let
   amo = id: {
     installation_mode = "normal_installed";
     install_url = "https://addons.mozilla.org/firefox/downloads/latest/${lib.escapeURL id}/latest.xpi";
+    private_browsing = true; # a listed id does not fall back to "*"
   };
   engine = Name: Alias: URLTemplate: IconURL: {
     inherit
@@ -105,7 +106,11 @@ in
         "gdpr@cavi.au.dk" # Consent-O-Matic
         "{7be2ba16-0f1e-4d93-9ebc-5164397477a9}" # Video Speed Controller
         "{88ebde3a-4581-4c6b-8019-2a05a9e3e938}" # Hide YouTube Shorts
-      ] amo;
+      ] amo
+      // {
+        # every add-on runs in private windows, also ones installed by hand
+        "*".private_browsing = true;
+      };
       # Tab in the url bar cycles through exactly these (window.cfg)
       SearchEngines = {
         Default = "Startpage";

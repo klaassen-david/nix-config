@@ -13,7 +13,8 @@ changes (old ruling stays in the file as history).
   [USER 2026-08-31]
 - [browser](decisions/browser.md) — Waterfox (native tree tabs) becomes the
   default over Zen; Firefox stays installed; stylix lands first and themes it
-  via a generated theme add-on [USER 2026-11-03]
+  via a generated theme add-on [USER 2026-11-03]; add-ons run in private
+  windows [USER 2026-11-04]
 - [browser-sync](decisions/browser-sync.md) — no tab sync between hosts for
   now; the rest of browser sync is undecided [USER 2026-11-03]
 - [password-manager](decisions/password-manager.md) — Vaultwarden on olympus;

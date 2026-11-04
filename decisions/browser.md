@@ -8,6 +8,9 @@ buttons and a tab tree (children indented, Sidebery-style level lines); no
 hover reveals anywhere; Zen-style floating url bar (centred, suggestions open
 immediately, Escape always closes, Ctrl+T creates the tab only on Enter).
 
+**Private windows** [USER 2026-11-04]: every add-on runs in private windows,
+also ones installed by hand.
+
 **Order** [USER 2026-11-03]: stylix is wired up and committed *before* the
 switch; the browser's UI colours come from a theme add-on generated from the
 stylix/base16 palette, not from hand-written userChrome colours or Dark Reader
