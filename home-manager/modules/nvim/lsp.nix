@@ -9,6 +9,33 @@ let
 in
 {
   programs.nixvim = {
+    # diagnostics colour the line number; no sign text, so the gutter never widens
+    extraConfigLua = ''
+      local severity = vim.diagnostic.severity
+      local names = {
+        [severity.ERROR] = "Error",
+        [severity.WARN] = "Warn",
+        [severity.INFO] = "Info",
+        [severity.HINT] = "Hint",
+      }
+      local text, numhl = {}, {}
+      for level, name in pairs(names) do
+        text[level] = ""
+        numhl[level] = "DiagnosticLineNr" .. name
+      end
+      vim.diagnostic.config({ severity_sort = true, signs = { text = text, numhl = numhl } })
+
+      local function set_number_highlights()
+        local bg = vim.api.nvim_get_hl(0, { name = "Normal", link = false }).bg
+        for _, name in pairs(names) do
+          local fg = vim.api.nvim_get_hl(0, { name = "Diagnostic" .. name, link = false }).fg
+          vim.api.nvim_set_hl(0, "DiagnosticLineNr" .. name, { fg = bg, bg = fg, bold = true })
+        end
+      end
+      set_number_highlights()
+      vim.api.nvim_create_autocmd("ColorScheme", { callback = set_number_highlights })
+    '';
+
     plugins.fidget.enable = true;
 
     plugins.rustaceanvim.enable = true;
