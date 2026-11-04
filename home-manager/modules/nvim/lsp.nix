@@ -9,12 +9,6 @@
     # { 'Bilal2453/luvit-meta', lazy = true },
     #
     #
-    # Allows extra capabilities providied by nvim-cmp
-    # https://nix-community.github.io/nixvim/plugins/cmp-nvim-lsp.html
-    plugins.cmp-nvim-lsp = {
-      enable = true;
-    };
-
     # Useful status updates for LSP.
     # https://nix-community.github.io/nixvim/plugins/fidget/index.html
     plugins.fidget = {
