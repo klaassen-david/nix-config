@@ -16,10 +16,7 @@
     ./typst.nix
   ];
 
-  home.packages = with pkgs; [
-    nodejs
-    xdotool
-  ];
+  home.packages = [ pkgs.nodejs ];
 
   programs.nixvim = {
     enable = true;

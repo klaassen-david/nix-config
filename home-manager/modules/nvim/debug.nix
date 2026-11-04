@@ -3,8 +3,6 @@ let
   codelldb = "${pkgs.vscode-extensions.vadimcn.vscode-lldb}/share/vscode/extensions/vadimcn.vscode-lldb";
 in
 {
-  home.packages = [ pkgs.vscode-extensions.vadimcn.vscode-lldb ];
-
   programs.nixvim = {
     plugins = {
       dap.enable = true;
