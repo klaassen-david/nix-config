@@ -139,6 +139,9 @@
         packages = [
           agenix.packages.x86_64-linux.agenix
           nixpkgs-unstable.legacyPackages.x86_64-linux.statix
+          nixpkgs-unstable.legacyPackages.x86_64-linux.deadnix
+          nixpkgs-unstable.legacyPackages.x86_64-linux.nixd
+          nixpkgs-unstable.legacyPackages.x86_64-linux.nixfmt
         ];
       };
 
