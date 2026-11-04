@@ -24,6 +24,7 @@
           "<CR>" = "cmp.mapping.confirm { select = true }";
           "<C-l>" = ''
             cmp.mapping(function()
+              local luasnip = require('luasnip')
               if luasnip.expand_or_locally_jumpable() then
                 luasnip.expand_or_jump()
               end
@@ -31,6 +32,7 @@
           '';
           "<C-h>" = ''
             cmp.mapping(function()
+              local luasnip = require('luasnip')
               if luasnip.locally_jumpable(-1) then
                 luasnip.jump(-1)
               end
