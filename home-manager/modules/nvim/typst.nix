@@ -6,6 +6,8 @@
 
     plugins.lsp.servers = {
       tinymist.enable = true;
+      # a project's tinymist wins over this one
+      tinymist.packageFallback = true;
       tinymist.rootMarkers = [
         "tinymist.lock"
         "Session.vim"
