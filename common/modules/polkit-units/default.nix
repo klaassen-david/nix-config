@@ -22,6 +22,9 @@
 #   - `enable`/`disable` are a different action (manage-unit-files) and stay
 #     privileged. That is the point: nothing here can make a unit boot-persistent.
 #   - polkit's JS engine is Duktape (ES5) — no arrow functions, no Array#includes.
+#   - The rule grants one unit per call. Since systemd 262, `systemctl stop a b`
+#     is one EnqueueUnitJobMany, whose polkit check carries no unit or verb, so
+#     it falls through to authentication.
 { config, lib, ... }:
 
 let

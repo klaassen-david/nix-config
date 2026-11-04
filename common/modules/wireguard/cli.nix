@@ -151,9 +151,9 @@ let
 
       # stop every unit, then clear what a failed or half-finished switch left behind
       direct() {
-        local units=() t
-        for t in "''${targets[@]}"; do units+=("$(unit_of "$t").service"); done
-        systemctl stop "''${units[@]}"
+        local t
+        # one call per unit: see polkit-units
+        for t in "''${targets[@]}"; do systemctl stop "$(unit_of "$t").service"; done
         systemctl start vpn-egress-reset.service
       }
 
