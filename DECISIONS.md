@@ -125,3 +125,7 @@ changes (old ruling stays in the file as history).
 - [nvim-editor-defaults](decisions/nvim-editor-defaults.md) — guess-indent only,
   no sleuth; builtin `gc` instead of comment.nvim; `updatetime` 250
   [USER 2026-11-04]
+- [nvim-lsp-closure](decisions/nvim-lsp-closure.md) — clangd, omnisharp,
+  ocamlformat and rust-analyzer come from the project's devshell (`nd`), the
+  lighter servers stay bundled; same nvim on every host; no direnv
+  [USER 2026-11-04]

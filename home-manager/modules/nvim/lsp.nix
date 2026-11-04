@@ -33,14 +33,22 @@ in
           settings.completion.callSnippet = "Replace";
         };
 
-        omnisharp.enable = true;
-        clangd.enable = true;
+        # package = null: from the project's devshell, decisions/nvim-lsp-closure.md
+        omnisharp = {
+          enable = true;
+          package = null;
+        };
+
+        clangd = {
+          enable = true;
+          package = null;
+        };
+
         elp.enable = true;
 
         ocamllsp = {
           enable = true;
           package = null;
-          cmd = [ "ocamllsp" ];
         };
 
         texlab.enable = true;

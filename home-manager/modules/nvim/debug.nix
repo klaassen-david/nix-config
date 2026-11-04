@@ -4,6 +4,9 @@ let
 in
 {
   programs.nixvim = {
+    # from the project's devshell, decisions/nvim-lsp-closure.md
+    dependencies.rust-analyzer.enable = false;
+
     plugins = {
       dap.enable = true;
       dap-lldb = {
