@@ -13,14 +13,11 @@ in
 
     plugins.conform-nvim = {
       enable = true;
-      settings.format_on_save = {
-        lsp_fallback = true;
+      settings = {
+        format_on_save.lsp_format = "fallback";
+        # from the project's devshell; ocamllsp formats when it is missing
+        formatters_by_ft.ocaml = [ "ocamlformat" ];
       };
-    };
-
-    plugins.none-ls = {
-      enable = true;
-      sources.formatting.ocamlformat.enable = true;
     };
 
     plugins.lsp = {
