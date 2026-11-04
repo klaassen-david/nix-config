@@ -15,8 +15,6 @@ in
       })
     ];
 
-    plugins.snacks.enable = true;
-
     keymaps = [
       (claudeMap "<leader>ac" "ClaudeCode" "Toggle Claude")
       (claudeMap "<leader>af" "ClaudeCodeFocus" "Focus Claude")
