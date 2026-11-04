@@ -5,9 +5,6 @@
   ...
 }:
 
-let
-  codelldb = "${pkgs.vscode-extensions.vadimcn.vscode-lldb}/share/vscode/extensions/vadimcn.vscode-lldb";
-in
 {
   imports = [
     ./completion.nix
@@ -15,11 +12,11 @@ in
     ./lean.nix
     ./markdown.nix
     ./claude.nix
+    ./debug.nix
     ./typst.nix
   ];
 
   home.packages = with pkgs; [
-    vscode-extensions.vadimcn.vscode-lldb
     nodejs
     xdotool
   ];
@@ -205,23 +202,7 @@ in
         enable = true;
         autoLoad = true;
       };
-      dap.enable = true;
-      dap-lldb = {
-        enable = true;
-        settings.codelldb_path = "${codelldb}/adapter/codelldb";
-      };
-      dap-ui.enable = true;
       lazydev.enable = true;
-      rustaceanvim = {
-        enable = true;
-        # autodetection only looks on PATH and in mason; codelldb is neither here
-        settings.dap.adapter.__raw = ''
-          require('rustaceanvim.config').get_codelldb_adapter(
-            "${codelldb}/adapter/codelldb",
-            "${codelldb}/lldb/lib/liblldb.so"
-          )
-        '';
-      };
       undotree.enable = true;
       mini-ai.enable = true;
       barbar.enable = true;
@@ -240,20 +221,6 @@ in
     extraConfigLuaPost = ''
       -- vim.cmd "TransparentEnable"
 
-      -- dapui auto setup on dap events
-      local dap, dapui = require("dap"), require("dapui")
-      dap.listeners.before.attach.dapui_config = function()
-        dapui.open()
-      end
-      dap.listeners.before.launch.dapui_config = function()
-        dapui.open()
-      end
-      dap.listeners.before.event_terminated.dapui_config = function()
-        dapui.close()
-      end
-      dap.listeners.before.event_exited.dapui_config = function()
-        dapui.close()
-      end
     '';
   };
 }
