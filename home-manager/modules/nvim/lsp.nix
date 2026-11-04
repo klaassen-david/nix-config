@@ -1,3 +1,12 @@
+{ lib, ... }:
+let
+  pickerMap = key: picker: desc: {
+    mode = "n";
+    inherit key;
+    action.__raw = "require('telescope.builtin').${picker}";
+    options.desc = "LSP: ${desc}";
+  };
+in
 {
   programs.nixvim = {
     plugins.fidget.enable = true;
@@ -102,46 +111,15 @@
             '';
             options.desc = "[<-] [D]iagnostic";
           }
-          {
-            mode = "n";
-            key = "gd";
-            action.__raw = "require('telescope.builtin').lsp_definitions";
-            options.desc = "LSP: [G]oto [D]efinition";
-          }
-          {
-            mode = "n";
-            key = "gr";
-            action.__raw = "require('telescope.builtin').lsp_references";
-            options = {
-              desc = "LSP: [G]oto [R]eferences";
-              # shadows nvim's gr* defaults in LSP buffers; the maps here cover them
-              nowait = true;
-            };
-          }
-          {
-            mode = "n";
-            key = "gI";
-            action.__raw = "require('telescope.builtin').lsp_implementations";
-            options.desc = "LSP: [G]oto [I]mplementation";
-          }
-          {
-            mode = "n";
-            key = "<leader>D";
-            action.__raw = "require('telescope.builtin').lsp_type_definitions";
-            options.desc = "LSP: Type [D]efinition";
-          }
-          {
-            mode = "n";
-            key = "<leader>ds";
-            action.__raw = "require('telescope.builtin').lsp_document_symbols";
-            options.desc = "LSP: [D]ocument [S]ymbols";
-          }
-          {
-            mode = "n";
-            key = "<leader>ws";
-            action.__raw = "require('telescope.builtin').lsp_dynamic_workspace_symbols";
-            options.desc = "LSP: [W]orkspace [S]ymbols";
-          }
+          (pickerMap "gd" "lsp_definitions" "[G]oto [D]efinition")
+          # shadows nvim's gr* defaults in LSP buffers; the maps here cover them
+          (lib.recursiveUpdate (pickerMap "gr" "lsp_references" "[G]oto [R]eferences") {
+            options.nowait = true;
+          })
+          (pickerMap "gI" "lsp_implementations" "[G]oto [I]mplementation")
+          (pickerMap "<leader>D" "lsp_type_definitions" "Type [D]efinition")
+          (pickerMap "<leader>ds" "lsp_document_symbols" "[D]ocument [S]ymbols")
+          (pickerMap "<leader>ws" "lsp_dynamic_workspace_symbols" "[W]orkspace [S]ymbols")
         ];
 
         lspBuf = {

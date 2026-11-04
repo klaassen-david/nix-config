@@ -1,4 +1,11 @@
 { lib, ... }:
+let
+  bufferMap = key: command: {
+    mode = "n";
+    inherit key;
+    action = "<cmd>${command}<CR>";
+  };
+in
 {
   programs.nixvim = {
     # barbar.nvim carries the JSON license, which nixpkgs counts as unfree
@@ -25,36 +32,12 @@
         key = "-";
         action = "<cmd>Oil<CR>";
       }
-      {
-        mode = "n";
-        key = "<C-Right>";
-        action = "<cmd>BufferNext<CR>";
-      }
-      {
-        mode = "n";
-        key = "<C-Left>";
-        action = "<cmd>BufferPrevious<CR>";
-      }
-      {
-        mode = "n";
-        key = "<C-c>";
-        action = "<cmd>BufferClose<CR>";
-      }
-      {
-        mode = "n";
-        key = "<C-s-w>";
-        action = "<cmd>BufferRestore<CR>";
-      }
-      {
-        mode = "n";
-        key = "<C-s-Left>";
-        action = "<cmd>BufferMovePrevious<CR>";
-      }
-      {
-        mode = "n";
-        key = "<C-s-Right>";
-        action = "<cmd>BufferMoveNext<CR>";
-      }
+      (bufferMap "<C-Right>" "BufferNext")
+      (bufferMap "<C-Left>" "BufferPrevious")
+      (bufferMap "<C-c>" "BufferClose")
+      (bufferMap "<C-s-w>" "BufferRestore")
+      (bufferMap "<C-s-Left>" "BufferMovePrevious")
+      (bufferMap "<C-s-Right>" "BufferMoveNext")
     ];
   };
 }

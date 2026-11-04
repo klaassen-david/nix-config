@@ -1,4 +1,11 @@
 { pkgs, inputs, ... }:
+let
+  claudeMap = key: command: desc: {
+    inherit key;
+    action = "<cmd>${command}<cr>";
+    options.desc = desc;
+  };
+in
 {
   programs.nixvim = {
     extraPlugins = [
@@ -11,47 +18,14 @@
     plugins.snacks.enable = true;
 
     keymaps = [
-      {
-        key = "<leader>ac";
-        action = "<cmd>ClaudeCode<cr>";
-        options.desc = "Toggle Claude";
-      }
-      {
-        key = "<leader>af";
-        action = "<cmd>ClaudeCodeFocus<cr>";
-        options.desc = "Focus Claude";
-      }
-      {
-        key = "<leader>ar";
-        action = "<cmd>ClaudeCode --resume<cr>";
-        options.desc = "Resume Claude";
-      }
-      {
-        key = "<leader>aC";
-        action = "<cmd>ClaudeCode --continue<cr>";
-        options.desc = "Continue Claude";
-      }
-      {
-        key = "<leader>ab";
-        action = "<cmd>ClaudeCodeAdd %<cr>";
-        options.desc = "Add current buffer";
-      }
-      {
-        key = "<leader>aa";
-        action = "<cmd>ClaudeCodeDiffAccept<cr>";
-        options.desc = "Accept diff";
-      }
-      {
-        key = "<leader>ad";
-        action = "<cmd>ClaudeCodeDiffDeny<cr>";
-        options.desc = "Deny diff";
-      }
-      {
-        key = "<leader>as";
-        action = "<cmd>ClaudeCodeSend<cr>";
-        mode = "v";
-        options.desc = "Send selection";
-      }
+      (claudeMap "<leader>ac" "ClaudeCode" "Toggle Claude")
+      (claudeMap "<leader>af" "ClaudeCodeFocus" "Focus Claude")
+      (claudeMap "<leader>ar" "ClaudeCode --resume" "Resume Claude")
+      (claudeMap "<leader>aC" "ClaudeCode --continue" "Continue Claude")
+      (claudeMap "<leader>ab" "ClaudeCodeAdd %" "Add current buffer")
+      (claudeMap "<leader>aa" "ClaudeCodeDiffAccept" "Accept diff")
+      (claudeMap "<leader>ad" "ClaudeCodeDiffDeny" "Deny diff")
+      (claudeMap "<leader>as" "ClaudeCodeSend" "Send selection" // { mode = "v"; })
     ];
 
     extraConfigLua = ''
