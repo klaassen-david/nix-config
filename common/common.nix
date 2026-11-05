@@ -1,4 +1,4 @@
-{ ... }:
+{ lib, ... }:
 
 # Fleet members: base.nix plus the mesh, the private cache, the shared id_priv
 # identity and the hardware modules. Hosts outside the mesh import base.nix alone
@@ -43,8 +43,26 @@
       IdentityFile /home/dk/.ssh/id_priv
       IdentitiesOnly yes
   '';
-  programs.ssh.knownHosts."dklaassen.de".publicKey =
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICC2ITqo7NHmJIn8Cgd3O5ezGJAmLSE/Srlq9l8Ix9io";
+  # dklaassen.de, plus each implementer host (common/implementers.nix) whose host key is in
+  # keys/host_<name>.pub, under its name and its wg-easy address
+  programs.ssh.knownHosts =
+    let
+      hostKey = name: ./keys + "/host_${name}.pub";
+      keyed = lib.filterAttrs (name: addr: addr != null && builtins.pathExists (hostKey name)) (
+        import ./implementers.nix
+      );
+    in
+    {
+      "dklaassen.de".publicKey =
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICC2ITqo7NHmJIn8Cgd3O5ezGJAmLSE/Srlq9l8Ix9io";
+    }
+    // lib.mapAttrs (name: addr: {
+      hostNames = [
+        name
+        addr
+      ];
+      publicKeyFile = hostKey name;
+    }) keyed;
 
   # VPN-only vhosts on olympus (modules/trainer, modules/hot-swap/vhosts.nix);
   # also in public DNS, but a router's DNS-rebind protection may drop the
