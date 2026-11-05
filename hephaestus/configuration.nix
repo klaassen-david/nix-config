@@ -4,6 +4,7 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }:
 
@@ -49,13 +50,11 @@ in
     fleet.configFile = config.age.secrets.wg-fleet.path;
   };
   # the unit is a oneshot: without this, one DNS failure at boot leaves no tunnel
-  systemd.services = lib.mkIf hasTunnel {
-    wg-quick-fleet = {
-      unitConfig.StartLimitIntervalSec = 0;
-      serviceConfig = {
-        Restart = "on-failure";
-        RestartSec = "30s";
-      };
+  systemd.services.wg-quick-fleet = lib.mkIf hasTunnel {
+    unitConfig.StartLimitIntervalSec = 0;
+    serviceConfig = {
+      Restart = "on-failure";
+      RestartSec = "30s";
     };
   };
 
@@ -99,7 +98,68 @@ in
     "d /mnt/dev 0755 dk users -"
     "d /mnt/dev/work 0755 dk users -"
     "d /mnt/scratch 0755 dk users -"
+    "d /mnt/scratch/cargo 0755 dk users -"
   ];
+
+  # 100 GiB of root holds /nix only with collection (decisions/implementer-host.md)
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 14d";
+  };
+  nix.settings = {
+    min-free = 20 * 1024 * 1024 * 1024;
+    max-free = 40 * 1024 * 1024 * 1024;
+  };
+
+  # Compile output goes to the scratch disk, per workspace. Not CARGO_TARGET_DIR:
+  # repo scripts read or set that. Final artifacts stay in each worktree's target/.
+  home-manager.users.dk.home.file.".cargo/config.toml".text = ''
+    [build]
+    build-dir = "/mnt/scratch/cargo/{workspace-path-hash}"
+  '';
+
+  # Scratch is rebuildable: drop what has been idle 14 days, then oldest first above 85 %.
+  systemd.services.scratch-cleanup = {
+    description = "Trim idle compile output on /mnt/scratch";
+    serviceConfig = {
+      Type = "oneshot";
+      User = "dk";
+      Nice = 19;
+      IOSchedulingClass = "idle";
+    };
+    path = [
+      pkgs.coreutils
+      pkgs.findutils
+      pkgs.gawk
+    ];
+    script = ''
+      root=/mnt/scratch/cargo
+      [ -d "$root" ] || exit 0
+      newest() { find "$1" -type f -printf '%T@\n' 2>/dev/null | sort -n | tail -1 | cut -d. -f1; }
+      now=$(date +%s)
+      list=$(find "$root" -mindepth 2 -maxdepth 2 -type d | while read -r d; do
+        echo "$(newest "$d" || true) $d"
+      done | sort -n)
+      echo "$list" | while read -r t d; do
+        [ -n "$d" ] || continue
+        if [ -z "$t" ] || [ $((now - t)) -gt $((14 * 86400)) ]; then rm -rf -- "$d"; fi
+      done
+      echo "$list" | while read -r t d; do
+        [ -d "$d" ] || continue
+        used=$(df --output=pcent /mnt/scratch | tail -1 | tr -dc 0-9)
+        [ "$used" -gt 85 ] || break
+        [ $((now - t)) -gt 3600 ] && rm -rf -- "$d"
+      done
+    '';
+    startAt = "daily";
+  };
+
+  # A build that runs away stays inside dk's slice; root ssh is outside it.
+  systemd.slices."user-1000".sliceConfig = {
+    MemoryHigh = "26G";
+    MemoryMax = "28G";
+  };
 
   # This host has no config.vpn writing ~/.ssh/config.vpn. Mesh addresses from the
   # vpn.nodes registry; git only on olympus and hestia, the hub passes port 22.

@@ -7,7 +7,7 @@
 
 {
   disko.devices.disk = {
-    # M.2: ESP, root with /nix, the rest for compile output
+    # M.2: ESP, root with /nix, the rest for worktrees and repos
     system = {
       type = "disk";
       device = "/dev/disk/by-id/ata-Micron_1100_MTFDDAV256TBN_18351E7E9AA2";
@@ -33,19 +33,19 @@
               mountOptions = [ "noatime" ];
             };
           };
-          scratch = {
+          dev = {
             size = "100%";
             content = {
               type = "filesystem";
               format = "ext4";
-              mountpoint = "/mnt/scratch";
+              mountpoint = "/mnt/dev";
               mountOptions = [
                 "noatime"
                 "nofail"
               ];
               extraArgs = [
                 "-L"
-                "heph-scratch"
+                "heph-dev"
                 "-m"
                 "0"
               ];
@@ -55,25 +55,25 @@
       };
     };
 
-    # SATA, whole disk: worktrees and repos
+    # SATA, whole disk: compile output, the heaviest writer, kept off the /nix disk
     work = {
       type = "disk";
       device = "/dev/disk/by-id/ata-MTFDDAK256MBF-1AN1ZABHA_16401473E373";
       content = {
         type = "gpt";
-        partitions.dev = {
+        partitions.scratch = {
           size = "100%";
           content = {
             type = "filesystem";
             format = "ext4";
-            mountpoint = "/mnt/dev";
+            mountpoint = "/mnt/scratch";
             mountOptions = [
               "noatime"
               "nofail"
             ];
             extraArgs = [
               "-L"
-              "heph-dev"
+              "heph-scratch"
               "-m"
               "0"
             ];

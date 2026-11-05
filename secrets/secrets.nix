@@ -3,7 +3,7 @@ let
   # PLACEHOLDER (user, at install): the public half of the host key generated for
   # nixos-anywhere's --extra-files. age refuses this value, so encrypting fails
   # loudly until it is filled in.
-  hephaestus = "ssh-ed25519 PLACEHOLDER-hephaestus-public-host-key root@hephaestus";
+  hephaestus = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJJABBNmE8ThD0+NbaKAgMwmQqC6k0E9FA3K8qY7noUc root@hephaestus";
   files = [
     "ssl-fullchain.age"
     "ssl-key.age"

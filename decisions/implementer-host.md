@@ -61,3 +61,5 @@ restarts orchestrator and coordinator on hestia and the key unit on olympus.
 
 **Revisit if**: the host needs a shell on hestia (a separate non-wheel user, not
 dk), or becomes a coordinator executor.
+
+Applied (user, same day): `/mnt/dev` on the M.2's remaining space and `/mnt/scratch` on the whole second SSD, weekly GC with min-free 20 GiB and max-free 40 GiB, Cargo `build-dir` on scratch with a daily cleanup, and `user-1000.slice` capped at MemoryHigh 26G, MemoryMax 28G.
