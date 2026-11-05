@@ -10,8 +10,8 @@
 # trainer.dklaassen.de, VPN only. See decisions/trainer.md.
 #
 # The node server serves the app and an unauthenticated event log, so nginx
-# admits only the mesh supernet (hosts, phones; 10.100.0.0/16) and 403s the
-# rest. The name resolves to the hub's mesh address (10.100.0.1): a public A
+# admits only the mesh supernet (hosts, phones; 10.100.0.0/16), minus the
+# implementer hosts, and 403s the rest. The name resolves to the hub's mesh address (10.100.0.1): a public A
 # record plus a static hosts entry in common.nix, because a router's DNS-rebind
 # protection may drop private answers. YouTube refuses embeds on bare-IP origins,
 # hence the name.
@@ -22,6 +22,10 @@ let
   port = 3030;
   domain = "trainer.dklaassen.de";
   pkg = inputs.trainer.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  # first match wins, so these go before the allow
+  implementerDeny = lib.concatMapStrings (addr: "deny ${addr};\n") (
+    lib.remove null (lib.attrValues (import ../../implementers.nix))
+  );
 in
 {
   imports = [ ../nginx ];
@@ -56,7 +60,7 @@ in
     locations."/" = {
       proxyPass = "http://127.0.0.1:${toString port}";
       extraConfig = ''
-        allow 10.100.0.0/16;
+        ${implementerDeny}allow 10.100.0.0/16;
         deny all;
       '';
     };

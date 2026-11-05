@@ -11,7 +11,7 @@
 # front of the hot-swapped apps (./apps.nix, both on hestia), over the mesh.
 # VPN only, like the trainer: public A records to 10.100.0.1 plus the hosts
 # entry in common.nix, the shared wildcard cert, nginx admits 10.100.0.0/16
-# only. The app's port on its node accepts the hub alone (./default.nix).
+# only, minus the implementer hosts. The app's port on its node accepts the hub alone (./default.nix).
 #
 # Live transcripts are SSE or websockets held open for hours: no buffering, 1 h
 # timeouts. A node that is down or off the mesh fails fast (5 s connect).
@@ -40,8 +40,12 @@ let
   keyInclude = lib.optionalString proxyKey "include ${keyDir}/header.conf;";
   inherit (config.services) nginx;
   mesh = node: "10.100.0.${toString config.vpn.nodes.${node}.octet}";
+  # first match wins, so these go before the allow
+  implementerDeny = lib.concatMapStrings (addr: "deny ${addr};\n") (
+    lib.remove null (lib.attrValues (import ../../implementers.nix))
+  );
   acl = ''
-    allow 10.100.0.0/16;
+    ${implementerDeny}allow 10.100.0.0/16;
     deny all;
   '';
 
