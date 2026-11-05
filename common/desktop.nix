@@ -26,7 +26,12 @@ let
   };
 in
 {
-  imports = [ ./common.nix ];
+  # base.nix at this depth too: import depth sets list-merge order (systemPackages,
+  # tmpfiles), so one level down would change the closure of every host
+  imports = [
+    ./base.nix
+    ./common.nix
+  ];
 
   # Desktop hosts inherit host.capabilities.binaryCachePush = true (role != "vps"),
   # so the nix-daemon uploads every build to the self-hosted attic cache. The push

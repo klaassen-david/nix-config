@@ -2,6 +2,8 @@ _:
 
 {
   imports = [
+    # same depth as common.nix, see desktop.nix
+    ./base.nix
     ./common.nix
     # servers terminate TLS + run the SSO gate; importing here makes headless a
     # self-contained nginx consumer (dedup makes any host's repeat import a no-op).

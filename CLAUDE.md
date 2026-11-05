@@ -14,10 +14,11 @@ Inputs track `nixpkgs-unstable` + `home-manager/master`. Unfree allowed.
 
 - `flake.nix` — `mkHost { host, hostModules?, hmModules? }` builds each `nixosConfigurations.<host>`. `specialArgs` passes `inputs` and `secretsPath = ./secrets`. `checks` builds every host's `system.build.toplevel`.
 - `common/` — shared base:
-  - `host.nix` — defines the `host.*` options struct (see below) and `imports`-ed everywhere via `common.nix`.
-  - `common.nix` — base for *all* hosts (nix settings, user `dk`, agenix identity, fish, `services.fstrim` + `zramSwap` fleet-wide). Imports `host.nix` + `modules/wireguard`.
-  - `headless.nix` — server base; imports `common.nix` + `modules/nginx`. Holds sshd, fail2ban (`control.dklaassen.de` lives in `modules/control`).
-  - `desktop.nix` — desktop base; imports `common.nix`. Sway/greetd, audio, steam, printing.
+  - `host.nix` — defines the `host.*` options struct (see below) and `imports`-ed everywhere via `base.nix`.
+  - `base.nix` — what *every* host has (nix settings, user `dk`, fish, `services.fstrim` + `zramSwap`). Imports `host.nix` + `modules/theme`.
+  - `common.nix` — fleet members: `base.nix` + `modules/wireguard`, `attic-cache`, `ssh-server` and the self-gated hardware modules; the `id_priv` agenix identity and the VPN-only `networking.hosts`.
+  - `headless.nix` — server base; imports `base.nix`, `common.nix` + `modules/nginx`. Holds sshd, fail2ban (`control.dklaassen.de` lives in `modules/control`).
+  - `desktop.nix` — desktop base; imports `base.nix`, `common.nix`. Sway/greetd, audio, steam, printing.
   - `modules/{nginx,nextcloud,stalwart,wg-easy,wireguard}/default.nix` — service modules.
 - `<host>/configuration.nix` — per-host: imports a base (`headless.nix` or `desktop.nix`) + service modules, sets the `host` struct, hardware/bootloader.
 - `home-manager/` — `home.nix` + `modules/*`; wired into every host via `mkHost`. `hmModules` adds the desktop bundle to laptop/tower only.
