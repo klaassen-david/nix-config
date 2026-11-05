@@ -35,5 +35,29 @@ command's receive-pack (`-c core.hooksPath`), never installed in a repo, allowin
 hook and an "anything but main" rule both interfere with the orchestrator. The
 namespace is narrower than the ruling asked; widening it is one line in the hook.
 
+**Disks** [USER 2026-11-05]: M.2 = ESP 1 GiB, root 100 GiB with `/nix`, the rest
+(about 137 GiB) at `/mnt/scratch` for compile output; second SSD whole at
+`/mnt/dev` for worktrees and repos. Both are SATA 6 Gb/s; the point is capacity.
+
+Evaluation [AGENT 2026-11-05], open for the user; nothing below is applied:
+- **Swap the two data filesystems**: `/mnt/dev` on the M.2's 137 GiB, `/mnt/scratch`
+  on the whole second SSD. Compile output is the larger share (up to about 22 GiB per
+  hestia slot against about 2 GiB tracked plus `.git` for ostt3, 9 GiB with its lake
+  output), and the heaviest writer would no longer share a disk with root and `/nix`.
+  Losing the older drive (inferred from its serial) then costs only rebuildable output.
+- **GC**: none here (`nix.gc.automatic` false, no `min-free`), and 100 GiB needs it:
+  measured ostt3 shell 16.6 GiB, system at least 3.8 GiB. Add `min-free` / `max-free`
+  and a weekly `nix.gc`, keeping shells with `nix develop --profile`.
+- **Build output**: `build.build-dir = "/mnt/scratch/cargo/{workspace-path-hash}"` in
+  `~/.cargo/config.toml` gives each worktree its own directory; not
+  `CARGO_TARGET_DIR`, which `scripts/build-web`, `scripts/release` and ostt3's
+  `scripts/measure` read or set. Add a daily cleanup of directories idle for 14 days.
+- **Memory**: `zramSwap` as is. `systemd.oomd` manages no slice here, so cap
+  `user-1000.slice` (`MemoryHigh` 26G, `MemoryMax` 28G) and an OOM stays inside it.
+
+**Switching side effect** [AGENT 2026-11-05]: `keyAge` is a path under
+`${secretsPath}`, so any change in `secrets/` moves the restart triggers: a switch
+restarts orchestrator and coordinator on hestia and the key unit on olympus.
+
 **Revisit if**: the host needs a shell on hestia (a separate non-wheel user, not
 dk), or becomes a coordinator executor.

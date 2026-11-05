@@ -36,9 +36,9 @@ in
     firewall.mesh.tcpRanges = [ ];
   };
 
-  warnings = lib.optional (
-    !hasTunnel
-  ) "hephaestus: secrets/wg-fleet-hephaestus.age is not in the git tree; building without the fleet tunnel";
+  warnings =
+    lib.optional (!hasTunnel)
+      "hephaestus: secrets/wg-fleet-hephaestus.age is not in the git tree; building without the fleet tunnel";
 
   age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
   age.secrets = lib.mkIf hasTunnel { wg-fleet.file = wgSecret; };
