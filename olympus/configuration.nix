@@ -21,6 +21,8 @@
     ../common/modules/control
     # serves the mail store to hestia's restic repo (keyed on stalwart)
     ../common/modules/mail-backup
+    # git for implementer hosts, by forced command (decisions/implementer-host.md)
+    ../common/modules/implementer-git
   ];
 
   host = {

@@ -29,5 +29,11 @@ list-merge order (`systemPackages`, `tmpfiles`). Only `host.nix` and `theme` sta
 under `base.nix`; the self-gated hardware modules stay under `common.nix` in their
 old order, which an implementer host does not miss.
 
+**Push policy** [AGENT 2026-11-05]: a pre-receive hook passed only to the forced
+command's receive-pack (`-c core.hooksPath`), never installed in a repo, allowing
+`refs/heads/implementer/*` alone; `common/modules/implementer-git` says why a repo
+hook and an "anything but main" rule both interfere with the orchestrator. The
+namespace is narrower than the ruling asked; widening it is one line in the hook.
+
 **Revisit if**: the host needs a shell on hestia (a separate non-wheel user, not
 dk), or becomes a coordinator executor.

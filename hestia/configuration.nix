@@ -15,6 +15,8 @@
     # hot-swapped from ~/deploy, dashboards proxied by olympus (decisions/hot-swap.md)
     ../common/modules/orchestrator
     ../common/modules/coordinator
+    # git for implementer hosts, by forced command (decisions/implementer-host.md)
+    ../common/modules/implementer-git
   ];
 
   # the apps trust olympus's nginx only with the shared proxy key; switch

@@ -21,6 +21,7 @@ Inputs track `nixpkgs-unstable` + `home-manager/master`. Unfree allowed.
   - `headless.nix` — server base; imports `base.nix`, `common.nix` + `modules/nginx`. Holds sshd, fail2ban (`control.dklaassen.de` lives in `modules/control`).
   - `desktop.nix` — desktop base; imports `base.nix`, `common.nix`. Sway/greetd, audio, steam, printing.
   - `modules/{nginx,nextcloud,stalwart,wg-easy,wireguard}/default.nix` — service modules.
+- `common/implementers.nix` — implementer host -> wg-easy client address; `modules/implementer-git` is their forced-command git on olympus and hestia.
 - `<host>/configuration.nix` — per-host: imports a base (`headless.nix` or `desktop.nix`) + service modules, sets the `host` struct, hardware/bootloader.
 - `home-manager/` — `home.nix` + `modules/*`; wired into every host via `mkHost`. `hmModules` adds the desktop bundle to laptop/tower only.
 - `secrets/` — agenix (`secrets.nix` recipient list + `*.age` files).
