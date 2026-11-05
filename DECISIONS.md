@@ -133,3 +133,8 @@ changes (old ruling stays in the file as history).
   [USER 2026-11-04]
 - [nvim-no-debugger](decisions/nvim-no-debugger.md) — no dap, dap-ui or codelldb in
   nvim; 1.4 GiB of closure for tooling with no keymaps [USER 2026-11-04]
+- [implementer-host](decisions/implementer-host.md) — hephaestus: wg-easy client
+  plus one hub rule (port 22 to the hosts), no mesh key, no `id_priv`; git only
+  on olympus and hestia through a forced command with a repo allowlist; pushes
+  to branches only, never `main`; off the VPN-only vhosts; public caches,
+  headless [USER 2026-11-05]

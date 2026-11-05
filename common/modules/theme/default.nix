@@ -20,7 +20,10 @@
 
 let
   inherit (config.host) theme;
-  desktop = config.host.role != "vps";
+  desktop = lib.elem config.host.role [
+    "laptop"
+    "tower"
+  ];
 in
 {
   stylix = {

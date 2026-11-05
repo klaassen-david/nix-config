@@ -1,8 +1,9 @@
 # nix-config
 
-Multi-host NixOS flake (x86_64-linux): one shared base, three hosts —
+Multi-host NixOS flake (x86_64-linux): one shared base, four hosts —
 **olympus** (headless VPS: nginx/SSO, Nextcloud, stalwart mail, wireguard
-hub), **hermes** (Framework 16 laptop, sway), **hestia** (nvidia tower, sway).
+hub), **hermes** (Framework 16 laptop, sway), **hestia** (nvidia tower, sway),
+**hephaestus** (headless implementer: agents and cargo builds, outside the mesh).
 Inputs track `nixpkgs-unstable`; secrets are agenix; per-host facts live in
 the `host` struct (`common/host.nix`) and everything downstream derives from
 it.

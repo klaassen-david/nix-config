@@ -1,4 +1,4 @@
-{ ... }:
+{ host, ... }:
 
 {
   programs.ssh = {
@@ -17,7 +17,7 @@
     settings = {
       "dklaassen.de olympus hestia hestia.local hermes hermes.local" = {
         PreferredAuthentications = "publickey,password";
-        IdentityFile = "~/.ssh/id_priv";
+        IdentityFile = host.sshIdentity;
         IdentitiesOnly = true;
       };
 

@@ -1,12 +1,13 @@
 # nix-config
 
-Multi-host NixOS flake (x86_64-linux only). Three hosts, one shared base:
+Multi-host NixOS flake (x86_64-linux only). Four hosts, one shared base:
 
 | Host      | Role     | Machine                       | Notes                                  |
 |-----------|----------|-------------------------------|----------------------------------------|
 | `olympus` | `vps`    | headless VPS                  | server: nginx/SSO, nextcloud, stalwart, wg-easy (phones), wireguard hub |
 | `hermes`  | `laptop` | Framework 16 (7040 AMD)       | desktop (sway), wireguard mesh + exit   |
 | `hestia`  | `tower`  | Nvidia tower                  | desktop (sway), wireguard mesh + exit   |
+| `hephaestus` | `implementer` | Fujitsu Esprimo P957 (i7-7700, 32 GB) | headless agents and cargo builds; wg-easy client, not a mesh node, no `id_priv` (`decisions/implementer-host.md`) |
 
 Inputs track `nixpkgs-unstable` + `home-manager/master`. Unfree allowed.
 
@@ -26,7 +27,7 @@ Inputs track `nixpkgs-unstable` + `home-manager/master`. Unfree allowed.
 
 ## The `host` struct (`common/host.nix`)
 
-Single source of truth per host. `hostName` drives `networking.hostName`; `role` (`vps`/`laptop`/`tower`) seeds capability defaults and feeds assertions; also `stateVersion`, `gpu`, `display.primary`, `capabilities.*`, `theme.*`, `firewall.*`. The evaluated struct is forwarded to home-manager as the `host` arg. Assertions enforce invariants (e.g. `vps ⇒ gpu = none`, laptop/tower need `display.primary`). Set it in `<host>/configuration.nix`, derive downstream — don't hardcode hostname/stateVersion elsewhere.
+Single source of truth per host. `hostName` drives `networking.hostName`; `role` (`vps`/`laptop`/`tower`/`implementer`) seeds capability defaults and feeds assertions; also `stateVersion`, `gpu`, `display.primary`, `capabilities.*`, `theme.*`, `firewall.*`. The evaluated struct is forwarded to home-manager as the `host` arg. Assertions enforce invariants (e.g. `vps ⇒ gpu = none`, laptop/tower need `display.primary`). Set it in `<host>/configuration.nix`, derive downstream — don't hardcode hostname/stateVersion elsewhere.
 
 ## Module-arg conventions
 
@@ -48,7 +49,7 @@ One oauth2-proxy + one Nextcloud OAuth2 client gates all `*.dklaassen.de` vhosts
 
 ## agenix secrets
 
-- **Single recipient**: every `.age` encrypts to the one `id_priv` key in `secrets/secrets.nix`; all hosts set `age.identityPaths = [ "/home/dk/.ssh/id_priv" ]`, so any host decrypts any secret at activation.
+- **Single recipient**: every `.age` encrypts to the one `id_priv` key in `secrets/secrets.nix`; all fleet members set `age.identityPaths = [ "/home/dk/.ssh/id_priv" ]`, so any of them decrypts any secret at activation. Exception: `hephaestus` never holds `id_priv`; its one secret adds its host key as a recipient and it decrypts with that key.
 - Add a secret = append its filename to the `files` list in `secrets.nix`, then create `secrets/<name>.age`.
 - Secret *content* is the raw value, single line (a WireGuard private key is just the base64 string — no `[Interface]`/`PrivateKey =`).
 - **The user encrypts secrets themselves** (`cd secrets && agenix -e <name>.age`). Do not run the encryption for them. **Secret plaintext must never enter the model's context** — no bare `agenix -d`, `cat`, `head`, `od`, or piping into a file that then gets read. Decrypting *into an aggregate* is fine, because nothing sensitive comes back: `agenix -d <name>.age -i ~/.ssh/id_priv | wc -lc`, `| cksum`, `| grep -c`. Model configs around `privateKeyFile`/`configFile`/`age.secrets.<n>.path` references rather than inlining values. Public keys (e.g. WireGuard peer pubkeys, oauth2 `clientID`) are not secret and live in plain `.nix`.

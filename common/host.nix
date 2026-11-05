@@ -28,6 +28,7 @@ in
         "vps"
         "laptop"
         "tower"
+        "implementer"
       ];
       description = "coarse host class; seeds capability defaults and anchors assertions";
     };
@@ -35,6 +36,13 @@ in
     stateVersion = mkOption {
       type = types.str;
       description = "NixOS state version; defaults to system.stateVersion";
+    };
+
+    # A host outside the id_priv trust (decisions/implementer-host.md) names its own key.
+    sshIdentity = mkOption {
+      type = types.str;
+      default = "~/.ssh/id_priv";
+      description = "private key home-manager's ssh config offers to the fleet hosts";
     };
 
     keepGenerations = mkOption {
