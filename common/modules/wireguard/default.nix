@@ -347,6 +347,13 @@ let
   # Home LANs reached over the mesh rather than attached locally (vpn-home).
   remoteLans = lib.filter (n: n.name != selfName) lanNodes;
   addrList = lib.concatMapStringsSep ", " toString;
+  # implementer hosts are wg-easy clients with port 22 on the hosts and nothing
+  # else of theirs (decisions/implementer-host.md), unlike `vpn-phone hosts on`
+  implementerRules = lib.concatMapStrings (
+    addr: ''
+      iifname "${phoneIf}" ip saddr ${addr} ip daddr { ${addrList (map (n: n.ip) hostSpokes)} } tcp dport 22 accept
+    ''
+  ) (lib.remove null (lib.attrValues (import ../../implementers.nix)));
   hubRuleset = nftReload "vpn-hub" ''
     table inet vpn-hub {
       set phone_hosts { type ipv4_addr; }
@@ -371,7 +378,7 @@ let
         iifname "${phoneIf}" oifname { "${cfg.uplink}", "${phoneIf}" } accept
         iifname "${phoneIf}" oifname "vpn-*" accept
         ${lib.optionalString (hostSpokes != [ ]) ''
-          iifname "${phoneIf}" ip daddr { ${addrList (map (n: n.ip) hostSpokes)} } ip saddr @phone_hosts accept
+          ${implementerRules}iifname "${phoneIf}" ip daddr { ${addrList (map (n: n.ip) hostSpokes)} } ip saddr @phone_hosts accept
           iifname "${phoneIf}" ip6 daddr { ${addrList (map (n: n.ip6) hostSpokes)} } ip6 saddr @phone_hosts6 accept
         ''}
         ${lib.concatMapStringsSep "\n" (
