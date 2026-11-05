@@ -98,6 +98,7 @@ in
   systemd.tmpfiles.rules = [
     "d /mnt/dev 0755 dk users -"
     "d /mnt/dev/work 0755 dk users -"
+    "d /mnt/scratch 0755 dk users -"
   ];
 
   # This host has no config.vpn writing ~/.ssh/config.vpn. Mesh addresses from the

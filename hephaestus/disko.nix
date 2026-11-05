@@ -1,10 +1,13 @@
-# Two disks, so a full build disk cannot take down the system. Both by-id paths
-# were read from the installer; nixos-anywhere wipes exactly these.
+# Three filesystems on two disks, so filling one takes down neither the others nor
+# sshd. Both by-id paths were read from the installer; nixos-anywhere wipes exactly
+# these. nofail keeps a dead data filesystem from stopping boot. Both data
+# filesystems are written by dk only, so no root reserve.
+# Layout [USER 2026-11-05]; the evaluation is in decisions/implementer-host.md.
 { ... }:
 
 {
   disko.devices.disk = {
-    # M.2: ESP and root
+    # M.2: ESP, root with /nix, the rest for compile output
     system = {
       type = "disk";
       device = "/dev/disk/by-id/ata-Micron_1100_MTFDDAV256TBN_18351E7E9AA2";
@@ -22,7 +25,7 @@
             };
           };
           root = {
-            size = "100%";
+            size = "100G";
             content = {
               type = "filesystem";
               format = "ext4";
@@ -30,12 +33,29 @@
               mountOptions = [ "noatime" ];
             };
           };
+          scratch = {
+            size = "100%";
+            content = {
+              type = "filesystem";
+              format = "ext4";
+              mountpoint = "/mnt/scratch";
+              mountOptions = [
+                "noatime"
+                "nofail"
+              ];
+              extraArgs = [
+                "-L"
+                "heph-scratch"
+                "-m"
+                "0"
+              ];
+            };
+          };
         };
       };
     };
 
-    # SATA: worktrees and build output. nofail keeps a dead disk from stopping boot
-    # and sshd.
+    # SATA, whole disk: worktrees and repos
     work = {
       type = "disk";
       device = "/dev/disk/by-id/ata-MTFDDAK256MBF-1AN1ZABHA_16401473E373";
@@ -53,7 +73,9 @@
             ];
             extraArgs = [
               "-L"
-              "hephaestus-dev"
+              "heph-dev"
+              "-m"
+              "0"
             ];
           };
         };
