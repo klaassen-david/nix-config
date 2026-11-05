@@ -134,6 +134,14 @@
           host = "hestia";
           hmModules = [ ./home-manager/modules/desktop ];
         };
+
+        # implementer: headless agents and builds, outside the mesh
+        hephaestus = mkHost {
+          host = "hephaestus";
+          hostModules = [ disko.nixosModules.disko ];
+          # agents outlive an ssh drop
+          hmModules = [ ./home-manager/modules/tmux ];
+        };
       };
       devShells.x86_64-linux.default = nixpkgs-unstable.legacyPackages.x86_64-linux.mkShell {
         packages = [

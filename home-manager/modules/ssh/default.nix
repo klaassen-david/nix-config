@@ -1,5 +1,11 @@
-{ host, ... }:
+{ lib, host, ... }:
 
+let
+  # wg-easy clients, not in the mesh's config.vpn (common/implementers.nix)
+  implementers = lib.filterAttrs (name: addr: addr != null && name != host.hostName) (
+    import ../../../common/implementers.nix
+  );
+in
 {
   programs.ssh = {
     enable = true;
@@ -32,6 +38,12 @@
         IdentityFile = "~/.ssh/tukl";
         IdentitiesOnly = true;
       };
-    };
+    }
+    // lib.mapAttrs (_: addr: {
+      HostName = addr;
+      PreferredAuthentications = "publickey";
+      IdentityFile = host.sshIdentity;
+      IdentitiesOnly = true;
+    }) implementers;
   };
 }
