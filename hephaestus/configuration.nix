@@ -119,7 +119,8 @@ in
     build-dir = "/mnt/scratch/cargo/{workspace-path-hash}"
   '';
 
-  # Scratch is rebuildable: drop what has been idle 14 days, then oldest first above 85 %.
+  # Scratch is rebuildable: hourly, drop what has been idle 3 days, then oldest first above 75 %
+  # (never a dir written in the last 2 h: a running build keeps its own).
   systemd.services.scratch-cleanup = {
     description = "Trim idle compile output on /mnt/scratch";
     serviceConfig = {
@@ -143,16 +144,16 @@ in
       done | sort -n)
       echo "$list" | while read -r t d; do
         [ -n "$d" ] || continue
-        if [ -z "$t" ] || [ $((now - t)) -gt $((14 * 86400)) ]; then rm -rf -- "$d"; fi
+        if [ -z "$t" ] || [ $((now - t)) -gt $((3 * 86400)) ]; then rm -rf -- "$d"; fi
       done
       echo "$list" | while read -r t d; do
         [ -d "$d" ] || continue
         used=$(df --output=pcent /mnt/scratch | tail -1 | tr -dc 0-9)
-        [ "$used" -gt 85 ] || break
-        [ $((now - t)) -gt 3600 ] && rm -rf -- "$d"
+        [ "$used" -gt 75 ] || break
+        [ $((now - t)) -gt 7200 ] && rm -rf -- "$d"
       done
     '';
-    startAt = "daily";
+    startAt = "hourly";
   };
 
   # A build that runs away stays inside dk's slice; root ssh is outside it.
