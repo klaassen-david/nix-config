@@ -40,7 +40,7 @@
     # dvorak first = active once sway starts; the console fallback takes only
     # the bare first layout, so it stays plain us
     keyboard = {
-      layout = "us,gb,de";
+      layout = "us,gb,de_ccedilla";
       variant = "dvorak,,";
     };
     capabilities.samba = true;

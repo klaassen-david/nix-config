@@ -186,6 +186,17 @@
 
   };
 
+  # German with AltGr+c = ç/Ç (de has ¢/©); libxkbcommon reads $XDG_CONFIG_HOME/xkb
+  # before the system tree. Named in host.keyboard.layout; reload sway to pick up edits.
+  xdg.configFile."xkb/symbols/de_ccedilla".text = ''
+    default partial alphanumeric_keys
+    xkb_symbols "basic" {
+      include "de(basic)"
+      name[Group1] = "German (ç)";
+      key <AB03> { [ c, C, ccedilla, Ccedilla ] };
+    };
+  '';
+
   services.kanshi.enable = true;
   services.playerctld.enable = true;
 

@@ -187,7 +187,7 @@ in
     keyboard = {
       layout = mkOption {
         type = types.str;
-        default = "gb,de,us";
+        default = "gb,de_ccedilla,us";
         description = "xkb layout list, comma-separated";
       };
       variant = mkOption {
