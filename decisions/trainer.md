@@ -7,6 +7,12 @@ it lives on olympus). A new version is a commit there plus
 root gets dk's key for that in common.nix, since `sudo nixos-rebuild` evaluates
 as root.
 
+**Correction** [AGENT 2026-11-05]: only evaluating olympus forces the input, so
+not "every host". With a copy of the flake whose `trainer` lock entry was poisoned,
+hermes's and hestia's toplevel and the devShell evaluated; olympus's failed to
+fetch. `nix flake check` evaluates olympus, so it needs the input too, unless that
+rev is already in the store.
+
 **Rejected**: pushing to GitHub (a private repo needs an access token in every
 host's nix.conf); a hand-built out-link on olympus (not declarative).
 
