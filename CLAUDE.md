@@ -137,7 +137,7 @@ Checklist for a change that adds a secret:
 sh home-manager/modules/waterfox/preview.sh start <scratch>/wf   # prints the sway and waterfox PIDs
 sh home-manager/modules/waterfox/preview.sh shot  <scratch>/wf a # -> <scratch>/wf/a.png, Read it
 sh home-manager/modules/waterfox/preview.sh stop  <scratch>/wf
-sh home-manager/modules/waterfox/preview.sh live  <scratch>/wf   # same build on the real display, for the user to review
+sh home-manager/modules/waterfox/preview.sh live  <scratch>/wf   # same build on the real display, opened on workspace 1 (or a workspace given after <scratch>/wf), for the user to review
 ```
 
 - The user's own Waterfox and sway are running: stop instances **by recorded PID only**, never `pkill waterfox` or a globbed sway socket.
