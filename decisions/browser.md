@@ -41,6 +41,12 @@ via a nix-built unsigned add-on (`home-manager/modules/waterfox/startpage-title`
 Rejected: a `window.cfg` tab-label patch (page/window title unchanged, fragile)
 and a Tampermonkey userscript (not declarative).
 
+**Userscripts** [USER 2026-11-13]: Tampermonkey owns them (and their updates);
+each is offered once per profile by opening its install dialog (one click).
+First: "YouTube: Return Grid Layout" (Greasy Fork 533337). Rejected: shipping
+it as an own add-on (no updates) and writing Tampermonkey's internal storage.
+Tampermonkey has no managed install [AGENT 2026-11-13].
+
 **Url bar in the sidebar** [USER 2026-11-04]: the address stays visible in the
 sidebar while the floating url bar is open.
 
