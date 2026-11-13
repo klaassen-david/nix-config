@@ -28,6 +28,11 @@ add-ons; then the url bar. Supersedes the row order under *Sidebar controls*.
 **Pinned tabs** [USER 2026-11-13]: not resizable; the area always shows
 every row of pinned tabs and ends right below them.
 
+**Sidebar width** [USER 2026-11-13]: no visible splitter strip between
+sidebar and page; an invisible handle on the sidebar's right edge still drags
+the width. Rejected: the handle over the page, where web content takes the
+clicks [AGENT 2026-11-13].
+
 **Url bar buttons** [USER 2026-11-13]: no reader-view or bookmark-star button.
 
 **Url bar in the sidebar** [USER 2026-11-04]: the address stays visible in the

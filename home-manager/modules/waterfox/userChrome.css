@@ -14,6 +14,16 @@
   box-shadow: none !important;
 }
 sidebar-main, #vertical-tabs { padding: 0 !important; margin: 0 !important; }
+/* width splitter: takes no space (the page starts at the sidebar's border) but
+   still grabs drags, as an invisible 4px strip over the sidebar's right edge.
+   Not over the page: the web content is hit first there, whatever the z-index. */
+#sidebar-launcher-splitter {
+  margin-inline: -4px 0 !important;
+  position: relative !important;
+  z-index: 1 !important;
+  background: transparent !important;
+  border: none !important;
+}
 /* stock focus ring is a fixed cyan under any theme; use the theme's focus colour */
 :root[lwtheme] { --focus-outline-color: var(--toolbar-field-border-color-focus) !important; }
 

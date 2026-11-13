@@ -18,7 +18,7 @@ changes (old ruling stays in the file as history).
   focus another window's workspace (out of scope) [USER 2026-11-04]; sidebar
   rows = menu, back, forward, reload, downloads, zoom (`- N% +`) / extensions
   + add-ons, no bottom row, no sidebar tools; downloads ask where to save;
-  pinned tabs not resizable, every row always shown; no url-bar reader/star buttons [USER 2026-11-13]
+  pinned tabs not resizable, every row always shown; no url-bar reader/star buttons; invisible sidebar-width handle [USER 2026-11-13]
 - [browser-sync](decisions/browser-sync.md) — no tab sync between hosts for
   now; the rest of browser sync is undecided [USER 2026-11-03]
 - [password-manager](decisions/password-manager.md) — Vaultwarden on olympus;
