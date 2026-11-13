@@ -129,6 +129,22 @@ Checklist for a change that adds a secret:
 5. `nix flake check` — eval/build every host.
 6. `sudo nixos-rebuild switch --flake .#<host>`, then `systemctl status <unit>` for any service that consumes the secret.
 
+### Previewing Waterfox UI changes
+
+`window.cfg`/`userChrome.css` changes are checked by screenshot before a switch, with `home-manager/modules/waterfox/preview.sh` (a headless sway running the working tree's build, throwaway profile):
+
+```sh
+sh home-manager/modules/waterfox/preview.sh start <scratch>/wf   # prints the sway and waterfox PIDs
+sh home-manager/modules/waterfox/preview.sh shot  <scratch>/wf a # -> <scratch>/wf/a.png, Read it
+sh home-manager/modules/waterfox/preview.sh stop  <scratch>/wf
+sh home-manager/modules/waterfox/preview.sh live  <scratch>/wf   # same build on the real display, for the user to review
+```
+
+- The user's own Waterfox and sway are running: stop instances **by recorded PID only**, never `pkill waterfox` or a globbed sway socket.
+- No input reaches the headless output (`swaymsg seat … cursor` and `wlrctl` both do nothing), so a click-behaviour check is left to the `live` review.
+- `dump()` is silent (`browser.dom.window.dump.enabled` is off). To read geometry or state from `window.cfg`, write it to a file temporarily: `win.IOUtils.writeUTF8(path, JSON.stringify(el.getBoundingClientRect()))` (`IOUtils` is not in the autoconfig scope, only on `win`). Feature errors go to the browser console, not to `wf.log`.
+- Crop and enlarge for detail: `nix-shell -p imagemagick --run "magick a.png -crop 260x70+0+930 -scale 300% a-crop.png"`.
+
 ## Deploy protocol
 
 - `nix flake check` green before any switch.
