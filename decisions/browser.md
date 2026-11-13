@@ -31,7 +31,7 @@ every row of pinned tabs and ends right below them.
 **Sidebar width** [USER 2026-11-13]: no visible splitter strip between
 sidebar and page; an invisible handle on the sidebar's right edge still drags
 the width. Rejected: the handle over the page, where web content takes the
-clicks [AGENT 2026-11-13].
+clicks [AGENT 2026-11-13]. Double-click on it resets the default width.
 
 **Url bar buttons** [USER 2026-11-13]: no reader-view or bookmark-star button.
 
