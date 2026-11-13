@@ -28,6 +28,8 @@ add-ons; then the url bar. Supersedes the row order under *Sidebar controls*.
 **Pinned tabs** [USER 2026-11-13]: not resizable; the area always shows
 every row of pinned tabs and ends right below them.
 
+**Url bar buttons** [USER 2026-11-13]: no reader-view or bookmark-star button.
+
 **Url bar in the sidebar** [USER 2026-11-04]: the address stays visible in the
 sidebar while the floating url bar is open.
 

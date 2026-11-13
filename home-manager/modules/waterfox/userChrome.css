@@ -135,6 +135,9 @@ sidebar-main, #vertical-tabs { padding: 0 !important; margin: 0 !important; }
 /* pinned-tab promo card */
 #drag-to-pin-promo-card { display: none !important; }
 
+/* url bar: no reader-view or bookmark-star button (Ctrl+Alt+R / Ctrl+D still work) */
+#reader-mode-button, #star-button-box { display: none !important; }
+
 /* Zen-style floating url bar: while expanded (click, Ctrl+L, Ctrl+T) the url
    bar is a top-layer popover, so it can be centred on the viewport */
 #urlbar[breakout][breakout-extend] {
