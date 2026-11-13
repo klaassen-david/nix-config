@@ -18,7 +18,7 @@
 
 {
   # the icon theme from before stylix (it set none, so GTK fell back to Adwaita)
-  stylix.iconTheme = {
+  stylix.icons = {
     enable = true;
     package = pkgs.kdePackages.breeze-icons;
     dark = "breeze-dark";
