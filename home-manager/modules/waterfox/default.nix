@@ -171,6 +171,7 @@ in
         "sidebar.main.tools" = "";
         "sidebar.new-sidebar.has-used" = true;
         "browser.download.autohideButton" = false;
+        "browser.download.useDownloadDir" = false; # always ask where to save
         "browser.tabs.pinnedIconOnly" = true; # labels would clip in the 28px icon grid
         "browser.tabs.verticalTabs.tree.autoCollapse.onSelect" = false; # off for now
         # an expanded parent's close promotes its first child; a collapsed

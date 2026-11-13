@@ -20,6 +20,7 @@ removed.
 history, bookmarks); downloads then zoom (`- N% +`, the percentage resets to
 100 %) at the right end, zoom rightmost. Top-row buttons keep their size but
 lose the horizontal gap; less space between them and the url bar.
+Downloads always ask where to save [USER 2026-11-13].
 
 **Url bar in the sidebar** [USER 2026-11-04]: the address stays visible in the
 sidebar while the floating url bar is open.
