@@ -22,6 +22,9 @@ history, bookmarks); downloads then zoom (`- N% +`, the percentage resets to
 lose the horizontal gap; less space between them and the url bar.
 Downloads always ask where to save [USER 2026-11-13].
 
+**Pinned tabs** [USER 2026-11-13]: not resizable; the area always shows
+every row of pinned tabs and ends right below them.
+
 **Url bar in the sidebar** [USER 2026-11-04]: the address stays visible in the
 sidebar while the floating url bar is open.
 

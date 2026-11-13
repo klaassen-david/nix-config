@@ -18,7 +18,7 @@ changes (old ruling stays in the file as history).
   shown while the url bar floats; switch-to-tab does not focus another
   window's workspace (out of scope) [USER 2026-11-04]; bottom row = customize
   gear, downloads, zoom (`- N% +`), no sidebar tools; downloads ask where
-  to save [USER 2026-11-13]
+  to save; pinned tabs not resizable, every row always shown [USER 2026-11-13]
 - [browser-sync](decisions/browser-sync.md) — no tab sync between hosts for
   now; the rest of browser sync is undecided [USER 2026-11-03]
 - [password-manager](decisions/password-manager.md) — Vaultwarden on olympus;
