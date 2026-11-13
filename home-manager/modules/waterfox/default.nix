@@ -165,6 +165,12 @@ in
         "sidebar.autoHide" = false;
         "browser.tabs.verticalTabs.tree.enabled" = true;
         "browser.tabs.verticalTabs.tree.indentPx" = 10;
+        # no sidebar tools (synced tabs, history, bookmarks): the bottom row is
+        # gear, downloads, zoom (window.cfg). has-used: an empty list is
+        # otherwise seeded with the defaults on a fresh profile.
+        "sidebar.main.tools" = "";
+        "sidebar.new-sidebar.has-used" = true;
+        "browser.download.autohideButton" = false;
         "browser.tabs.pinnedIconOnly" = true; # labels would clip in the 28px icon grid
         "browser.tabs.verticalTabs.tree.autoCollapse.onSelect" = false; # off for now
         # an expanded parent's close promotes its first child; a collapsed

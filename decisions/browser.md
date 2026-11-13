@@ -16,6 +16,11 @@ extensions, back, forward, reload in that order; back/forward always shown,
 also when disabled; Firefox View, the Waterfox blocker and all-tabs buttons
 removed.
 
+**Sidebar bottom row** [USER 2026-11-13]: no sidebar tools (synced tabs,
+history, bookmarks); downloads then zoom (`- N% +`, the percentage resets to
+100 %) at the right end, zoom rightmost. Top-row buttons keep their size but
+lose the horizontal gap; less space between them and the url bar.
+
 **Url bar in the sidebar** [USER 2026-11-04]: the address stays visible in the
 sidebar while the floating url bar is open.
 
