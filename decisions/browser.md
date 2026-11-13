@@ -35,6 +35,12 @@ clicks [AGENT 2026-11-13]. Double-click on it resets the default width.
 
 **Url bar buttons** [USER 2026-11-13]: no reader-view or bookmark-star button.
 
+**Startpage tab title** [USER 2026-11-13]: a Startpage results tab is titled
+exactly with the search string (also searches from its own box, which POST),
+via a nix-built unsigned add-on (`home-manager/modules/waterfox/startpage-title`).
+Rejected: a `window.cfg` tab-label patch (page/window title unchanged, fragile)
+and a Tampermonkey userscript (not declarative).
+
 **Url bar in the sidebar** [USER 2026-11-04]: the address stays visible in the
 sidebar while the floating url bar is open.
 

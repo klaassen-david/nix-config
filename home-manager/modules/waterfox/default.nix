@@ -6,6 +6,7 @@
 #                  (layout, floating url bar, Ctrl+T, keys, unloading) — it patches
 #                  browser internals: re-check it on every Waterfox bump
 #   userChrome.css compact tree, level lines, floating url bar
+#   startpage-title/  unsigned add-on: Startpage result tabs titled with the search string
 #   ../../../common/modules/theme/mozilla-theme.nix  theme add-on from the stylix palette
 #
 # programs.waterfox comes from home-manager's own mkFirefoxModule (the same
@@ -85,7 +86,13 @@ in
     enable = true;
     package = waterfox;
     configPath = "${config.xdg.configHome}/waterfox";
-    globalExtensions = [ theme ];
+    globalExtensions = [
+      theme
+      {
+        package = pkgs.callPackage ./startpage-title { };
+        settings.private_browsing = true;
+      }
+    ];
 
     policies = {
       DisableAppUpdate = true;

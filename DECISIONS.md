@@ -19,7 +19,8 @@ changes (old ruling stays in the file as history).
   rows = menu, back, forward, reload, downloads, zoom (`- N% +`) / extensions
   + add-ons, no bottom row, no sidebar tools; downloads ask where to save;
   pinned tabs not resizable, every row always shown; no url-bar reader/star
-  buttons; invisible sidebar-width handle, double-click resets
+  buttons; invisible sidebar-width handle, double-click resets; Startpage
+  tabs titled with the search string (own add-on)
   [USER 2026-11-13]
 - [browser-sync](decisions/browser-sync.md) — no tab sync between hosts for
   now; the rest of browser sync is undecided [USER 2026-11-03]
