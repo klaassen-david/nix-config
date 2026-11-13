@@ -21,6 +21,9 @@ history, bookmarks); downloads then zoom (`- N% +`, the percentage resets to
 100 %) at the right end, zoom rightmost. Top-row buttons keep their size but
 lose the horizontal gap; less space between them and the url bar.
 Downloads always ask where to save [USER 2026-11-13].
+*Amended* [USER 2026-11-13]: no bottom row at all. Row 1: app menu, back,
+forward, reload, downloads, zoom; row 2: extensions button, then the pinned
+add-ons; then the url bar. Supersedes the row order under *Sidebar controls*.
 
 **Pinned tabs** [USER 2026-11-13]: not resizable; the area always shows
 every row of pinned tabs and ends right below them.

@@ -14,11 +14,11 @@ changes (old ruling stays in the file as history).
 - [browser](decisions/browser.md) — Waterfox (native tree tabs) becomes the
   default over Zen; Firefox stays installed; stylix lands first and themes it
   via a generated theme add-on [USER 2026-11-03]; add-ons run in private
-  windows; sidebar row = menu, extensions, back, forward, reload; address
-  shown while the url bar floats; switch-to-tab does not focus another
-  window's workspace (out of scope) [USER 2026-11-04]; bottom row = customize
-  gear, downloads, zoom (`- N% +`), no sidebar tools; downloads ask where
-  to save; pinned tabs not resizable, every row always shown [USER 2026-11-13]
+  windows; address shown while the url bar floats; switch-to-tab does not
+  focus another window's workspace (out of scope) [USER 2026-11-04]; sidebar
+  rows = menu, back, forward, reload, downloads, zoom (`- N% +`) / extensions
+  + add-ons, no bottom row, no sidebar tools; downloads ask where to save;
+  pinned tabs not resizable, every row always shown [USER 2026-11-13]
 - [browser-sync](decisions/browser-sync.md) — no tab sync between hosts for
   now; the rest of browser sync is undecided [USER 2026-11-03]
 - [password-manager](decisions/password-manager.md) — Vaultwarden on olympus;

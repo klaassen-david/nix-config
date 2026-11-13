@@ -165,8 +165,8 @@ in
         "sidebar.autoHide" = false;
         "browser.tabs.verticalTabs.tree.enabled" = true;
         "browser.tabs.verticalTabs.tree.indentPx" = 10;
-        # no sidebar tools (synced tabs, history, bookmarks): the bottom row is
-        # gear, downloads, zoom (window.cfg). has-used: an empty list is
+        # no sidebar tools (synced tabs, history, bookmarks), no bottom row
+        # (window.cfg). has-used: an empty list is
         # otherwise seeded with the defaults on a fresh profile.
         "sidebar.main.tools" = "";
         "sidebar.new-sidebar.has-used" = true;
