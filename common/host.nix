@@ -89,6 +89,11 @@ in
         default = false;
         description = "a Wooting keyboard is attached: udev rules giving the seat user its hidraw nodes, plus wootility (common/modules/wooting)";
       };
+      wineGaming = mkOption {
+        type = types.bool;
+        default = false;
+        description = "`wine-gaming`: umu-launcher + GE-Proton on a standalone prefix, outside Steam (common/modules/wine-gaming)";
+      };
       sshServer = mkOption {
         type = types.bool;
         default = config.host.role != "vps";

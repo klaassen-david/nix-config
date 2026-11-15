@@ -13,6 +13,8 @@
     # self-gates on host.capabilities.samba
     ./modules/samba
     ./modules/wooting
+    # self-gates on host.capabilities.wineGaming: umu + GE-Proton prefix runner
+    ./modules/wine-gaming
     # consumer side of the self-hosted attic binary cache (substituter + pull
     # auth on every host, push on binaryCachePush hosts)
     ./modules/attic-cache
