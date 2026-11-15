@@ -144,3 +144,6 @@ changes (old ruling stays in the file as history).
   on olympus and hestia through a forced command with a repo allowlist; pushes
   to branches only, never `main`; off the VPN-only vhosts; public caches,
   headless [USER 2026-11-05]
+- [keyboard-layout-order](decisions/keyboard-layout-order.md) — hestia's sway
+  layouts are `gb,us(dvorak),de_ccedilla`: gb first so XWayland/Wine games map
+  qwerty; sway starts on gb, dvorak via Win+Space, no auto-switch [USER 2026-11-15]

@@ -88,7 +88,8 @@
   time.timeZone = "Europe/Berlin";
   i18n.defaultLocale = "en_US.UTF-8";
 
-  # console/XWayland fallback: first entry of host.keyboard (sway gets the full list)
+  # console: first entry of host.keyboard. XWayland under sway takes sway's
+  # keymap (the full list), not this.
   console.useXkbConfig = true;
   services.xserver = {
     xkb.layout = lib.head (lib.splitString "," config.host.keyboard.layout);
