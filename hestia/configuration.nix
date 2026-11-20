@@ -12,8 +12,9 @@
     ../common/modules/backup
     ../common/modules/mail-backup
     ../common/modules/orch-state-backup
-    # hot-swapped from ~/deploy, dashboards proxied by olympus (decisions/hot-swap.md)
-    ../common/modules/orchestrator
+    # hot-swapped from ~/deploy, dashboard proxied by olympus (decisions/hot-swap.md).
+    # The orchestrator is retired and no longer imported
+    # (decisions/orchestrator-retired.md); its module and state stay.
     ../common/modules/coordinator
     # git for implementer hosts, by forced command (decisions/implementer-host.md)
     ../common/modules/implementer-git
@@ -63,8 +64,8 @@
 
   environment.systemPackages = [ pkgs.lutris ];
 
-  # declared, not left to `loginctl`: the coordinator and orchestrator start
-  # work with `systemd-run --user`, which needs dk's manager up without a login
+  # declared, not left to `loginctl`: the coordinator starts work with
+  # `systemd-run --user`, which needs dk's manager up without a login
   users.users.dk.linger = true;
 
   # decisions/hot-swap.md, "Night window": fstrim and the restic check default
