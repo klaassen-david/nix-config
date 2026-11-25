@@ -38,13 +38,6 @@
     theme.wallpaper = "/home/dk/wallpaper/current";
     theme.opacity = 0.8; # terminal (stylix opacity.terminal)
     browser = "waterfox";
-    # gb first: XWayland (and so Wine) maps keys through sway's first group,
-    # and dvorak there gave Wine games dvorak bindings. Sway starts on gb;
-    # Win+Space for dvorak (decisions/keyboard-layout-order.md)
-    keyboard = {
-      layout = "gb,us,de_ccedilla";
-      variant = ",dvorak,";
-    };
     capabilities.samba = true;
     capabilities.wooting = true;
     capabilities.wineGaming = true;

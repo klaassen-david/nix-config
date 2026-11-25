@@ -1,4 +1,10 @@
-# keyboard-layout-order: gb first on hestia
+# keyboard-layout-order: fleet default on every host
+
+**Ruling** [USER 2026-11-25]: every host uses the `host.keyboard` default
+`gb,de_ccedilla,us(dvorak)` (uk → de → dvorak, uk active at start). hestia no
+longer overrides it. gb stays first, so the Wine reasoning below still holds.
+
+## History
 
 **Ruling** [USER 2026-11-15]: hestia's sway layout list is `gb,us(dvorak),de_ccedilla`
 (was `us(dvorak),gb,de_ccedilla`). Sway starts on gb; dvorak is selected by hand
